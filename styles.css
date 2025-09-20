@@ -1,0 +1,867 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: radial-gradient(circle at top, #1d2671, #c33764);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: #fff;
+  overflow-x: hidden;
+  padding: 0;
+}
+
+.lottery-container {
+  text-align: center;
+  max-width: 1200px;
+  width: 100%;
+  position: relative;
+  padding: 20px;
+  margin-top: 10px;
+  margin-bottom: 120px;
+}
+
+/* Top row layout for logo and winners */
+.top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  position: relative;
+  min-height: 200px;
+}
+
+.logo-container {
+  position: fixed;
+  top: 5px;
+  left: 5px;
+  z-index: 10;
+}
+
+.event-logo {
+  max-width: 400px;
+  max-height: 240px;
+  width: auto;
+  height: auto;
+  border-radius: 15px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+  background: white;
+  padding: 12px;
+  transition: transform 0.3s ease;
+  display: block;
+}
+
+.event-logo:hover {
+  transform: scale(1.02);
+}
+
+h1 {
+  font-size: 2.5rem;
+  margin-bottom: 10px;
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+}
+
+.organization-name {
+  font-size: 1.2rem;
+  opacity: 0.8;
+  margin-bottom: 30px;
+  font-style: italic;
+}
+
+/* Main content area for proper alignment */
+.main-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.stats {
+  display: flex;
+  justify-content: center;
+  gap: 40px;
+  margin-bottom: 40px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.stat-item {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 12px 18px;
+  border-radius: 8px;
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  min-width: 120px;
+}
+
+.stat-label {
+  display: block;
+  font-size: 0.9rem;
+  opacity: 0.7;
+  margin-bottom: 5px;
+  font-weight: 400;
+}
+
+.stat-item span:last-child {
+  font-size: 1.4rem;
+  font-weight: bold;
+  color: #ffeb3b;
+  text-shadow: 0 0 5px rgba(255, 235, 59, 0.3);
+}
+
+.slot {
+  font-size: 3.2rem;
+  font-weight: bold;
+  min-height: 220px;
+  width: 100%;
+  max-width: 700px;
+  margin: 50px 0;
+  overflow: hidden;
+  border-radius: 25px;
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  padding: 30px;
+  transition: all 0.3s ease;
+}
+
+.slot.rolling {
+  background: rgba(255, 235, 59, 0.2);
+  border-color: rgba(255, 235, 59, 0.5);
+  box-shadow: 0 0 30px rgba(255, 235, 59, 0.3);
+}
+
+.slot span {
+  display: block;
+  text-align: center;
+  line-height: 1.4;
+  font-size: 1.2em;
+}
+
+.slot small {
+  font-size: 0.9em;
+  opacity: 0.9;
+  display: block;
+  margin-top: 8px;
+  font-weight: 500;
+}
+
+.buttons {
+  margin: 40px 0;
+  display: flex;
+  justify-content: center;
+  gap: 25px;
+  flex-wrap: nowrap;
+  width: 100%;
+}
+
+button {
+  font-size: 1.6rem;
+  padding: 18px 40px;
+  border: none;
+  border-radius: 15px;
+  cursor: pointer;
+  min-width: 140px;
+  transition: all 0.3s ease;
+  font-weight: bold;
+}
+
+button.reset {
+  font-size: 1rem;
+  padding: 12px;
+  min-width: 48px;
+  width: 48px;
+  height: 48px;
+  opacity: 0.8;
+  font-weight: normal;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+button.reset:hover {
+  opacity: 1;
+  transform: rotate(180deg);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+button.reset i {
+  font-size: 1.1rem;
+  color: #fff;
+}
+
+.start {
+  background: linear-gradient(45deg, #00c853, #4caf50);
+  color: #fff;
+}
+
+.stop {
+  background: linear-gradient(45deg, #d50000, #f44336);
+  color: #fff;
+}
+
+.reset {
+  background: linear-gradient(45deg, #ff9800, #ffc107);
+  color: #fff;
+}
+
+button:hover {
+  opacity: 0.85;
+  transform: scale(1.05);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.winner {
+  font-size: 2.2rem !important;
+  color: #ffeb3b;
+  text-shadow: 0 0 15px rgba(255, 255, 0, 0.7);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+/* Winner Announcement Animations */
+.winner-announcement {
+  text-align: center;
+  padding: 20px;
+}
+
+.winner-title {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #ffeb3b;
+  text-shadow: 0 0 20px rgba(255, 235, 59, 0.8);
+  margin-bottom: 10px;
+}
+
+.prize-number {
+  font-size: 1.5rem;
+  color: #fff;
+  opacity: 0.9;
+  font-weight: bold;
+}
+
+.winner-details-reveal {
+  text-align: center;
+  padding: 20px;
+}
+
+.winner-name-big {
+  font-size: 3.5rem;
+  font-weight: bold;
+  color: #ffeb3b;
+  text-shadow: 0 0 25px rgba(255, 235, 59, 0.9);
+  margin-bottom: 25px;
+  line-height: 1.2;
+}
+
+.winner-info {
+  font-size: 1.8rem;
+  line-height: 1.6;
+  opacity: 0.95;
+  font-weight: 500;
+}
+
+/* Animation Classes */
+.fadeInScale {
+  animation: fadeInScale 1.5s ease-out;
+}
+
+.slideInFromLeft {
+  animation: slideInFromLeft 1.2s ease-out;
+}
+
+.bounceIn {
+  animation: bounceIn 1.5s ease-out;
+}
+
+.rotateIn {
+  animation: rotateIn 1.3s ease-out;
+}
+
+.flipIn {
+  animation: flipIn 1.4s ease-out;
+}
+
+.zoomIn {
+  animation: zoomIn 1.2s ease-out;
+}
+
+.slideInFromTop {
+  animation: slideInFromTop 1.3s ease-out;
+}
+
+.slideInFromRight {
+  animation: slideInFromRight 1.2s ease-out;
+}
+
+.slideInFromBottom {
+  animation: slideInFromBottom 1.3s ease-out;
+}
+
+.pulseIn {
+  animation: pulseIn 1.5s ease-out;
+}
+
+/* Keyframe Definitions */
+@keyframes fadeInScale {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slideInFromLeft {
+  0% {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes bounceIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes rotateIn {
+  0% {
+    opacity: 0;
+    transform: rotate(-200deg) scale(0.5);
+  }
+  100% {
+    opacity: 1;
+    transform: rotate(0deg) scale(1);
+  }
+}
+
+@keyframes flipIn {
+  0% {
+    opacity: 0;
+    transform: perspective(400px) rotateY(90deg);
+  }
+  40% {
+    transform: perspective(400px) rotateY(-20deg);
+  }
+  60% {
+    transform: perspective(400px) rotateY(10deg);
+  }
+  80% {
+    transform: perspective(400px) rotateY(-5deg);
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(400px) rotateY(0deg);
+  }
+}
+
+@keyframes zoomIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.1);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes slideInFromTop {
+  0% {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInFromRight {
+  0% {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInFromBottom {
+  0% {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulseIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  20% {
+    opacity: 0.5;
+    transform: scale(0.7);
+  }
+  40% {
+    opacity: 0.8;
+    transform: scale(1.2);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(0.9);
+  }
+  80% {
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.winners-section {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 15px;
+  padding: 15px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  width: 300px;
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  bottom: 20px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+}
+
+.winners-section h3 {
+  margin-bottom: 20px;
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.winners-list {
+  flex: 1;
+  overflow-y: auto;
+  text-align: left;
+  min-height: 0;
+}
+
+.winner-item {
+  background: rgba(255, 255, 255, 0.1);
+  margin: 10px 0;
+  padding: 15px;
+  border-radius: 8px;
+  border-left: 4px solid #ffeb3b;
+}
+
+.winner-item .winner-name {
+  font-weight: bold;
+  font-size: 1.1rem;
+  color: #ffeb3b;
+}
+
+.winner-item .winner-details {
+  font-size: 0.9rem;
+  opacity: 0.8;
+  margin-top: 5px;
+}
+
+.no-winners {
+  text-align: center;
+  opacity: 0.6;
+  font-style: italic;
+}
+
+/* Loading Screen */
+.loading {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(29, 38, 113, 0.9);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+}
+
+.loading.hidden {
+  display: none;
+}
+
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid rgba(255, 255, 255, 0.3);
+  border-top: 5px solid #ffeb3b;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Confetti Canvas */
+#confettiCanvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .top-row {
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    min-height: auto;
+  }
+
+  .logo-container {
+    position: relative;
+    top: auto;
+    left: auto;
+  }
+
+  .winners-section {
+    position: relative;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    width: 100%;
+    max-width: 500px;
+    max-height: 400px;
+    flex-direction: column;
+  }
+
+  .event-logo {
+    max-width: 450px;
+    max-height: 270px;
+  }
+}
+
+@media (max-width: 768px) {
+  h1 {
+    font-size: 2rem;
+  }
+
+  .lottery-container {
+    max-width: 600px;
+    margin-top: 290px;
+  }
+
+  .event-logo {
+    max-width: 350px;
+    max-height: 210px;
+  }
+
+  .stats {
+    gap: 20px;
+  }
+
+  .stat-item {
+    padding: 10px 15px;
+    min-width: 100px;
+  }
+
+  .stat-label {
+    font-size: 0.8rem;
+  }
+
+  .stat-item span:last-child {
+    font-size: 1.2rem;
+  }
+
+  button.reset {
+    font-size: 1rem;
+    padding: 10px 20px;
+    min-width: 80px;
+  }
+
+  .slot {
+    font-size: 2.8rem;
+    min-height: 180px;
+    max-width: 600px;
+    padding: 25px;
+  }
+
+  .winner-name-big {
+    font-size: 3rem;
+  }
+
+  .winner-info {
+    font-size: 1.6rem;
+  }
+
+
+
+  button {
+    font-size: 1.4rem;
+    padding: 15px 35px;
+    min-width: 120px;
+  }
+
+  .winners-section {
+    padding: 15px;
+    max-width: 400px;
+    max-height: 350px;
+  }
+
+  .buttons {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .lottery-container {
+    max-width: 400px;
+    margin-top: 210px;
+  }
+
+  .event-logo {
+    max-width: 320px;
+    max-height: 190px;
+  }
+
+  .main-content {
+    align-items: center;
+  }
+
+  .stats {
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    justify-content: center;
+  }
+
+  .stat-item {
+    padding: 8px 12px;
+    min-width: 90px;
+  }
+
+  .stat-label {
+    font-size: 0.75rem;
+  }
+
+  .stat-item span:last-child {
+    font-size: 1.1rem;
+  }
+
+  button.reset {
+    font-size: 0.9rem;
+    padding: 8px 15px;
+    min-width: 70px;
+  }
+
+  .slot {
+    font-size: 2.4rem;
+    min-height: 160px;
+    max-width: 500px;
+    padding: 20px;
+  }
+
+  .winner-name-big {
+    font-size: 2.6rem;
+  }
+
+  .winner-info {
+    font-size: 1.4rem;
+  }
+
+  .bottom-stats {
+    bottom: 50px;
+    gap: 10px;
+  }
+
+  .bottom-stats .stat-item {
+    padding: 4px 8px;
+    min-width: 60px;
+  }
+
+  .bottom-stats .stat-label {
+    font-size: 0.6rem;
+  }
+
+  .bottom-stats .stat-item span:last-child {
+    font-size: 0.9rem;
+  }
+
+  .bottom-stats .reset {
+    font-size: 0.7rem;
+    padding: 6px;
+    min-width: 32px;
+    width: 32px;
+    height: 32px;
+    margin-left: 8px;
+  }
+
+  .bottom-stats .reset i {
+    font-size: 0.8rem;
+  }
+
+  .developer-footer p {
+    font-size: 0.6rem;
+  }
+
+  .buttons {
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    justify-content: center;
+  }
+
+  button {
+    width: 220px;
+    font-size: 1.3rem;
+    padding: 16px 30px;
+  }
+
+
+
+
+
+  .winners-section {
+    padding: 15px;
+    max-width: 350px;
+    max-height: 300px;
+  }
+}
+
+/* Bottom Statistics */
+.bottom-stats {
+  position: fixed;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+  z-index: 5;
+  flex-wrap: wrap;
+}
+
+.bottom-stats .stat-item {
+  background: rgba(0, 0, 0, 0.6);
+  padding: 6px 12px;
+  border-radius: 6px;
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  text-align: center;
+  min-width: 80px;
+}
+
+.bottom-stats .stat-label {
+  display: block;
+  font-size: 0.7rem;
+  opacity: 0.6;
+  margin-bottom: 2px;
+  font-weight: 300;
+}
+
+.bottom-stats .stat-item span:last-child {
+  font-size: 1rem;
+  font-weight: bold;
+  color: #ffeb3b;
+  text-shadow: 0 0 3px rgba(255, 235, 59, 0.3);
+}
+
+.bottom-stats .reset {
+  font-size: 0.8rem;
+  padding: 8px;
+  min-width: 36px;
+  width: 36px;
+  height: 36px;
+  opacity: 0.7;
+  margin-left: 10px;
+}
+
+.bottom-stats .reset i {
+  font-size: 0.9rem;
+}
+
+/* Developer Footer */
+.developer-footer {
+  position: fixed;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+}
+
+.developer-footer p {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0;
+  text-align: center;
+  font-weight: 300;
+}

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Earlybird Lottery Picker</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <canvas id="confettiCanvas"></canvas>
+  
+  <div class="lottery-container">
+    <!-- Top Row: Logo and Winners -->
+    <div>
+      <!-- Top Left: Logo -->
+      <div class="logo-container">
+        <img src="logo.jpg" alt="Kerotsavam Onam'25 - Kalandoor Group" class="event-logo">
+      </div>
+
+      <!-- Top Right: Winners -->
+      <div class="winners-section">
+        <h3>🏆 Winners List</h3>
+        <div id="winnersList" class="winners-list">
+          <p class="no-winners">No winners yet. Start the spinner!</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="main-content">
+      <!-- Center: Lottery Slot -->
+      <div id="slot" class="slot">
+        <span>Press Start 🎰</span>
+      </div>
+
+      <!-- Control Buttons -->
+      <div class="buttons">
+        <button class="start" id="startBtn" onclick="startSlot()">Start</button>
+        <button class="stop" id="stopBtn" onclick="stopSlot()">Stop</button>
+      </div>
+    </div>
+
+    <!-- Bottom Statistics -->
+    <div class="bottom-stats">
+      <div class="stat-item">
+        <span class="stat-label">Total Prizes:</span>
+        <span id="totalPrizes">Loading...</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Remaining Prizes:</span>
+        <span id="remainingPrizes">Loading...</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Winners:</span>
+        <span id="winnersCount">0</span>
+      </div>
+      <button class="reset" id="resetBtn" onclick="resetLottery()" title="Reset All">
+        <i class="fas fa-redo-alt"></i>
+      </button>
+    </div>
+
+    <!-- Footer -->
+    <footer class="developer-footer">
+      <p>Developed by V Zone International LLC</p>
+    </footer>
+  </div>
+
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <p>Loading tickets...</p>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
