@@ -239,7 +239,7 @@ async function showWinnerAnnouncement(winner, prizeNumber) {
   slot.innerHTML = `
     <div class="winner-announcement ${animationType}">
       <div class="winner-title">🎉 WINNER! 🎉</div>
-      <div class="prize-number">Prize #${prizeNumber}</div>
+      <div class="prize-number">Ticket: ${winner.ticket}</div>
     </div>
   `;
 
