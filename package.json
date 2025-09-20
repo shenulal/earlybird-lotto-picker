@@ -1,0 +1,19 @@
+{
+  "name": "earlybird-lotto-picker",
+  "version": "1.0.0",
+  "description": "Lottery picker application for Kerotsavam Onam'25 event",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["lottery", "picker", "onam", "kerala"],
+  "author": "V Zone International LLC",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
