@@ -5,15 +5,16 @@
 }
 
 body {
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  display: grid;
+  place-items: center;
   min-height: 100vh;
-  background: radial-gradient(circle at top, #1d2671, #c33764);
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: url('Background.png') center/cover no-repeat, radial-gradient(circle at top, #1d2671, #c33764);
+  background-attachment: fixed;
+  font-family: 'Lato', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   color: #fff;
   overflow-x: hidden;
-  padding: 0;
+  padding: 2vh 0;
+  margin: 0;
 }
 
 .lottery-container {
@@ -21,9 +22,14 @@ body {
   max-width: 1200px;
   width: 100%;
   position: relative;
-  padding: 20px;
-  margin-top: 10px;
-  margin-bottom: 120px;
+  padding: 1vh 20px 2vh;
+  margin: 0 auto;
+  min-height: calc(100vh - 3vh);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding-top: 3vh;
+  box-sizing: border-box;
 }
 
 /* Top row layout for logo and winners */
@@ -31,9 +37,9 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 20px;
+  margin-bottom: 15px;
   position: relative;
-  min-height: 200px;
+  min-height: 180px;
 }
 
 .logo-container {
@@ -41,6 +47,18 @@ body {
   top: 5px;
   left: 5px;
   z-index: 10;
+}
+
+.event-title {
+  color: #ffeb3b;
+  font-size: 1.5rem;
+  font-weight: bold;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+  margin: 0;
+  padding: 10px 15px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 10px;
+  backdrop-filter: blur(5px);
 }
 
 .event-logo {
@@ -80,7 +98,14 @@ h1 {
   align-items: center;
   width: 100%;
   max-width: 700px;
-  margin: 0 auto;
+  margin: 0 30%;
+  margin-top: 2vh;
+  /* Alternative alignment options:
+     margin: 0 25%;     - Slightly wider content area
+     margin: 0 35%;     - Narrower content area
+     margin: 0 20% 0 40%; - Offset to right side
+     margin: 0 40% 0 20%; - Offset to left side
+  */
 }
 
 .stats {
@@ -173,32 +198,35 @@ button {
   font-size: 1.6rem;
   padding: 18px 40px;
   border: none;
-  border-radius: 15px;
+  border-radius: 25px;
   cursor: pointer;
   min-width: 140px;
   transition: all 0.3s ease;
   font-weight: bold;
-}
-
-button.reset {
-  font-size: 1rem;
-  padding: 12px;
-  min-width: 48px;
-  width: 48px;
-  height: 48px;
-  opacity: 0.8;
-  font-weight: normal;
-  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
+}
+
+button.reset {
+  font-size: 1.6rem;
+  padding: 18px 40px;
+  min-width: 140px;
+  border-radius: 25px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   transition: all 0.3s ease;
+  font-weight: bold;
 }
 
 button.reset:hover {
-  opacity: 1;
-  transform: rotate(180deg);
-  background: rgba(255, 255, 255, 0.1);
+  transform: scale(1.05);
+  box-shadow: 0 8px 25px rgba(255, 152, 0, 0.4);
 }
 
 button.reset i {
@@ -224,6 +252,14 @@ button.reset i {
 button:hover {
   opacity: 0.85;
   transform: scale(1.05);
+}
+
+.start:hover {
+  box-shadow: 0 8px 25px rgba(76, 175, 80, 0.4);
+}
+
+.stop:hover {
+  box-shadow: 0 8px 25px rgba(244, 67, 54, 0.4);
 }
 
 button:disabled {
@@ -479,6 +515,7 @@ button:disabled {
 }
 
 .winners-section {
+  display: none;
   background: rgba(255, 255, 255, 0.1);
   border-radius: 15px;
   padding: 15px;
@@ -490,7 +527,6 @@ button:disabled {
   right: 20px;
   bottom: 20px;
   z-index: 10;
-  display: flex;
   flex-direction: column;
 }
 
@@ -593,6 +629,11 @@ button:disabled {
     left: auto;
   }
 
+  .event-title {
+    font-size: 1.2rem;
+    text-align: center;
+  }
+
   .winners-section {
     position: relative;
     top: auto;
@@ -642,10 +683,10 @@ button:disabled {
     font-size: 1.2rem;
   }
 
-  button.reset {
-    font-size: 1rem;
-    padding: 10px 20px;
-    min-width: 80px;
+  button {
+    font-size: 1.2rem;
+    padding: 12px 24px;
+    min-width: 120px;
   }
 
   .slot {
@@ -695,6 +736,11 @@ button:disabled {
 
   .main-content {
     align-items: center;
+    margin-top: 1vh;
+  }
+
+  .lottery-container {
+    padding-top: 2vh;
   }
 
   .stats {
@@ -717,10 +763,10 @@ button:disabled {
     font-size: 1.1rem;
   }
 
-  button.reset {
-    font-size: 0.9rem;
-    padding: 8px 15px;
-    min-width: 70px;
+  button {
+    font-size: 1rem;
+    padding: 10px 20px;
+    min-width: 100px;
   }
 
   .slot {
@@ -756,18 +802,7 @@ button:disabled {
     font-size: 0.9rem;
   }
 
-  .bottom-stats .reset {
-    font-size: 0.7rem;
-    padding: 6px;
-    min-width: 32px;
-    width: 32px;
-    height: 32px;
-    margin-left: 8px;
-  }
 
-  .bottom-stats .reset i {
-    font-size: 0.8rem;
-  }
 
   .developer-footer p {
     font-size: 0.6rem;
@@ -799,11 +834,11 @@ button:disabled {
 
 /* Bottom Statistics */
 .bottom-stats {
+  display: none;
   position: fixed;
   bottom: 60px;
   left: 50%;
   transform: translateX(-50%);
-  display: flex;
   justify-content: center;
   align-items: center;
   gap: 15px;
@@ -837,19 +872,7 @@ button:disabled {
   text-shadow: 0 0 3px rgba(255, 235, 59, 0.3);
 }
 
-.bottom-stats .reset {
-  font-size: 0.8rem;
-  padding: 8px;
-  min-width: 36px;
-  width: 36px;
-  height: 36px;
-  opacity: 0.7;
-  margin-left: 10px;
-}
 
-.bottom-stats .reset i {
-  font-size: 0.9rem;
-}
 
 /* Developer Footer */
 .developer-footer {

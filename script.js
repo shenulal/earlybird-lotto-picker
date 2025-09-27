@@ -47,8 +47,8 @@ async function loadAppSettings() {
     // Use default settings if file not found
     appSettings = {
       totalPrizes: 10,
-      eventName: "Earlybird Lottery 2024",
-      organizationName: "Your Organization",
+      eventName: "AKCAF Association",
+      organizationName: "AKCAF Association",
       animation: { rollingSpeed: 80, confettiDuration: 5000, confettiCount: 150, winnerAnnouncementDelay: 2000, confettiStartDelay: 500 },
       display: { showMobileInWinner: true, showTicketIdInAnimation: true, autoStopWhenPrizesExhausted: true },
       ui: { primaryColor: "#ffeb3b", backgroundColor: "radial-gradient(circle at top, #1d2671, #c33764)", showOrganizationName: true }
@@ -197,6 +197,13 @@ function stopSlot() {
 
 // Reset the lottery
 function resetLottery() {
+  // Show confirmation dialog
+  const confirmReset = confirm("Are you sure you want to reset the randomizer?\n\nThis will:\n• Clear all winners\n• Reset all tickets\n• Stop any current draw\n\nThis action cannot be undone.");
+
+  if (!confirmReset) {
+    return; // User cancelled, don't reset
+  }
+
   if (rolling) {
     clearInterval(intervalId);
     rolling = false;
