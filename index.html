@@ -3,80 +3,113 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AKCAF Association - Randomizer</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&display=swap" rel="stylesheet">
+  <meta name="robots" content="noindex">
+  <title>Pickora</title>
+  <link rel="stylesheet" href="fonts/fonts.css">
   <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-  <canvas id="confettiCanvas"></canvas>
-  
-  <div class="lottery-container">
-    <!-- Top Row: Logo and Winners -->
-    <div>
-
-      <!-- Top Right: Winners -->
-      <div class="winners-section">
-        <h3>🏆 Winners List</h3>
-        <div id="winnersList" class="winners-list">
-          <p class="no-winners">No winners yet. Start the spinner!</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Main Content Area -->
-    <div class="main-content">
-      <!-- Center: Lottery Slot -->
-      <div id="slot" class="slot">
-        <span>Press Start 🎰</span>
-      </div>
-
-      <!-- Control Buttons -->
-      <div class="buttons">
-        <button class="start" id="startBtn" onclick="startSlot()">
-          <i class="fas fa-play"></i>
-          Start
-        </button>
-        <button class="stop" id="stopBtn" onclick="stopSlot()">
-          <i class="fas fa-stop"></i>
-          Stop
-        </button>
-        <button class="reset" id="resetBtn" onclick="resetLottery()">
-          <i class="fas fa-redo-alt"></i>
-          Reset
-        </button>
-      </div>
-    </div>
-
-    <!-- Bottom Statistics -->
-    <div class="bottom-stats">
-      <div class="stat-item">
-        <span class="stat-label">Total Prizes:</span>
-        <span id="totalPrizes">Loading...</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">Remaining Prizes:</span>
-        <span id="remainingPrizes">Loading...</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">Winners:</span>
-        <span id="winnersCount">0</span>
-      </div>
-    </div>
-
-    <!-- Footer -->
-    <footer class="developer-footer">
-      <p>Developed by V Zone International LLC</p>
-    </footer>
-  </div>
+  <div class="board-backdrop" aria-hidden="true"></div>
+  <canvas id="confettiCanvas" aria-hidden="true"></canvas>
 
   <div class="loading" id="loading">
-    <div class="spinner"></div>
-    <p>Loading tickets...</p>
+    <span class="spinner" aria-hidden="true"></span>
+    <p id="loadingText">Preparing the draw…</p>
   </div>
 
-  <script src="script.js"></script>
+  <p class="notice" id="notice" role="status" hidden></p>
+
+  <img class="board-logo" id="boardLogo" alt="" hidden>
+
+  <header class="board-header">
+    <div class="board-identity">
+      <h1 class="event-name" id="eventName">Pickora</h1>
+      <p class="organization-name" id="organizationName" hidden></p>
+    </div>
+
+    <nav class="board-tools" aria-label="Board controls">
+      <button type="button" class="tool" id="winnersToggle" aria-controls="winnersPanel" aria-expanded="false">
+        <span class="tool-label" id="winnersToggleLabel">Winners</span>
+        <span class="tool-badge" id="winnersBadge">0</span>
+      </button>
+      <button type="button" class="tool" id="welcomeToggle" aria-controls="welcomePanel" aria-expanded="false" hidden>
+        <span class="tool-label" id="welcomeToggleLabel">Welcome</span>
+      </button>
+      <button type="button" class="tool" id="fullscreenBtn" title="Fullscreen (F)">
+        <span class="tool-label">Fullscreen</span>
+      </button>
+      <a class="tool tool-quiet" id="organiserLink" href="/admin">Organiser</a>
+    </nav>
+  </header>
+
+  <main class="board" aria-labelledby="eventName">
+    <section class="stage" id="stage" data-status="idle" aria-live="polite" aria-atomic="true">
+      <div class="stage-reel" id="reel">
+        <p class="stage-message">
+          <span class="stage-message-title">Ready to draw</span>
+        </p>
+      </div>
+    </section>
+
+    <div class="controls">
+      <button type="button" class="control control-start" id="startBtn">
+        <span class="control-text">Start</span>
+        <span class="control-key" aria-hidden="true">Space</span>
+      </button>
+      <button type="button" class="control control-stop" id="stopBtn" disabled>
+        <span class="control-text">Stop</span>
+        <span class="control-key" aria-hidden="true">Space</span>
+      </button>
+    </div>
+
+    <dl class="stats" id="stats" hidden>
+      <div class="stat">
+        <dt>Prizes</dt>
+        <dd id="totalPrizes">—</dd>
+      </div>
+      <div class="stat">
+        <dt>Remaining</dt>
+        <dd id="remainingPrizes">—</dd>
+      </div>
+      <div class="stat">
+        <dt>Drawn</dt>
+        <dd id="winnersCount">0</dd>
+      </div>
+    </dl>
+  </main>
+
+  <aside class="winners-panel" id="winnersPanel" aria-label="Winners so far" hidden>
+    <h2 id="winnersHeading">Winners</h2>
+    <ol class="winners-list" id="winnersList"></ol>
+  </aside>
+
+  <!-- Guest welcome: a message plus a carousel of portraits. -->
+  <section class="welcome" id="welcomePanel" aria-labelledby="welcomeTitle" hidden>
+    <div class="welcome-card">
+      <button type="button" class="welcome-close" id="welcomeClose" aria-label="Close welcome">&times;</button>
+
+      <div class="welcome-figure" id="welcomeFigure" aria-live="off">
+        <ol class="welcome-track" id="welcomeTrack"></ol>
+        <button type="button" class="welcome-nav welcome-prev" id="welcomePrev" aria-label="Previous photo">&#8249;</button>
+        <button type="button" class="welcome-nav welcome-next" id="welcomeNext" aria-label="Next photo">&#8250;</button>
+        <div class="welcome-dots" id="welcomeDots" role="tablist" aria-label="Choose a photo"></div>
+      </div>
+
+      <div class="welcome-body">
+        <p class="welcome-eyebrow" id="welcomeTitle">Our special guest</p>
+        <p class="welcome-message" id="welcomeMessage"></p>
+        <p class="welcome-caption" id="welcomeCaption"></p>
+      </div>
+    </div>
+  </section>
+
+  <footer class="board-footer">
+    <p id="boardFooter"></p>
+  </footer>
+
+  <script src="api.js" defer></script>
+  <script src="confetti.js" defer></script>
+  <script src="welcome.js" defer></script>
+  <script src="script.js" defer></script>
 </body>
 </html>

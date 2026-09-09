@@ -1,0 +1,568 @@
+/**
+ * Console editors for the configurable parts of the board: participant fields,
+ * display slots, branding assets and board wording.
+ *
+ * Kept separate from admin.js so each file stays about one concern.
+ */
+(function configEditors(global, document) {
+  'use strict';
+
+  const api = global.lotteryApi;
+
+  const SLOT_META = [
+    { key: 'reel', title: 'While spinning', hint: 'Cycles through the remaining entries. Every field here is sent to the board for all entries, not just the winner.' },
+    { key: 'call', title: 'Winner announcement', hint: 'The first reveal, held for the announcement delay before the full card.' },
+    { key: 'card', title: 'Winner card', hint: 'The full result the audience reads.' },
+    { key: 'panel', title: 'Winners list row', hint: 'One row per winner in the side panel.' },
+  ];
+
+  // Kept short so the select never truncates inside a slot row; the longer
+  // explanation rides along as a tooltip.
+  const EMPHASIS_OPTIONS = [
+    { value: 'primary', label: 'Primary', title: 'Largest, in the accent colour' },
+    { value: 'secondary', label: 'Secondary', title: 'Bold supporting line' },
+    { value: 'meta', label: 'Meta', title: 'Smaller detail line' },
+    { value: 'eyebrow', label: 'Eyebrow', title: 'Small uppercase label' },
+  ];
+
+  const COPY_LABELS = {
+    readyTitle: 'Idle heading',
+    readyDetail: 'Idle sub-heading',
+    winnerEyebrow: 'Winner label',
+    prizeLabel: 'Prize word',
+    lastWinnerEyebrow: 'Previous winner label',
+    completeTitle: 'All prizes awarded',
+    startButton: 'Start button',
+    stopButton: 'Stop button',
+    winnersHeading: 'Winners panel heading',
+    winnersEmpty: 'Winners panel empty text',
+    winnersToggle: 'Winners toggle',
+    fullscreenButton: 'Fullscreen button',
+    organiserLink: 'Organiser link',
+    footer: 'Footer credit',
+    loading: 'Loading message',
+  };
+
+  function escapeHtml(value) {
+    return String(value === null || value === undefined ? '' : value).replace(
+      /[&<>"']/g,
+      (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]
+    );
+  }
+
+  /**
+   * Creates the editors. `context` supplies the shared console plumbing:
+   * `getSettings()`, `applySettings(next)`, `toast()` and `reload()`.
+   */
+  function createConfigEditors(context) {
+    const elements = {
+      fieldsBody: document.getElementById('fieldsBody'),
+      identifierPill: document.getElementById('identifierPill'),
+      saveFieldsBtn: document.getElementById('saveFieldsBtn'),
+      revertFieldsBtn: document.getElementById('revertFieldsBtn'),
+
+      slotEditors: document.getElementById('slotEditors'),
+      sensitiveWarning: document.getElementById('sensitiveWarning'),
+      panelMaxEntries: document.getElementById('panelMaxEntries'),
+      saveDisplayBtn: document.getElementById('saveDisplayBtn'),
+      revertDisplayBtn: document.getElementById('revertDisplayBtn'),
+
+      copyFields: document.getElementById('copyFields'),
+      saveCopyBtn: document.getElementById('saveCopyBtn'),
+      revertCopyBtn: document.getElementById('revertCopyBtn'),
+
+      saveBrandingBtn: document.getElementById('saveBrandingBtn'),
+
+      welcomeEnabled: document.getElementById('welcomeEnabled'),
+      welcomeShowOnLoad: document.getElementById('welcomeShowOnLoad'),
+      welcomeShowCaptions: document.getElementById('welcomeShowCaptions'),
+      welcomeTitleInput: document.getElementById('welcomeTitleInput'),
+      welcomeMessageInput: document.getElementById('welcomeMessageInput'),
+      welcomePlacement: document.getElementById('welcomePlacement'),
+      welcomeInterval: document.getElementById('welcomeInterval'),
+      welcomeCountPill: document.getElementById('welcomeCountPill'),
+      guestGrid: document.getElementById('guestGrid'),
+      guestDrop: document.getElementById('guestDrop'),
+      guestInput: document.getElementById('guestInput'),
+      saveWelcomeBtn: document.getElementById('saveWelcomeBtn'),
+      revertWelcomeBtn: document.getElementById('revertWelcomeBtn'),
+    };
+
+    /* ---------------------------------------------------------- fields */
+
+    function renderFields() {
+      const { data } = context.getSettings();
+      elements.identifierPill.textContent = `Identifier: ${data.identifier}`;
+
+      elements.fieldsBody.innerHTML = data.fields
+        .map(
+          (field) => `
+          <tr>
+            <td><input type="radio" name="identifierField" value="${escapeHtml(field.key)}" ${field.key === data.identifier ? 'checked' : ''}></td>
+            <td class="ticket">${escapeHtml(field.key)}</td>
+            <td><input type="text" class="field-label-input" data-key="${escapeHtml(field.key)}" value="${escapeHtml(field.label)}" maxlength="60"></td>
+            <td><input type="checkbox" class="field-sensitive" data-key="${escapeHtml(field.key)}" ${field.sensitive ? 'checked' : ''}></td>
+            <td><input type="checkbox" class="field-export" data-key="${escapeHtml(field.key)}" ${field.includeInExport ? 'checked' : ''}></td>
+          </tr>`
+        )
+        .join('');
+
+      const policy = document.querySelector(`input[name="duplicatePolicy"][value="${data.duplicatePolicy}"]`);
+      if (policy) policy.checked = true;
+    }
+
+    function collectFields() {
+      const settings = context.getSettings();
+      const identifier = document.querySelector('input[name="identifierField"]:checked');
+      const policy = document.querySelector('input[name="duplicatePolicy"]:checked');
+
+      const fields = settings.data.fields.map((field) => {
+        const label = elements.fieldsBody.querySelector(`.field-label-input[data-key="${field.key}"]`);
+        const sensitive = elements.fieldsBody.querySelector(`.field-sensitive[data-key="${field.key}"]`);
+        const included = elements.fieldsBody.querySelector(`.field-export[data-key="${field.key}"]`);
+
+        return {
+          ...field,
+          label: label ? label.value.trim() || field.label : field.label,
+          sensitive: sensitive ? sensitive.checked : field.sensitive,
+          includeInExport: included ? included.checked : field.includeInExport,
+        };
+      });
+
+      return {
+        ...settings,
+        data: {
+          ...settings.data,
+          fields,
+          identifier: identifier ? identifier.value : settings.data.identifier,
+          duplicatePolicy: policy ? policy.value : settings.data.duplicatePolicy,
+        },
+      };
+    }
+
+    /* --------------------------------------------------------- display */
+
+    function slotOptions(selectedKey) {
+      return context
+        .getSettings()
+        .data.fields.map(
+          (field) =>
+            `<option value="${escapeHtml(field.key)}" ${field.key === selectedKey ? 'selected' : ''}>${escapeHtml(field.label)}${field.sensitive ? ' (sensitive)' : ''}</option>`
+        )
+        .join('');
+    }
+
+    function renderSlotLines(slotKey, lines) {
+      if (lines.length === 0) {
+        return '<p class="slot-empty">Nothing selected — the board will fall back to the identifier.</p>';
+      }
+
+      return lines
+        .map(
+          (line, index) => `
+          <div class="slot-line-row" data-slot="${slotKey}" data-index="${index}">
+            <select class="slot-field">${slotOptions(line.field)}</select>
+            <select class="slot-emphasis">
+              ${EMPHASIS_OPTIONS.map((option) => `<option value="${option.value}" title="${option.title}" ${option.value === line.emphasis ? 'selected' : ''}>${option.label}</option>`).join('')}
+            </select>
+            <label class="slot-label-toggle" title="Show the field name before the value">
+              <input type="checkbox" class="slot-show-label" ${line.showLabel ? 'checked' : ''}>
+              <span>Label</span>
+            </label>
+            <button type="button" class="btn btn-ghost slot-remove" aria-label="Remove line">Remove</button>
+          </div>`
+        )
+        .join('');
+    }
+
+    function renderDisplay() {
+      const settings = context.getSettings();
+
+      elements.slotEditors.innerHTML = SLOT_META.map(
+        (slot) => `
+        <section class="card slot-card" data-slot="${slot.key}">
+          <h2 class="card-title">${escapeHtml(slot.title)}</h2>
+          <p class="field-hint slot-hint">${escapeHtml(slot.hint)}</p>
+          <div class="slot-lines" data-slot="${slot.key}">${renderSlotLines(slot.key, settings.display[slot.key].lines)}</div>
+          <button type="button" class="btn btn-ghost slot-add" data-slot="${slot.key}">Add a line</button>
+        </section>`
+      ).join('');
+
+      elements.panelMaxEntries.value = settings.display.panel.maxEntries;
+      renderSensitiveWarning();
+    }
+
+    /** Warns when a field marked sensitive has been placed on a public slot. */
+    function renderSensitiveWarning() {
+      const settings = context.getSettings();
+      const sensitiveKeys = settings.data.fields.filter((field) => field.sensitive).map((field) => field.key);
+      const exposed = new Set();
+
+      SLOT_META.forEach((slot) => {
+        elements.slotEditors
+          .querySelectorAll(`.slot-lines[data-slot="${slot.key}"] .slot-field`)
+          .forEach((select) => {
+            if (sensitiveKeys.includes(select.value)) exposed.add(select.value);
+          });
+      });
+
+      if (exposed.size === 0) {
+        elements.sensitiveWarning.hidden = true;
+        return;
+      }
+
+      const labels = settings.data.fields
+        .filter((field) => exposed.has(field.key))
+        .map((field) => field.label)
+        .join(', ');
+
+      elements.sensitiveWarning.hidden = false;
+      elements.sensitiveWarning.innerHTML = `<strong>${escapeHtml(labels)}</strong> ${exposed.size === 1 ? 'is' : 'are'} marked sensitive and will be shown on the public board.`;
+    }
+
+    function collectDisplay() {
+      const settings = context.getSettings();
+
+      const display = SLOT_META.reduce((accumulator, slot) => {
+        const rows = Array.from(elements.slotEditors.querySelectorAll(`.slot-lines[data-slot="${slot.key}"] .slot-line-row`));
+        return {
+          ...accumulator,
+          [slot.key]: {
+            ...settings.display[slot.key],
+            lines: rows.map((row) => ({
+              field: row.querySelector('.slot-field').value,
+              emphasis: row.querySelector('.slot-emphasis').value,
+              showLabel: row.querySelector('.slot-show-label').checked,
+            })),
+          },
+        };
+      }, {});
+
+      display.panel.maxEntries = Number(elements.panelMaxEntries.value);
+      return { ...settings, display: { ...settings.display, ...display } };
+    }
+
+    /* ---------------------------------------------------------- wording */
+
+    function renderCopy() {
+      const { copy } = context.getSettings();
+      elements.copyFields.innerHTML = Object.keys(COPY_LABELS)
+        .map(
+          (key) => `
+          <label class="field">
+            <span class="field-label">${escapeHtml(COPY_LABELS[key])}</span>
+            <input type="text" class="copy-input" data-key="${escapeHtml(key)}" value="${escapeHtml(copy[key])}" maxlength="160">
+          </label>`
+        )
+        .join('');
+    }
+
+    function collectCopy() {
+      const settings = context.getSettings();
+      const copy = Array.from(elements.copyFields.querySelectorAll('.copy-input')).reduce(
+        (accumulator, input) => ({ ...accumulator, [input.dataset.key]: input.value }),
+        { ...settings.copy }
+      );
+      return { ...settings, copy };
+    }
+
+    /* --------------------------------------------------------- branding */
+
+    /* Dimensions are only known for files uploaded through the console; an
+       SVG and a pre-existing file both arrive without them. */
+    function describeAsset(asset) {
+      if (!asset.src) return '';
+      const name = asset.src.replace('assets/', '');
+      if (asset.width && asset.height) return `${name} — ${asset.width}×${asset.height}px`;
+      return /\.svg$/i.test(name) ? `${name} — scalable` : name;
+    }
+
+    function renderBranding() {
+      const { branding } = context.getSettings();
+
+      [['logo', 'logoPreview', 'logoMeta'], ['background', 'backgroundPreview', 'backgroundMeta']].forEach(
+        ([kind, previewId, metaId]) => {
+          const preview = document.getElementById(previewId);
+          const meta = document.getElementById(metaId);
+          const asset = branding[kind];
+
+          preview.innerHTML = asset.src
+            ? `<img src="${escapeHtml(asset.src)}?v=${Date.now()}" alt="${kind} preview">`
+            : `<span class="asset-empty">No ${kind}</span>`;
+
+          if (asset.src) meta.textContent = describeAsset(asset);
+        }
+      );
+
+      document.getElementById('logoPosition').value = branding.logo.position;
+      document.getElementById('logoMaxHeight').value = branding.logo.maxHeight;
+      document.getElementById('backgroundFit').value = branding.background.fit;
+      document.getElementById('overlayOpacity').value = branding.background.overlayOpacity;
+    }
+
+    function collectBranding() {
+      const settings = context.getSettings();
+      return {
+        ...settings,
+        branding: {
+          logo: {
+            ...settings.branding.logo,
+            position: document.getElementById('logoPosition').value,
+            maxHeight: Number(document.getElementById('logoMaxHeight').value),
+          },
+          background: {
+            ...settings.branding.background,
+            fit: document.getElementById('backgroundFit').value,
+            overlayOpacity: Number(document.getElementById('overlayOpacity').value),
+          },
+        },
+      };
+    }
+
+    async function uploadAsset(kind, file) {
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onerror = () => context.toast('That file could not be read.', 'error');
+      reader.onload = async () => {
+        try {
+          const result = await api.uploadAsset(kind, { content: String(reader.result), name: file.name });
+          context.applySettings(result.appSettings);
+          const { width, height } = result.asset;
+          context.toast(`${kind === 'logo' ? 'Logo' : 'Background'} uploaded${width ? ` — ${width}×${height}px` : ''}.`);
+        } catch (error) {
+          context.toast(error.message, 'error');
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function removeAsset(kind) {
+      if (!global.confirm(`Remove the ${kind}?`)) return;
+      try {
+        context.applySettings((await api.deleteAsset(kind)).appSettings);
+        context.toast(`${kind === 'logo' ? 'Logo' : 'Background'} removed.`);
+      } catch (error) {
+        context.toast(error.message, 'error');
+      }
+    }
+
+    /* ---------------------------------------------------------- welcome */
+
+    function renderWelcome() {
+      const { welcome } = context.getSettings();
+
+      elements.welcomeEnabled.checked = welcome.enabled;
+      elements.welcomeShowOnLoad.checked = welcome.showOnLoad;
+      elements.welcomeShowCaptions.checked = welcome.showCaptions;
+      elements.welcomeTitleInput.value = welcome.title;
+      elements.welcomeMessageInput.value = welcome.message;
+      elements.welcomePlacement.value = welcome.placement;
+      elements.welcomeInterval.value = welcome.intervalMs;
+      elements.welcomeCountPill.textContent = `${welcome.images.length} photo${welcome.images.length === 1 ? '' : 's'}`;
+
+      if (welcome.images.length === 0) {
+        elements.guestGrid.innerHTML = '<p class="slot-empty">No photos yet. The welcome will show the message on its own.</p>';
+        return;
+      }
+
+      elements.guestGrid.innerHTML = welcome.images
+        .map(
+          (image, position) => `
+          <figure class="guest-item" data-src="${escapeHtml(image.src)}">
+            <img src="${escapeHtml(image.src)}" alt="">
+            <figcaption>
+              <input type="text" class="guest-caption" data-src="${escapeHtml(image.src)}"
+                value="${escapeHtml(image.caption)}" maxlength="120" placeholder="Caption (optional)">
+              <span class="guest-meta">${image.width ? `${image.width}×${image.height}` : ''}</span>
+            </figcaption>
+            <div class="guest-actions">
+              <button type="button" class="btn btn-ghost guest-move" data-direction="-1" ${position === 0 ? 'disabled' : ''} aria-label="Move earlier">↑</button>
+              <button type="button" class="btn btn-ghost guest-move" data-direction="1" ${position === welcome.images.length - 1 ? 'disabled' : ''} aria-label="Move later">↓</button>
+              <button type="button" class="btn btn-danger guest-remove">Remove</button>
+            </div>
+          </figure>`
+        )
+        .join('');
+    }
+
+    function collectWelcome() {
+      const settings = context.getSettings();
+
+      // Captions and order are edited in place; the array order is the source
+      // of truth for the carousel sequence.
+      const images = Array.from(elements.guestGrid.querySelectorAll('.guest-item')).map((item) => {
+        const src = item.dataset.src;
+        const existing = settings.welcome.images.find((image) => image.src === src) || {};
+        const caption = item.querySelector('.guest-caption');
+        return { ...existing, src, caption: caption ? caption.value.trim() : '' };
+      });
+
+      return {
+        ...settings,
+        welcome: {
+          ...settings.welcome,
+          enabled: elements.welcomeEnabled.checked,
+          showOnLoad: elements.welcomeShowOnLoad.checked,
+          showCaptions: elements.welcomeShowCaptions.checked,
+          title: elements.welcomeTitleInput.value.trim(),
+          message: elements.welcomeMessageInput.value,
+          placement: elements.welcomePlacement.value,
+          intervalMs: Number(elements.welcomeInterval.value),
+          images: images.length > 0 ? images : settings.welcome.images,
+        },
+      };
+    }
+
+    /** Uploads run one after another so the server appends in a stable order. */
+    async function uploadGuestPhotos(files) {
+      const list = Array.from(files || []);
+      if (list.length === 0) return;
+
+      for (const file of list) {
+        try {
+          const content = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result));
+            reader.onerror = () => reject(new Error(`${file.name} could not be read.`));
+            reader.readAsDataURL(file);
+          });
+
+          const result = await api.addWelcomeImage({ content, name: file.name });
+          context.applySettings(result.appSettings);
+        } catch (error) {
+          context.toast(`${file.name}: ${error.message}`, 'error');
+          return;
+        }
+      }
+
+      context.toast(`Added ${list.length} photo${list.length === 1 ? '' : 's'}.`);
+    }
+
+    async function removeGuestPhoto(src) {
+      if (!global.confirm('Remove this photo from the carousel?')) return;
+      try {
+        context.applySettings((await api.removeWelcomeImage(src)).appSettings);
+        context.toast('Photo removed.');
+      } catch (error) {
+        context.toast(error.message, 'error');
+      }
+    }
+
+    function moveGuestPhoto(src, direction) {
+      const settings = context.getSettings();
+      const images = [...settings.welcome.images];
+      const from = images.findIndex((image) => image.src === src);
+      const to = from + direction;
+      if (from < 0 || to < 0 || to >= images.length) return;
+
+      [images[from], images[to]] = [images[to], images[from]];
+      context.applySettings({ ...settings, welcome: { ...settings.welcome, images } });
+    }
+
+    /* ------------------------------------------------------------ wiring */
+
+    function bind() {
+      elements.saveFieldsBtn.addEventListener('click', () => context.save(collectFields(), 'Fields saved.'));
+      elements.revertFieldsBtn.addEventListener('click', renderFields);
+
+      elements.saveDisplayBtn.addEventListener('click', () => context.save(collectDisplay(), 'Display saved.'));
+      elements.revertDisplayBtn.addEventListener('click', renderDisplay);
+
+      elements.saveCopyBtn.addEventListener('click', () => context.save(collectCopy(), 'Wording saved.'));
+      elements.revertCopyBtn.addEventListener('click', renderCopy);
+
+      elements.saveBrandingBtn.addEventListener('click', () => context.save(collectBranding(), 'Branding saved.'));
+
+      elements.saveWelcomeBtn.addEventListener('click', () => context.save(collectWelcome(), 'Guest welcome saved.'));
+      elements.revertWelcomeBtn.addEventListener('click', renderWelcome);
+      elements.guestInput.addEventListener('change', (event) => {
+        uploadGuestPhotos(event.target.files);
+        event.target.value = '';
+      });
+
+      ['dragenter', 'dragover'].forEach((eventName) =>
+        elements.guestDrop.addEventListener(eventName, (event) => {
+          event.preventDefault();
+          elements.guestDrop.classList.add('is-dragging');
+        })
+      );
+      ['dragleave', 'drop'].forEach((eventName) =>
+        elements.guestDrop.addEventListener(eventName, (event) => {
+          event.preventDefault();
+          elements.guestDrop.classList.remove('is-dragging');
+        })
+      );
+      elements.guestDrop.addEventListener('drop', (event) => uploadGuestPhotos(event.dataTransfer.files));
+
+      elements.guestGrid.addEventListener('click', (event) => {
+        const item = event.target.closest('.guest-item');
+        if (!item) return;
+
+        if (event.target.closest('.guest-remove')) {
+          removeGuestPhoto(item.dataset.src);
+          return;
+        }
+
+        const move = event.target.closest('.guest-move');
+        if (move) moveGuestPhoto(item.dataset.src, Number(move.dataset.direction));
+      });
+
+      // Slot rows are rebuilt constantly, so the editor listens at the container.
+      elements.slotEditors.addEventListener('click', (event) => {
+        const addButton = event.target.closest('.slot-add');
+        if (addButton) {
+          const settings = context.getSettings();
+          const slotKey = addButton.dataset.slot;
+          const container = elements.slotEditors.querySelector(`.slot-lines[data-slot="${slotKey}"]`);
+          const used = Array.from(container.querySelectorAll('.slot-field')).map((select) => select.value);
+          const next = settings.data.fields.find((field) => !used.includes(field.key));
+
+          if (!next) {
+            context.toast('Every field is already on this slot.', 'warn');
+            return;
+          }
+          if (used.length >= 6) {
+            context.toast('A slot holds at most six lines.', 'warn');
+            return;
+          }
+
+          const empty = container.querySelector('.slot-empty');
+          if (empty) empty.remove();
+          container.insertAdjacentHTML(
+            'beforeend',
+            renderSlotLines(slotKey, [{ field: next.key, emphasis: used.length === 0 ? 'primary' : 'meta', showLabel: false }])
+          );
+          renderSensitiveWarning();
+          return;
+        }
+
+        const removeButton = event.target.closest('.slot-remove');
+        if (removeButton) {
+          removeButton.closest('.slot-line-row').remove();
+          renderSensitiveWarning();
+        }
+      });
+
+      elements.slotEditors.addEventListener('change', renderSensitiveWarning);
+
+      document.getElementById('logoInput').addEventListener('change', (event) => uploadAsset('logo', event.target.files[0]));
+      document.getElementById('backgroundInput').addEventListener('change', (event) => uploadAsset('background', event.target.files[0]));
+      document.getElementById('logoRemoveBtn').addEventListener('click', () => removeAsset('logo'));
+      document.getElementById('backgroundRemoveBtn').addEventListener('click', () => removeAsset('background'));
+    }
+
+    return {
+      bind,
+      render() {
+        renderFields();
+        renderDisplay();
+        renderCopy();
+        renderBranding();
+        renderWelcome();
+      },
+    };
+  }
+
+  global.createConfigEditors = createConfigEditors;
+})(window, document);

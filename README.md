@@ -1,208 +1,406 @@
-# Earlybird Lottery Picker
+# Pickora
 
-A beautiful, interactive web-based lottery picker with slot machine animation, confetti effects, and comprehensive winner tracking.
+*by Shenu*
 
-## Features
+A prize draw application for **any** event: a **public draw board** for the room,
+and a password-protected **organiser console** for data, settings and results.
 
-- 🎰 **Slot Machine Animation**: Smooth rolling animation with realistic slot machine feel
-- 🎊 **Confetti Effects**: Celebratory confetti animation when a winner is selected
-- 📊 **Real-time Statistics**: Track total prizes, remaining prizes, and winners count
-- 🏆 **Winners List**: Complete history of all winners with timestamps
-- 🔄 **Reset Functionality**: Reset the lottery to start over with all tickets
-- 📱 **Responsive Design**: Works perfectly on desktop, tablet, and mobile devices
-- 🎨 **Beautiful UI**: Modern gradient background with glassmorphism effects
+Nothing about the event is baked in. The columns in your entry file become the
+fields the board can show, and you choose what appears at each moment of a draw.
 
-## Project Structure
+There is no database and no internet connection required. Everything lives in
+JSON files next to the application, and every font and script is bundled.
+
+---
+
+## The two interfaces
+
+### 1. Public draw board — `/`
+
+The screen the audience sees.
+
+- Large-format reel animation over the event backdrop
+- **Start** / **Stop** — Stop asks the server to draw, so the result is recorded once
+- Winner reveal with confetti, cycling through five reveal animations
+- Optional winners panel and prize counters
+- A guest welcome with a photo carousel, for greeting a chief guest
+- Keyboard: `Space` / `Enter` start and stop, `W` winners panel, `G` guest welcome, `F` fullscreen
+- Survives a refresh — the draw state lives on the server, not in the tab
+
+The board holds **no participant data beyond what it is configured to show**.
+It receives only the fields placed in a display slot; everything else in the
+record stays on the server.
+
+### 2. Organiser console — `/admin`
+
+Behind a sign-in.
+
+| Section | What it does |
+|---|---|
+| **Overview** | Live counters, data-health warnings, results table, CSV export, undo last draw, reset draw |
+| **Participants** | Upload the entry list as CSV or JSON with a column preview, export it, or delete it |
+| **Fields** | Rename columns, mark sensitive ones, choose the identifier and what appears in the export |
+| **Display** | Choose exactly which fields appear while spinning, on the announcement, on the winner card and in the winners list |
+| **Branding** | Upload the logo and backdrop, with size and resolution validated on the server |
+| **Welcome** | Greet a chief guest with a message and a carousel of photos |
+| **Settings** | Prize count, draw behaviour, colours, alignment, language, animation timings |
+| **Wording** | Every string on the draw board |
+| **Account** | Change the username and password |
+
+---
+
+## Installing on Windows
+
+Copy the Pickora folder to the PC and double-click:
 
 ```
-earlybird-lotto-picker/
-├── index.html          # Main HTML file
-├── styles.css          # CSS styles and animations
-├── script.js           # JavaScript functionality
-├── tickets.json        # Lottery tickets data
-├── appsettings.json    # Application configuration
-└── README.md          # This file
+windows\Install-Pickora.bat
 ```
 
-## Setup and Usage
+It checks for a runtime, verifies the files, picks a free port, creates Desktop
+and Start Menu shortcuts, and starts the board. After that, day-to-day use is
+the **Pickora** shortcut on the Desktop; close its window to stop it.
 
-### Local Development
+`windows\Uninstall-Pickora.bat` removes the shortcuts and leaves your data alone.
 
-1. **Clone or download** this project to your local machine
-2. **Update tickets data**: Edit `tickets.json` to include your actual lottery tickets
-3. **Serve the files**: Use a local web server to serve the files (required for JSON loading)
+### Installing with no internet
 
-#### Option 1: Using Python (if installed)
+Pickora needs no downloads of its own — it has **zero package dependencies** and
+its fonts are bundled. The only thing a bare PC might lack is **Node.js**.
+
+To cover that, before copying the folder across, put a Node.js Windows installer
+into `windows\vendor\`:
+
+1. On any PC with internet, download the **LTS 64-bit .msi** from
+   <https://nodejs.org/en/download>
+2. Drop it into `windows\vendor\` (keep its filename).
+3. Copy the whole Pickora folder to the event PC and run the installer.
+
+Setup finds it there and installs Node.js silently, offline. A portable build
+extracted to `windows\vendor\node\node.exe` works too, and installs nothing
+system-wide. If Node.js is already on the PC, you need none of this — the
+installer checks the machine first.
+
+## Running it anywhere else
+
+Two interchangeable servers ship with the project; they share the same data
+files and the same credential format, so you can deploy either.
+
+### Node — no dependencies
+
 ```bash
-# Python 3
-python -m http.server 8000
-
-# Python 2
-python -m SimpleHTTPServer 8000
+npm start                 # http://localhost:3000
+# or simply
+node server.js
 ```
 
-#### Option 2: Using Node.js (if installed)
+There is nothing to `npm install`. The HTTP layer is a small shim over Node's
+built-in `http` module (`server/micro.js`), so a bare Node install is enough.
+
+### Python (Flask)
+
 ```bash
-# Install a simple server globally
-npm install -g http-server
-
-# Run the server
-http-server
+pip install -r requirements.txt
+python app.py             # http://localhost:5000
+gunicorn app:app          # production
 ```
 
-#### Option 3: Using Live Server (VS Code Extension)
-- Install the "Live Server" extension in VS Code
-- Right-click on `index.html` and select "Open with Live Server"
+The Flask path does need its packages installed, so for a fully offline machine
+prefer the Node path — or `pip download` the wheels in advance and install with
+`pip install --no-index --find-links <folder> -r requirements.txt`.
 
-4. **Open in browser**: Navigate to `http://localhost:8000` (or the port shown by your server)
+Set `PORT` to change the port.
 
-### Configuration
+## Online and offline
 
-#### Application Settings (`appsettings.json`)
+Pickora runs entirely on the event PC and never calls out to the internet:
 
-Configure your lottery event by editing the `appsettings.json` file:
+- **Fonts are bundled** (`fonts/`, ~230 KB, all SIL OFL) — nothing is fetched
+  from a CDN, so the board looks identical with the network unplugged.
+- **No package dependencies** on the Node path — nothing to download at install.
+- **All data is local** — participants, settings, uploads and draw results are
+  files in the application folder.
 
-```json
-{
-  "appSettings": {
-    "totalPrizes": 10,
-    "eventName": "Earlybird Lottery 2024",
-    "organizationName": "Your Organization",
-    "animation": {
-      "rollingSpeed": 80,
-      "confettiDuration": 5000,
-      "confettiCount": 150
-    },
-    "display": {
-      "showMobileInWinner": true,
-      "showTicketIdInAnimation": true,
-      "autoStopWhenPrizesExhausted": true
-    },
-    "ui": {
-      "primaryColor": "#ffeb3b",
-      "backgroundColor": "radial-gradient(circle at top, #1d2671, #c33764)",
-      "showOrganizationName": true
-    }
-  }
-}
+The server listens on all network interfaces, so other devices on the same
+network — a second screen, a phone, a laptop on a router with no internet — can
+open the board at `http://<the PC's IP>:3000/`. That works over an offline
+router or a phone hotspot with mobile data switched off.
+
+---
+
+## First sign-in
+
+On first start the server creates an admin account and prints it:
+
+```
+🔐 Admin account created: admin / pickora
+⚠️  The admin console is still using the default password. Change it at /admin.
 ```
 
-**Configuration Options:**
-- `totalPrizes`: Maximum number of prizes to be awarded
-- `eventName`: Name of your lottery event (appears in title and heading)
-- `organizationName`: Your organization name (optional display)
-- `animation.rollingSpeed`: Speed of slot machine animation in milliseconds
-- `animation.confettiDuration`: How long confetti animation lasts
-- `animation.confettiCount`: Number of confetti pieces
-- `display.showMobileInWinner`: Whether to show mobile numbers in winner display
-- `ui.primaryColor`: Primary color for highlights and animations
+**Change it immediately** under **Account**. The console shows a warning banner
+until you do.
 
-#### Adding Your Tickets (`tickets.json`)
+Credentials are stored in `appsettings.json` as a salted **PBKDF2-HMAC-SHA256**
+hash (120,000 iterations) — the password itself is never written anywhere. That
+file is blocked from static serving, so a browser cannot fetch it.
 
-Edit the `tickets.json` file to include your actual lottery participants:
+### Preferred for deployment: environment variables
 
-```json
-{
-  "tickets": [
-    {
-      "ticket": "TICKET-001",
-      "name": "John Doe",
-      "college": "Example University",
-      "mobile": "+91 9876543210",
-      "processed": 0
-    },
-    {
-      "ticket": "TICKET-002",
-      "name": "Jane Smith",
-      "college": "Another College",
-      "mobile": "+91 9876543211",
-      "processed": 0
-    }
-  ]
-}
+```bash
+export ADMIN_USERNAME=organiser
+export ADMIN_PASSWORD='a-long-passphrase'
+export SESSION_SECRET='a-random-64-char-string'
 ```
 
-**Ticket Fields:**
-- `ticket`: Unique ticket identifier
-- `name`: Participant's full name
-- `college`: Institution or organization
-- `mobile`: Contact number (optional)
-- **Important**: Keep `"processed": 0` for all tickets initially
+When both admin variables are set they take precedence over the file, and no
+credential material is committed to the repository. `SESSION_SECRET` keeps
+sign-ins valid across restarts; without it a random secret is generated per
+process and everyone is signed out on redeploy.
 
-## How to Use
+---
 
-1. **Start the Lottery**: Click the "Start" button to begin the slot machine animation
-2. **Stop and Select Winner**: Click the "Stop" button to select a random winner
-3. **View Winners**: Check the winners list below to see all selected winners
-4. **Reset**: Use the "Reset All" button to start over with all tickets available again
+## Data files
 
-## Features Explained
+| File | Contents | Committed? |
+|---|---|---|
+| `tickets.json` | Entry list | Yes |
+| `appsettings.json` | Board settings + hashed credentials | Yes — see note below |
+| `winners.json` | Draw state, written as winners are picked | No (gitignored) |
+| `appsettings.sample.json` | Reference configuration | Yes |
 
-### Fair Random Selection
-- Uses cryptographically secure random number generation
-- Each ticket has an equal chance of being selected
-- Once selected, tickets are marked as processed and won't be selected again
+> **Note on `appsettings.json`:** it stays tracked so existing deployments keep
+> working, which means a password hash can land in git history. Use the
+> environment variables above if the repository is shared.
 
-### Statistics Tracking
-- **Total Prizes**: Shows the maximum number of prizes that can be awarded
-- **Remaining Prizes**: Shows how many prizes are still available
-- **Winners**: Shows the total number of winners selected so far
+### Entry file format
 
-### Winner History
-- Complete list of all winners with selection order
-- Includes ticket number, name, college, and timestamp
-- Automatically updates after each selection
+**Nothing about the participant shape is fixed.** Whatever columns your file
+contains become the fields the board can display.
 
-### Reset Functionality
-- Resets all tickets back to unprocessed state
-- Clears the winners list
-- Reshuffles the tickets for fair distribution
+CSV — the first row names the columns:
 
-## Browser Compatibility
+```csv
+Badge ID,Guest Name,Company,Table,Membership Tier,Mobile Number
+GALA-001,Layla Hassan,Emirates NBD,Table 4,Platinum,+971501110001
+```
 
-This application works in all modern browsers including:
-- Chrome 60+
-- Firefox 55+
-- Safari 12+
-- Edge 79+
+JSON — an array, or an object with a `tickets` array:
 
-## Technical Details
-
-- **Pure JavaScript**: No external dependencies required
-- **Responsive CSS**: Mobile-first design with flexbox and grid
-- **Canvas Animation**: Hardware-accelerated confetti effects
-- **JSON Data Loading**: Asynchronous data loading with error handling
-- **Local Storage**: Could be extended to save state between sessions
-
-## Customization
-
-### Styling
-Edit `styles.css` to customize:
-- Colors and gradients
-- Animation speeds
-- Layout and spacing
-- Responsive breakpoints
-
-### Animation
-Modify `script.js` to adjust:
-- Slot machine rolling speed (line 80: `80` milliseconds)
-- Confetti duration (line 180: `5000` milliseconds)
-- Number of confetti pieces (line 175: `150` pieces)
-
-### Data Structure
-The `tickets.json` file supports additional fields if needed:
 ```json
-{
-  "ticket": "ID",
-  "name": "Full Name",
-  "college": "Institution",
-  "processed": 0,
-  "email": "optional@email.com",
-  "phone": "optional-phone",
-  "category": "optional-category"
-}
+{ "tickets": [ { "Badge ID": "GALA-001", "Guest Name": "Layla Hassan", "Company": "Emirates NBD" } ] }
+```
+
+On upload the console shows the detected columns and proposes:
+
+- **an identifier** — the column the draw is performed on, which must be unique.
+  Columns named like a ticket, badge, booking or reference are preferred, and a
+  column that looks like contact detail is never chosen automatically.
+- **a label** for each field, taken from your heading exactly as written.
+- **a sensitivity flag** for columns that look like contact details
+  (mobile, phone, email, passport, Emirates ID, address).
+
+You can change any of these under **Fields** before or after importing.
+
+**Current list** shows what is loaded, with **Export CSV** to take a copy and
+**Delete all entries** to empty it. Deleting is refused while a draw is in
+progress unless you confirm.
+
+Rows with no identifier, and rows repeating one already in the list, are
+skipped and reported in **Overview → Data health**. Under **Fields → Duplicate
+handling** you can instead keep every row, giving repeated entries
+proportionally more chances.
+
+---
+
+## What appears on screen
+
+Four **display slots** decide what the audience sees. Each holds up to six
+lines, and each line names a field and an emphasis level:
+
+| Slot | When it shows |
+|---|---|
+| **While spinning** | The reel, cycling through remaining entries |
+| **Winner announcement** | The first reveal, held for the announcement delay |
+| **Winner card** | The full result |
+| **Winners list row** | One row per winner in the side panel |
+
+| Emphasis | Appearance |
+|---|---|
+| `primary` | Largest, in the accent colour |
+| `secondary` | Bold supporting line |
+| `meta` | Smaller detail line |
+| `eyebrow` | Small uppercase label |
+
+Each line can optionally show the field's label before the value
+("Table: 4" rather than "4").
+
+**This is also the privacy boundary.** The board is only ever sent the fields
+that appear in a slot — everything else stays on the server. Put a field on the
+spinning reel and it is sent for *every* entry, not just the winner; the console
+warns when a field marked sensitive is placed on any slot.
+
+A line whose value is empty for a given winner is dropped, so a partly-filled
+column never leaves a stray label on screen.
+
+---
+
+## Branding
+
+Under **Branding** you can upload a **logo** and a **background**.
+
+- Accepted: PNG, JPEG, GIF, WebP, SVG. Up to 8 MB, between 16px and 8000px a side.
+- Dimensions are read from the file header on the server and shown back to you,
+  so you can check them against the screen you are projecting onto. For a 1080p
+  projector, 1920×1080 or larger is recommended for the backdrop.
+- Files are stored under `assets/` with a content hash in the name; replacing or
+  removing an image deletes the file it no longer needs.
+- The logo has a corner position and an on-screen height; the background has a
+  fit mode (cover, contain, fill, tile) and a darkening overlay that keeps large
+  text readable over busy artwork.
+
+If no background is uploaded the board falls back to `Background.png`, so an
+existing deployment looks unchanged.
+
+---
+
+## Guest welcome
+
+To greet a chief guest or celebrity, **Welcome** puts a message and a rotating
+set of photos on the board.
+
+- **Photos** — upload as many as you like up to 20, drag-and-drop or file
+  picker, each with an optional caption. Reorder them with the arrows; the list
+  order is the carousel order. Portrait crops suit the layout best.
+- **Carousel interval** — how long each photo holds, 1.5–60 seconds.
+- **Placement** — `overlay` centres it over the board, `panel` docks it in a
+  corner so the stage stays visible behind.
+- **Open automatically** — show it as soon as the board loads, or leave it for
+  the operator to bring up at the right moment.
+
+On the board the operator controls it with the **Welcome** button or the
+<kbd>G</kbd> key; <kbd>Esc</kbd> closes it, and starting a draw closes an
+overlay automatically so the stage is never covered mid-draw.
+
+Photos are validated exactly like the branding images and stored under
+`assets/` by content hash. The same photo cannot be added twice.
+
+---
+
+## Settings reference
+
+| Setting | Effect |
+|---|---|
+| `totalPrizes` | Draw stops after this many winners |
+| `eventName`, `organizationName` | Board heading and subtitle |
+| `locale`, `direction` | Page language and left-to-right / right-to-left layout |
+| `data.identifier` | The field the draw is performed on |
+| `data.fields[]` | Key, display label, sensitivity and export inclusion per column |
+| `data.duplicatePolicy` | `skip` a repeated identifier, or `allow` it to stay in the pool |
+| `display.reel` / `.call` / `.card` / `.panel` | Which fields appear at each moment, with emphasis and optional labels |
+| `display.panel.maxEntries` | How many winners the side panel shows |
+| `display.autoStopWhenPrizesExhausted` | Stop once every prize is awarded |
+| `draw.publicDrawEnabled` | Turn off to freeze the public board between rounds |
+| `draw.requireAuthForDraw` | Only a signed-in browser may draw |
+| `draw.minimumRollMs` | Stop is held until the reel has run this long |
+| `animation.rollingSpeed` | Milliseconds per entry on the reel |
+| `animation.winnerAnnouncementDelay` | Pause between the announcement and the winner card |
+| `animation.confettiStartDelay`, `confettiDuration`, `confettiCount` | Confetti timing and density |
+| `animation.confettiPalette` | Up to 12 hex colours for the confetti |
+| `branding.logo` | Uploaded file, corner position, on-screen height |
+| `branding.background` | Uploaded file, fit mode, darkening overlay |
+| `welcome.enabled`, `showOnLoad`, `placement` | Whether the guest welcome shows, when, and where |
+| `welcome.title`, `message` | Heading and message; line breaks are preserved |
+| `welcome.images[]` | Photo path, caption and dimensions, in carousel order |
+| `welcome.intervalMs` | How long each photo holds (1500–60000) |
+| `welcome.showCaptions` | Show the caption under the carousel |
+| `copy.*` | Every string on the board — headings, buttons, empty states, footer |
+| `ui.primaryColor` | Accent colour across the board |
+| `ui.backgroundColor` | CSS painted behind the backdrop image |
+| `ui.boardAlignment` | `left` / `center` / `right` — moves the stage clear of artwork |
+| `ui.showWinnersPanel`, `ui.showStats`, `ui.showOrganizationName` | Board furniture |
+
+Every value is validated and clamped server-side, so a bad entry cannot break
+the board mid-event. Unknown fields referenced by a display slot are dropped,
+and an emptied slot falls back to the identifier rather than showing nothing.
+
+---
+
+## API
+
+Public:
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/api/settings` | Board configuration (never credentials) |
+| `GET` | `/api/pool` | Remaining ticket numbers + counters |
+| `GET` | `/api/state` | Winners so far + counters |
+| `POST` | `/api/draw` | Draw one winner |
+
+Session:
+
+| Method | Path |
+|---|---|
+| `GET` | `/api/auth/session` |
+| `POST` | `/api/auth/login` |
+| `POST` | `/api/auth/logout` |
+
+Organiser (signed-in only):
+
+| Method | Path |
+|---|---|
+| `GET` | `/api/admin/overview` |
+| `PUT` | `/api/admin/settings` |
+| `POST` | `/api/admin/password` |
+| `POST` | `/api/admin/tickets/preview` |
+| `POST` | `/api/admin/tickets` |
+| `DELETE` | `/api/admin/tickets` |
+| `GET` | `/api/admin/export/tickets.csv` |
+| `POST` | `/api/admin/assets/:kind` |
+| `DELETE` | `/api/admin/assets/:kind` |
+| `POST` | `/api/admin/welcome/images` |
+| `DELETE` | `/api/admin/welcome/images` |
+| `POST` | `/api/admin/draw/undo` |
+| `POST` | `/api/admin/draw/reset` |
+| `GET` | `/api/admin/export/winners.csv` |
+
+---
+
+## How the draw works
+
+Selection happens **on the server**, using `crypto.randomInt` (Node) or
+`secrets.randbelow` (Python) — both uniform and cryptographically sound. Each
+winner is appended to `winners.json` before the response is sent, so a refresh,
+a crashed browser or a second screen can never lose or duplicate a result.
+
+Failed sign-ins are throttled to 8 attempts per 15 minutes per address. Session
+cookies are HttpOnly, SameSite=Lax, and marked Secure behind HTTPS.
+
+---
+
+## Project structure
+
+```
+pickora/
+├── index.html / styles.css / script.js   # public draw board
+├── admin.html / admin.css                # organiser console
+│   ├── admin.js                          # console shell, data, draw supervision
+│   └── admin-config.js                   # fields, display slots, branding, wording
+├── api.js                                # shared API client
+├── confetti.js                           # confetti animation
+├── welcome.js                            # guest welcome carousel
+├── fonts/                                # bundled webfonts (no CDN)
+├── server.js                             # Node entry point (no dependencies)
+│   └── server/                           # micro (http shim), paths, store, auth,
+│                                         # schema, settings, tickets, draw,
+│                                         # images, routes
+├── app.py                                # Flask entry point
+│   └── pyserver/                         # the same modules in Python
+├── tickets.json / appsettings.json       # data
+├── assets/                               # uploaded logo, backdrop, guest photos
+├── windows/                              # one-click installer and shortcuts
+└── Background.png / logo.jpg             # bundled artwork
 ```
 
 ## License
 
-This project is open source and available under the MIT License.
+MIT.

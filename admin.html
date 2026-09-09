@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>Organiser Console — Pickora</title>
+  <link rel="stylesheet" href="fonts/fonts.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body class="console-body">
+  <p class="toast" id="toast" role="status" hidden></p>
+
+  <!-- ------------------------------------------------------------ sign in -->
+  <main class="gate" id="gate" hidden>
+    <section class="gate-card">
+      <p class="gate-eyebrow">Pickora <span class="gate-byline">by Shenu</span></p>
+      <h1 class="gate-title">Organiser console</h1>
+      <p class="gate-lede">Sign in to upload participants, change the draw settings and manage results.</p>
+
+      <form id="loginForm" class="form" novalidate>
+        <label class="field">
+          <span class="field-label">Username</span>
+          <input type="text" id="loginUsername" name="username" autocomplete="username" required autofocus>
+        </label>
+        <label class="field">
+          <span class="field-label">Password</span>
+          <input type="password" id="loginPassword" name="password" autocomplete="current-password" required>
+        </label>
+        <p class="form-error" id="loginError" role="alert" hidden></p>
+        <button type="submit" class="btn btn-primary btn-block" id="loginSubmit">Sign in</button>
+      </form>
+
+      <a class="gate-back" href="/">← Back to the draw board</a>
+    </section>
+  </main>
+
+  <!-- ------------------------------------------------------------ console -->
+  <div class="console" id="console" hidden>
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">PK</span>
+        <span class="brand-text">
+          <strong id="brandEvent">Pickora</strong>
+          <small id="brandByline">Pickora · by Shenu</small>
+        </span>
+      </div>
+
+      <nav class="nav" aria-label="Console sections">
+        <button type="button" class="nav-item is-active" data-panel="overview">Overview</button>
+        <button type="button" class="nav-item" data-panel="participants">Participants</button>
+        <button type="button" class="nav-item" data-panel="fields">Fields</button>
+        <button type="button" class="nav-item" data-panel="display">Display</button>
+        <button type="button" class="nav-item" data-panel="branding">Branding</button>
+        <button type="button" class="nav-item" data-panel="welcome">Welcome</button>
+        <button type="button" class="nav-item" data-panel="settings">Settings</button>
+        <button type="button" class="nav-item" data-panel="wording">Wording</button>
+        <button type="button" class="nav-item" data-panel="account">Account</button>
+      </nav>
+
+      <div class="sidebar-foot">
+        <a class="link" href="/" target="_blank" rel="noopener">Open draw board ↗</a>
+        <p class="signed-in">Signed in as <strong id="currentUser">admin</strong></p>
+        <button type="button" class="btn btn-ghost btn-block" id="logoutBtn">Sign out</button>
+      </div>
+    </aside>
+
+    <main class="content">
+      <p class="banner banner-warn" id="defaultPasswordBanner" hidden>
+        This console is still using the default password. Change it under <strong>Account</strong> before the event.
+      </p>
+
+      <!-- ---------------------------------------------------- overview -->
+      <section class="panel is-active" id="panel-overview" aria-labelledby="overviewHeading">
+        <header class="panel-head">
+          <div>
+            <h1 id="overviewHeading">Overview</h1>
+            <p class="panel-lede">Live state of the draw. Everything here is stored in files on the server — there is no database.</p>
+          </div>
+          <button type="button" class="btn btn-ghost" id="refreshBtn">Refresh</button>
+        </header>
+
+        <div class="metrics" id="metrics"></div>
+
+        <div class="card" id="dataHealthCard" hidden>
+          <h2 class="card-title">Data health</h2>
+          <ul class="issue-list" id="dataHealth"></ul>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2 class="card-title">Draw results</h2>
+            <div class="card-actions">
+              <a class="btn btn-ghost" id="exportWinnersBtn" href="/api/admin/export/winners.csv">Export CSV</a>
+              <button type="button" class="btn btn-ghost" id="undoBtn">Undo last draw</button>
+              <button type="button" class="btn btn-danger" id="resetBtn">Reset draw</button>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table class="table" id="winnersTable">
+              <thead id="winnersHead"></thead>
+              <tbody id="winnersBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ------------------------------------------------ participants -->
+      <section class="panel" id="panel-participants" aria-labelledby="participantsHeading" hidden>
+        <header class="panel-head">
+          <div>
+            <h1 id="participantsHeading">Participants</h1>
+            <p class="panel-lede">Upload the entry list as CSV or JSON. The columns in your file become the fields the board can display — nothing about the format is fixed.</p>
+          </div>
+        </header>
+
+        <div class="card">
+          <h2 class="card-title">Upload entry data</h2>
+
+          <div class="upload-drop" id="uploadDrop">
+            <input type="file" id="fileInput" class="sr-only" accept=".csv,.json,text/csv,application/json">
+            <p class="upload-headline">Drop a <strong>.csv</strong> or <strong>.json</strong> file here</p>
+            <label class="btn btn-ghost" for="fileInput">Choose a file</label>
+            <p class="upload-hint">Any columns you like — the first row names them. One column must uniquely identify each entry.</p>
+          </div>
+
+          <div class="upload-summary" id="uploadSummary" hidden></div>
+
+          <div class="upload-schema" id="uploadSchema" hidden>
+            <h3 class="subhead">Detected columns</h3>
+            <p class="field-hint">Every column becomes a field you can display. Pick which one identifies the entry — it must be unique, and it is what the draw is performed on.</p>
+            <div class="table-scroll">
+              <table class="table" id="schemaPreviewTable">
+                <thead>
+                  <tr><th>Identifier</th><th>Column</th><th>Key</th><th>First value</th></tr>
+                </thead>
+                <tbody id="schemaPreviewBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <fieldset class="field-group">
+            <legend class="field-label">Import mode</legend>
+            <label class="radio">
+              <input type="radio" name="uploadMode" value="replace" checked>
+              <span><strong>Replace</strong> — discard the current list and use this file</span>
+            </label>
+            <label class="radio">
+              <input type="radio" name="uploadMode" value="append">
+              <span><strong>Append</strong> — add these to the existing list, skipping entries already present</span>
+            </label>
+          </fieldset>
+
+          <button type="button" class="btn btn-primary" id="uploadBtn" disabled>Import entries</button>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2 class="card-title">Current list</h2>
+            <div class="card-actions">
+              <span class="pill" id="ticketCountPill">0 entries</span>
+              <a class="btn btn-ghost" id="exportEntriesBtn" href="/api/admin/export/tickets.csv">Export CSV</a>
+              <button type="button" class="btn btn-danger" id="clearEntriesBtn">Delete all entries</button>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table class="table">
+              <thead id="sampleHead"></thead>
+              <tbody id="sampleBody"></tbody>
+            </table>
+          </div>
+          <p class="card-foot" id="sampleFoot"></p>
+        </div>
+      </section>
+
+
+      <!-- ------------------------------------------------------ fields -->
+      <section class="panel" id="panel-fields" aria-labelledby="fieldsHeading" hidden>
+        <header class="panel-head">
+          <div>
+            <h1 id="fieldsHeading">Fields</h1>
+            <p class="panel-lede">The columns in your participant file. Rename them for display, mark the ones that must never reach a public screen, and choose which appear in the results export.</p>
+          </div>
+        </header>
+
+        <div class="card">
+          <div class="card-head">
+            <h2 class="card-title">Participant fields</h2>
+            <span class="pill" id="identifierPill">—</span>
+          </div>
+          <div class="table-scroll">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Identifier</th><th>Key</th><th>Display label</th><th>Sensitive</th><th>In export</th>
+                </tr>
+              </thead>
+              <tbody id="fieldsBody"></tbody>
+            </table>
+          </div>
+          <p class="card-foot">A <strong>sensitive</strong> field is never sent to the draw board unless you place it in a display slot yourself.</p>
+        </div>
+
+        <div class="card">
+          <h2 class="card-title">Duplicate handling</h2>
+          <div class="switches">
+            <label class="radio">
+              <input type="radio" name="duplicatePolicy" value="skip">
+              <span><strong>Skip duplicates</strong><small>An identifier that already exists is ignored, so it can never be drawn twice.</small></span>
+            </label>
+            <label class="radio">
+              <input type="radio" name="duplicatePolicy" value="allow">
+              <span><strong>Keep every row</strong><small>Repeated identifiers stay in the pool, giving them proportionally more chances.</small></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-primary" id="saveFieldsBtn">Save fields</button>
+          <button type="button" class="btn btn-ghost" id="revertFieldsBtn">Revert</button>
+        </div>
+      </section>
+
+      <!-- ----------------------------------------------------- display -->
+      <section class="panel" id="panel-display" aria-labelledby="displayHeading" hidden>
+        <header class="panel-head">
+          <div>
+            <h1 id="displayHeading">Display</h1>
+            <p class="panel-lede">Choose exactly what the audience sees at each moment of a draw. Anything you do not place here is never sent to the board.</p>
+          </div>
+        </header>
+
+        <p class="banner banner-warn" id="sensitiveWarning" hidden></p>
+
+        <div class="slot-grid" id="slotEditors"></div>
+
+        <div class="card">
+          <h2 class="card-title">Winners panel</h2>
+          <label class="field" style="max-width:260px">
+            <span class="field-label">Maximum rows shown</span>
+            <input type="number" id="panelMaxEntries" min="1" max="500">
+            <span class="field-hint">Older winners scroll out of view on the board; the full list stays in Overview.</span>
+          </label>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-primary" id="saveDisplayBtn">Save display</button>
+          <button type="button" class="btn btn-ghost" id="revertDisplayBtn">Revert</button>
+        </div>
+      </section>
+
+      <!-- ---------------------------------------------------- branding -->
+      <section class="panel" id="panel-branding" aria-labelledby="brandingHeading" hidden>
+        <header class="panel-head">
+          <div>
+            <h1 id="brandingHeading">Branding</h1>
+            <p class="panel-lede">Upload the event logo and backdrop. Dimensions are read from the file itself and shown below so you can check them against the screen you are projecting onto.</p>
+          </div>
+        </header>
+
+        <div class="card">
+          <h2 class="card-title">Logo</h2>
+          <div class="asset-row">
+            <div class="asset-preview" id="logoPreview"><span class="asset-empty">No logo</span></div>
+            <div class="asset-controls">
+              <input type="file" id="logoInput" class="sr-only" accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml">
+              <div class="card-actions">
+                <label class="btn btn-ghost" for="logoInput">Upload logo</label>
+                <button type="button" class="btn btn-danger" id="logoRemoveBtn">Remove</button>
+              </div>
+              <p class="asset-meta" id="logoMeta">PNG, JPEG, GIF, WebP or SVG. Up to 8 MB and 8000px per side.</p>
+              <div class="grid-2">
+                <label class="field">
+                  <span class="field-label">Position</span>
+                  <select id="logoPosition">
+                    <option value="top-left">Top left</option>
+                    <option value="top-right">Top right</option>
+                    <option value="bottom-left">Bottom left</option>
+                    <option value="bottom-right">Bottom right</option>
+                    <option value="hidden">Hidden</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span class="field-label">Height on screen (px)</span>
+                  <input type="number" id="logoMaxHeight" min="24" max="480">
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 class="card-title">Background</h2>
+          <div class="asset-row">
+            <div class="asset-preview asset-preview-wide" id="backgroundPreview"><span class="asset-empty">No background</span></div>
+            <div class="asset-controls">
+              <input type="file" id="backgroundInput" class="sr-only" accept="image/png,image/jpeg,image/gif,image/webp">
+              <div class="card-actions">
+                <label class="btn btn-ghost" for="backgroundInput">Upload background</label>
+                <button type="button" class="btn btn-danger" id="backgroundRemoveBtn">Remove</button>
+              </div>
+              <p class="asset-meta" id="backgroundMeta">For a 1080p projector, 1920×1080 or larger is recommended.</p>
+              <div class="grid-2">
+                <label class="field">
+                  <span class="field-label">Fit</span>
+                  <select id="backgroundFit">
+                    <option value="cover">Cover — fill the screen, cropping if needed</option>
+                    <option value="contain">Contain — show the whole image</option>
+                    <option value="fill">Fill — stretch to the screen</option>
+                    <option value="tile">Tile — repeat the image</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span class="field-label">Darkening overlay (%)</span>
+                  <input type="number" id="overlayOpacity" min="0" max="100">
+                  <span class="field-hint">Keeps large text readable over busy artwork.</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-primary" id="saveBrandingBtn">Save branding</button>
+        </div>
+      </section>
+
+
+      <!-- ----------------------------------------------------- welcome -->
+      <section class="panel" id="panel-welcome" aria-labelledby="welcomeHeading" hidden>
+        <header class="panel-head">
+          <div>
+            <h1 id="welcomeHeading">Guest welcome</h1>
+            <p class="panel-lede">Greet a chief guest or celebrity on the draw board with a message and a rotating set of photos. The operator can show or hide it at any time with the <strong>Welcome</strong> button, or the <kbd>G</kbd> key.</p>
+          </div>
+        </header>
+
+        <div class="card">
+          <h2 class="card-title">Message</h2>
+          <div class="switches">
+            <label class="switch">
+              <input type="checkbox" id="welcomeEnabled">
+              <span><strong>Show the guest welcome on the board</strong></span>
+            </label>
+            <label class="switch">
+              <input type="checkbox" id="welcomeShowOnLoad">
+              <span><strong>Open it automatically when the board loads</strong><small>Otherwise the operator opens it when the moment comes.</small></span>
+            </label>
+            <label class="switch">
+              <input type="checkbox" id="welcomeShowCaptions">
+              <span><strong>Show the photo caption</strong><small>Useful for naming the guest under each portrait.</small></span>
+            </label>
+          </div>
+
+          <div class="grid-2" style="margin-top:16px">
+            <label class="field">
+              <span class="field-label">Heading</span>
+              <input type="text" id="welcomeTitleInput" maxlength="120" placeholder="Our special guest">
+            </label>
+            <label class="field">
+              <span class="field-label">Placement</span>
+              <select id="welcomePlacement">
+                <option value="overlay">Overlay — centred over the board</option>
+                <option value="panel">Panel — docked in the corner</option>
+              </select>
+            </label>
+          </div>
+
+          <label class="field" style="margin-top:16px">
+            <span class="field-label">Welcome message</span>
+            <textarea id="welcomeMessageInput" rows="3" maxlength="400" placeholder="Please join us in welcoming…"></textarea>
+            <span class="field-hint">Line breaks are kept, so you can put a name on its own line.</span>
+          </label>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2 class="card-title">Guest photos</h2>
+            <span class="pill" id="welcomeCountPill">0 photos</span>
+          </div>
+
+          <div class="upload-drop" id="guestDrop">
+            <input type="file" id="guestInput" class="sr-only" accept="image/png,image/jpeg,image/gif,image/webp" multiple>
+            <p class="upload-headline">Drop guest photos here</p>
+            <label class="btn btn-ghost" for="guestInput">Choose photos</label>
+            <p class="upload-hint">PNG, JPEG, GIF or WebP. Up to 8 MB each, 20 photos in total. Portrait crops look best.</p>
+          </div>
+
+          <div class="guest-grid" id="guestGrid"></div>
+
+          <label class="field" style="max-width:280px;margin-top:16px">
+            <span class="field-label">Carousel interval (ms)</span>
+            <input type="number" id="welcomeInterval" min="1500" max="60000" step="500">
+            <span class="field-hint">How long each photo stays on screen. 1500–60000.</span>
+          </label>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-primary" id="saveWelcomeBtn">Save welcome</button>
+          <button type="button" class="btn btn-ghost" id="revertWelcomeBtn">Revert</button>
+        </div>
+      </section>
+
+      <!-- ---------------------------------------------------- settings -->
+      <section class="panel" id="panel-settings" aria-labelledby="settingsHeading" hidden>
+        <header class="panel-head">
+          <div>
+            <h1 id="settingsHeading">Settings</h1>
+            <p class="panel-lede">These are written to <code>appsettings.json</code> and picked up by the draw board on its next load.</p>
+          </div>
+        </header>
+
+        <form id="settingsForm" class="form">
+          <div class="card">
+            <h2 class="card-title">Event</h2>
+            <div class="grid-2">
+              <label class="field">
+                <span class="field-label">Event name</span>
+                <input type="text" name="eventName" maxlength="120" required>
+              </label>
+              <label class="field">
+                <span class="field-label">Organisation name</span>
+                <input type="text" name="organizationName" maxlength="120">
+              </label>
+              <label class="field">
+                <span class="field-label">Total prizes</span>
+                <input type="number" name="totalPrizes" min="1" max="10000" required>
+                <span class="field-hint">The draw stops once this many winners have been picked.</span>
+              </label>
+              <label class="field">
+                <span class="field-label">Language tag</span>
+                <input type="text" name="locale" maxlength="20" spellcheck="false" placeholder="en, ar, ar-AE">
+                <span class="field-hint">Used for the page language and date formatting.</span>
+              </label>
+              <label class="field">
+                <span class="field-label">Text direction</span>
+                <select name="direction">
+                  <option value="ltr">Left to right</option>
+                  <option value="rtl">Right to left</option>
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2 class="card-title">Draw behaviour</h2>
+            <div class="grid-2">
+              <label class="field">
+                <span class="field-label">Minimum spin time (ms)</span>
+                <input type="number" name="draw.minimumRollMs" min="0" max="30000" step="100">
+                <span class="field-hint">Stop is held until the reel has run this long.</span>
+              </label>
+              <label class="field">
+                <span class="field-label">Reel speed (ms per ticket)</span>
+                <input type="number" name="animation.rollingSpeed" min="10" max="1000">
+              </label>
+            </div>
+            <div class="switches">
+              <label class="switch">
+                <input type="checkbox" name="draw.publicDrawEnabled">
+                <span><strong>Allow draws from the public board</strong><small>Turn off to freeze the board between rounds.</small></span>
+              </label>
+              <label class="switch">
+                <input type="checkbox" name="draw.requireAuthForDraw">
+                <span><strong>Require an organiser sign-in to draw</strong><small>Only a signed-in browser can pick a winner.</small></span>
+              </label>
+              <label class="switch">
+                <input type="checkbox" name="display.autoStopWhenPrizesExhausted">
+                <span><strong>Stop automatically when all prizes are awarded</strong></span>
+              </label>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2 class="card-title">Presentation</h2>
+            <div class="grid-2">
+              <label class="field">
+                <span class="field-label">Accent colour</span>
+                <span class="color-field">
+                  <input type="color" name="ui.primaryColor">
+                  <input type="text" name="ui.primaryColorText" maxlength="40" spellcheck="false">
+                </span>
+              </label>
+              <label class="field">
+                <span class="field-label">Background (CSS behind the artwork)</span>
+                <input type="text" name="ui.backgroundColor" maxlength="400" spellcheck="false">
+              </label>
+              <label class="field">
+                <span class="field-label">Stage alignment</span>
+                <select name="ui.boardAlignment">
+                  <option value="left">Left</option>
+                  <option value="center">Centre</option>
+                  <option value="right">Right</option>
+                </select>
+                <span class="field-hint">Move the draw panel clear of artwork in the background image.</span>
+              </label>
+              <label class="field">
+                <span class="field-label">Winner announcement delay (ms)</span>
+                <input type="number" name="animation.winnerAnnouncementDelay" min="0" max="15000" step="100">
+              </label>
+              <label class="field">
+                <span class="field-label">Confetti start delay (ms)</span>
+                <input type="number" name="animation.confettiStartDelay" min="0" max="15000" step="100">
+              </label>
+              <label class="field">
+                <span class="field-label">Confetti duration (ms)</span>
+                <input type="number" name="animation.confettiDuration" min="0" max="60000" step="500">
+              </label>
+              <label class="field">
+                <span class="field-label">Confetti pieces</span>
+                <input type="number" name="animation.confettiCount" min="0" max="600">
+              </label>
+              <label class="field">
+                <span class="field-label">Confetti colours</span>
+                <input type="text" name="animation.confettiPalette" spellcheck="false" placeholder="#ffd54f, #ff8a65, #4dd0e1">
+                <span class="field-hint">Comma-separated hex colours, up to 12.</span>
+              </label>
+            </div>
+            <div class="switches">
+              <label class="switch">
+                <input type="checkbox" name="ui.showOrganizationName">
+                <span><strong>Show the organisation name on the board</strong></span>
+              </label>
+              <label class="switch">
+                <input type="checkbox" name="ui.showWinnersPanel">
+                <span><strong>Open the winners panel by default</strong><small>Operators can still toggle it with the W key.</small></span>
+              </label>
+              <label class="switch">
+                <input type="checkbox" name="ui.showStats">
+                <span><strong>Show the prize counters on the board</strong></span>
+              </label>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary" id="saveSettingsBtn">Save settings</button>
+            <button type="button" class="btn btn-ghost" id="revertSettingsBtn">Revert</button>
+          </div>
+        </form>
+      </section>
+
+
+      <!-- ----------------------------------------------------- wording -->
+      <section class="panel" id="panel-wording" aria-labelledby="wordingHeading" hidden>
+        <header class="panel-head">
+          <div>
+            <h1 id="wordingHeading">Wording</h1>
+            <p class="panel-lede">Every piece of text on the draw board, so it can carry the event's own language and tone.</p>
+          </div>
+        </header>
+
+        <div class="card">
+          <h2 class="card-title">Board text</h2>
+          <div class="grid-2" id="copyFields"></div>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-primary" id="saveCopyBtn">Save wording</button>
+          <button type="button" class="btn btn-ghost" id="revertCopyBtn">Revert</button>
+        </div>
+      </section>
+
+      <!-- ----------------------------------------------------- account -->
+      <section class="panel" id="panel-account" aria-labelledby="accountHeading" hidden>
+        <header class="panel-head">
+          <div>
+            <h1 id="accountHeading">Account</h1>
+            <p class="panel-lede">Credentials are stored as a salted PBKDF2 hash inside <code>appsettings.json</code>, which is never served to a browser.</p>
+          </div>
+        </header>
+
+        <div class="card card-narrow">
+          <h2 class="card-title">Change sign-in details</h2>
+          <p class="banner banner-info" id="envCredentialsBanner" hidden>
+            Credentials are pinned by the <code>ADMIN_USERNAME</code> and <code>ADMIN_PASSWORD</code> environment variables, so they cannot be changed here.
+          </p>
+
+          <form id="passwordForm" class="form">
+            <label class="field">
+              <span class="field-label">Username</span>
+              <input type="text" id="accountUsername" name="username" autocomplete="username">
+            </label>
+            <label class="field">
+              <span class="field-label">Current password</span>
+              <input type="password" name="currentPassword" autocomplete="current-password" required>
+            </label>
+            <label class="field">
+              <span class="field-label">New password</span>
+              <input type="password" name="newPassword" autocomplete="new-password" minlength="8" required>
+              <span class="field-hint">At least 8 characters.</span>
+            </label>
+            <label class="field">
+              <span class="field-label">Confirm new password</span>
+              <input type="password" name="confirmPassword" autocomplete="new-password" minlength="8" required>
+            </label>
+            <p class="form-error" id="passwordError" role="alert" hidden></p>
+            <button type="submit" class="btn btn-primary" id="passwordSubmit">Update credentials</button>
+          </form>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="api.js" defer></script>
+  <script src="admin-config.js" defer></script>
+  <script src="admin.js" defer></script>
+</body>
+</html>

@@ -1,393 +1,437 @@
-// Global variables
-let tickets = [];
-let winners = [];
-let rolling = false;
-let intervalId;
-let appSettings = {}; // Application settings loaded from appsettings.json
-let confettiTimeoutId = null; // Track confetti timeout
+/**
+ * Public draw board.
+ *
+ * The board never selects a winner itself — it animates the remaining pool and
+ * asks the server to draw, so the result is recorded once and survives a
+ * refresh, a second screen, or a mid-event browser crash.
+ *
+ * Nothing about the participant shape is hard-coded: what appears on the reel,
+ * in the announcement, on the winner card and in the winners panel all comes
+ * from the display slots in the configuration.
+ */
+(function board(global, document) {
+  'use strict';
 
-// DOM elements
-const slot = document.getElementById("slot");
-const startBtn = document.getElementById("startBtn");
-const stopBtn = document.getElementById("stopBtn");
-const resetBtn = document.getElementById("resetBtn");
-const totalPrizesEl = document.getElementById("totalPrizes");
-const remainingPrizesEl = document.getElementById("remainingPrizes");
-const winnersCountEl = document.getElementById("winnersCount");
-const winnersListEl = document.getElementById("winnersList");
-const loadingEl = document.getElementById("loading");
+  const api = global.lotteryApi;
 
-// Initialize the application
-async function init() {
-  try {
-    await loadAppSettings();
-    await loadTickets();
-    applySettings();
-    updateStats();
-    hideLoading();
-  } catch (error) {
-    console.error("Failed to initialize application:", error);
-    slot.innerHTML = "<span>❌ Failed to load application</span>";
-    hideLoading();
+  const STATUS = { IDLE: 'idle', ROLLING: 'rolling', REVEALING: 'revealing', COMPLETE: 'complete' };
+  const REVEAL_ANIMATIONS = ['reveal-rise', 'reveal-flip', 'reveal-zoom', 'reveal-swing', 'reveal-drop'];
+
+  const elements = {
+    stage: document.getElementById('stage'),
+    reel: document.getElementById('reel'),
+    startBtn: document.getElementById('startBtn'),
+    stopBtn: document.getElementById('stopBtn'),
+    fullscreenBtn: document.getElementById('fullscreenBtn'),
+    winnersToggle: document.getElementById('winnersToggle'),
+    winnersToggleLabel: document.getElementById('winnersToggleLabel'),
+    winnersPanel: document.getElementById('winnersPanel'),
+    winnersHeading: document.getElementById('winnersHeading'),
+    winnersList: document.getElementById('winnersList'),
+    winnersBadge: document.getElementById('winnersBadge'),
+    organiserLink: document.getElementById('organiserLink'),
+    stats: document.getElementById('stats'),
+    totalPrizes: document.getElementById('totalPrizes'),
+    remainingPrizes: document.getElementById('remainingPrizes'),
+    winnersCount: document.getElementById('winnersCount'),
+    eventName: document.getElementById('eventName'),
+    organizationName: document.getElementById('organizationName'),
+    logo: document.getElementById('boardLogo'),
+    loading: document.getElementById('loading'),
+    loadingText: document.getElementById('loadingText'),
+    footer: document.getElementById('boardFooter'),
+    notice: document.getElementById('notice'),
+    confettiCanvas: document.getElementById('confettiCanvas'),
+
+    welcomePanel: document.getElementById('welcomePanel'),
+    welcomeToggle: document.getElementById('welcomeToggle'),
+    welcomeToggleLabel: document.getElementById('welcomeToggleLabel'),
+    welcomeClose: document.getElementById('welcomeClose'),
+    welcomeFigure: document.getElementById('welcomeFigure'),
+    welcomeTrack: document.getElementById('welcomeTrack'),
+    welcomeDots: document.getElementById('welcomeDots'),
+    welcomePrev: document.getElementById('welcomePrev'),
+    welcomeNext: document.getElementById('welcomeNext'),
+    welcomeTitle: document.getElementById('welcomeTitle'),
+    welcomeMessage: document.getElementById('welcomeMessage'),
+    welcomeCaption: document.getElementById('welcomeCaption'),
+  };
+
+  const state = {
+    settings: null,
+    labels: {},
+    pool: [],
+    winners: [],
+    stats: null,
+    status: STATUS.IDLE,
+    reelTimerId: null,
+    rollStartedAt: 0,
+    stopRequested: false,
+  };
+
+  let confetti = null;
+  let welcome = null;
+
+  /* ------------------------------------------------------------- utilities */
+
+  function escapeHtml(value) {
+    return String(value === null || value === undefined ? '' : value).replace(
+      /[&<>"']/g,
+      (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]
+    );
   }
-}
 
-// Load application settings from appsettings.json
-async function loadAppSettings() {
-  try {
-    const response = await fetch('appsettings.json');
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+  function copy(key) {
+    return (state.settings && state.settings.copy[key]) || '';
+  }
+
+  function showNotice(message, tone = 'info') {
+    elements.notice.textContent = message;
+    elements.notice.dataset.tone = tone;
+    elements.notice.hidden = false;
+    clearTimeout(showNotice.timerId);
+    showNotice.timerId = setTimeout(() => {
+      elements.notice.hidden = true;
+    }, 6000);
+  }
+
+  /**
+   * Renders one configured slot against a participant record. Lines whose
+   * field is empty for this record are dropped so the layout never shows a
+   * stray label with nothing after it.
+   */
+  function renderSlot(slotName, record, extraClass = '') {
+    const lines = state.settings.display[slotName].lines
+      .map((line) => {
+        const value = record ? record[line.field] : undefined;
+        if (value === undefined || value === null || String(value).trim() === '') return '';
+
+        const label = line.showLabel && state.labels[line.field] ? `<span class="line-label">${escapeHtml(state.labels[line.field])}</span>` : '';
+        return `<p class="slot-line" data-emphasis="${line.emphasis}">${label}<span class="line-value">${escapeHtml(value)}</span></p>`;
+      })
+      .join('');
+
+    return `<div class="slot slot-${slotName} ${extraClass}">${lines}</div>`;
+  }
+
+  /* ------------------------------------------------------------- rendering */
+
+  function applyBranding(settings) {
+    const { branding, ui } = settings;
+    const root = document.documentElement;
+
+    root.style.setProperty('--accent', ui.primaryColor);
+    root.style.setProperty('--stage-backdrop', ui.backgroundColor || 'none');
+    root.style.setProperty('--backdrop-image', branding.background.src ? `url('${encodeURI(branding.background.src)}')` : 'none');
+    root.style.setProperty('--backdrop-fit', branding.background.fit === 'tile' ? 'auto' : branding.background.fit);
+    root.style.setProperty('--backdrop-repeat', branding.background.fit === 'tile' ? 'repeat' : 'no-repeat');
+    root.style.setProperty('--backdrop-overlay', String(branding.background.overlayOpacity / 100));
+    root.style.setProperty('--logo-max-height', `${branding.logo.maxHeight}px`);
+
+    const hasLogo = Boolean(branding.logo.src) && branding.logo.position !== 'hidden';
+    elements.logo.hidden = !hasLogo;
+    if (hasLogo) {
+      elements.logo.src = branding.logo.src;
+      elements.logo.alt = settings.organizationName || settings.eventName;
+      document.body.dataset.logoPosition = branding.logo.position;
+      // Explicit dimensions keep the logo from shifting the layout as it loads.
+      if (branding.logo.width && branding.logo.height) {
+        elements.logo.width = branding.logo.width;
+        elements.logo.height = branding.logo.height;
+      }
     }
-    const data = await response.json();
-    appSettings = data.appSettings;
-    console.log('Loaded application settings:', appSettings);
-  } catch (error) {
-    console.error("Error loading app settings:", error);
-    // Use default settings if file not found
-    appSettings = {
-      totalPrizes: 10,
-      eventName: "AKCAF Association",
-      organizationName: "AKCAF Association",
-      animation: { rollingSpeed: 80, confettiDuration: 5000, confettiCount: 150, winnerAnnouncementDelay: 2000, confettiStartDelay: 500 },
-      display: { showMobileInWinner: true, showTicketIdInAnimation: true, autoStopWhenPrizesExhausted: true },
-      ui: { primaryColor: "#ffeb3b", backgroundColor: "radial-gradient(circle at top, #1d2671, #c33764)", showOrganizationName: true }
-    };
   }
-}
 
-// Apply settings to the application
-function applySettings() {
-  // Update page title and heading if specified
-  if (appSettings.eventName) {
-    document.title = appSettings.eventName;
-    const heading = document.getElementById('eventTitle');
-    if (heading) {
-      heading.innerHTML = `${appSettings.eventName}`;
+  function applyCopy(settings) {
+    elements.startBtn.querySelector('.control-text').textContent = settings.copy.startButton;
+    elements.stopBtn.querySelector('.control-text').textContent = settings.copy.stopButton;
+    elements.winnersToggleLabel.textContent = settings.copy.winnersToggle;
+    elements.winnersHeading.textContent = settings.copy.winnersHeading;
+    elements.fullscreenBtn.querySelector('.tool-label').textContent = settings.copy.fullscreenButton;
+    elements.organiserLink.textContent = settings.copy.organiserLink;
+    elements.welcomeToggleLabel.textContent = settings.copy.welcomeToggle;
+    elements.loadingText.textContent = settings.copy.loading;
+    elements.footer.textContent = settings.copy.footer;
+    elements.footer.hidden = !settings.copy.footer;
+  }
+
+  function applySettings(settings) {
+    state.settings = settings;
+    state.labels = settings.data.fields.reduce((map, field) => ({ ...map, [field.key]: field.label }), {});
+
+    document.title = settings.eventName;
+    document.documentElement.lang = settings.locale || 'en';
+    document.documentElement.dir = settings.direction;
+    document.body.dataset.align = settings.ui.boardAlignment;
+
+    elements.eventName.textContent = settings.eventName;
+    elements.organizationName.textContent = settings.organizationName || '';
+    elements.organizationName.hidden = !(settings.ui.showOrganizationName && settings.organizationName);
+    elements.stats.hidden = !settings.ui.showStats;
+
+    applyBranding(settings);
+    applyCopy(settings);
+    setWinnersPanel(settings.ui.showWinnersPanel);
+
+    confetti = global.createConfetti(elements.confettiCanvas, { palette: settings.animation.confettiPalette });
+
+    if (!welcome) {
+      welcome = global.createWelcome({
+        panel: elements.welcomePanel,
+        toggle: elements.welcomeToggle,
+        close: elements.welcomeClose,
+        figure: elements.welcomeFigure,
+        track: elements.welcomeTrack,
+        dots: elements.welcomeDots,
+        prev: elements.welcomePrev,
+        next: elements.welcomeNext,
+        title: elements.welcomeTitle,
+        message: elements.welcomeMessage,
+        caption: elements.welcomeCaption,
+      });
     }
+    welcome.apply(settings.welcome);
   }
 
-  // Show organization name if configured
-  if (appSettings.ui.showOrganizationName && appSettings.organizationName) {
-    const orgNameEl = document.getElementById('organizationName');
-    if (orgNameEl) {
-      orgNameEl.textContent = appSettings.organizationName;
-      orgNameEl.style.display = 'block';
-    }
+  function setWinnersPanel(isOpen) {
+    elements.winnersPanel.hidden = !isOpen;
+    elements.winnersToggle.setAttribute('aria-expanded', String(Boolean(isOpen)));
+    document.body.classList.toggle('has-winners-panel', Boolean(isOpen));
   }
 
-  console.log(`Application configured with ${appSettings.totalPrizes} total prizes`);
-}
-
-// Load tickets from JSON file
-async function loadTickets() {
-  try {
-    const response = await fetch('tickets.json');
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    const data = await response.json();
-    tickets = shuffle([...data.tickets]); // Create a copy and shuffle
-    console.log(`Loaded ${tickets.length} tickets with ${appSettings.totalPrizes} total prizes`);
-  } catch (error) {
-    console.error("Error loading tickets:", error);
-    throw error;
-  }
-}
-
-// Fisher-Yates shuffle algorithm
-function shuffle(array) {
-  for (let i = array.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [array[i], array[j]] = [array[j], array[i]];
-  }
-  return array;
-}
-
-// Update statistics display
-function updateStats() {
-  const remainingPrizes = appSettings.totalPrizes - winners.length;
-  totalPrizesEl.textContent = appSettings.totalPrizes;
-  remainingPrizesEl.textContent = Math.max(0, remainingPrizes);
-  winnersCountEl.textContent = winners.length;
-}
-
-// Hide loading screen
-function hideLoading() {
-  loadingEl.classList.add('hidden');
-}
-
-// Start the slot machine
-function startSlot() {
-  if (rolling) return;
-
-  // Check if we've reached the maximum number of prizes
-  if (winners.length >= appSettings.totalPrizes) {
-    slot.innerHTML = "<span>🎉 All prizes have been awarded!</span>";
-    return;
+  function renderStats() {
+    if (!state.stats) return;
+    elements.totalPrizes.textContent = state.stats.totalPrizes;
+    elements.remainingPrizes.textContent = state.stats.remainingPrizes;
+    elements.winnersCount.textContent = state.stats.winnersCount;
+    elements.winnersBadge.textContent = state.stats.winnersCount;
   }
 
-  const candidates = tickets.filter(t => t.processed === 0);
-  if (candidates.length === 0) {
-    slot.innerHTML = "<span>🎉 All tickets processed!</span>";
-    return;
-  }
-
-  // Clear any existing confetti only when starting a new round
-  clearConfetti();
-
-  rolling = true;
-  startBtn.disabled = true;
-  stopBtn.disabled = false;
-  slot.classList.add('rolling');
-
-  intervalId = setInterval(() => {
-    const availableTickets = tickets.filter(t => t.processed === 0);
-    if (availableTickets.length === 0) {
-      stopSlot();
+  function renderWinners() {
+    if (state.winners.length === 0) {
+      elements.winnersList.innerHTML = `<li class="winners-empty">${escapeHtml(copy('winnersEmpty'))}</li>`;
       return;
     }
 
-    const randomTicket = availableTickets[Math.floor(Math.random() * availableTickets.length)];
-    slot.innerHTML = `
-      <span style="font-size: 2.5rem; font-weight: bold; color: ${appSettings.ui.primaryColor};">
-        ${randomTicket.ticket}
-      </span>
-    `;
-  }, appSettings.animation.rollingSpeed); // Rolling speed from settings
-}
-
-// Stop the slot machine and select winner
-function stopSlot() {
-  if (!rolling) return;
-
-  clearInterval(intervalId);
-  rolling = false;
-  startBtn.disabled = false;
-  stopBtn.disabled = true;
-  slot.classList.remove('rolling');
-
-  // Check if we've reached the maximum number of prizes
-  if (winners.length >= appSettings.totalPrizes) {
-    slot.innerHTML = "<span>🎉 All prizes have been awarded!</span>";
-    return;
+    elements.winnersList.innerHTML = state.winners
+      .slice(-state.settings.display.panel.maxEntries)
+      .reverse()
+      .map(
+        (winner) => `
+        <li class="winner-row">
+          <span class="winner-rank">${escapeHtml(winner.prizeNumber)}</span>
+          ${renderSlot('panel', winner.record)}
+        </li>`
+      )
+      .join('');
   }
 
-  const candidates = tickets.filter(t => t.processed === 0);
-  if (candidates.length === 0) {
-    slot.innerHTML = "<span>🎉 All tickets processed!</span>";
-    return;
+  function setStatus(status) {
+    state.status = status;
+    elements.stage.dataset.status = status;
+
+    const isRolling = status === STATUS.ROLLING;
+    elements.startBtn.disabled = isRolling || status === STATUS.REVEALING || status === STATUS.COMPLETE;
+    elements.stopBtn.disabled = !isRolling || state.stopRequested;
   }
 
-  // Select a random winner
-  const winner = candidates[Math.floor(Math.random() * candidates.length)];
-  winner.processed = 1;
-
-  // Calculate prize number BEFORE adding to winners array
-  const prizeNumber = winners.length + 1;
-
-  winners.push({
-    ...winner,
-    timestamp: new Date().toLocaleString()
-  });
-
-  // Show dramatic winner announcement with animation
-  showWinnerAnnouncement(winner, prizeNumber);
-}
-
-// Reset the lottery
-function resetLottery() {
-  // Show confirmation dialog
-  const confirmReset = confirm("Are you sure you want to reset the randomizer?\n\nThis will:\n• Clear all winners\n• Reset all tickets\n• Stop any current draw\n\nThis action cannot be undone.");
-
-  if (!confirmReset) {
-    return; // User cancelled, don't reset
+  function renderMessage(title, detail = '') {
+    elements.reel.innerHTML = `
+      <p class="stage-message">
+        <span class="stage-message-title">${escapeHtml(title)}</span>
+        ${detail ? `<span class="stage-message-detail">${escapeHtml(detail)}</span>` : ''}
+      </p>`;
   }
 
-  if (rolling) {
-    clearInterval(intervalId);
-    rolling = false;
+  function renderWinnerCard(winner, animation, isReplay = false) {
+    const eyebrow = isReplay ? copy('lastWinnerEyebrow') : copy('winnerEyebrow');
+    elements.reel.innerHTML = `
+      <div class="winner-card ${animation}">
+        <p class="winner-eyebrow">${escapeHtml(eyebrow)} &middot; ${escapeHtml(copy('prizeLabel'))} ${escapeHtml(winner.prizeNumber)}</p>
+        ${renderSlot('card', winner.record)}
+      </div>`;
   }
 
-  // Clear confetti
-  clearConfetti();
-
-  // Reset all tickets
-  tickets.forEach(ticket => ticket.processed = 0);
-  winners = [];
-
-  // Shuffle tickets again
-  tickets = shuffle(tickets);
-
-  // Reset UI
-  slot.innerHTML = "<span>Press Start 🎰</span>";
-  startBtn.disabled = false;
-  stopBtn.disabled = true;
-  slot.classList.remove('rolling');
-
-  // Update displays
-  updateStats();
-  updateWinnersList();
-
-  console.log("Lottery reset - all tickets are available again");
-}
-
-// Show dramatic winner announcement with different animations
-async function showWinnerAnnouncement(winner, prizeNumber) {
-  const animations = [
-    'fadeInScale', 'slideInFromLeft', 'bounceIn', 'rotateIn', 'flipIn',
-    'zoomIn', 'slideInFromTop', 'slideInFromRight', 'slideInFromBottom', 'pulseIn'
-  ];
-
-  // Get animation based on prize number (cycle through animations)
-  const animationType = animations[(prizeNumber - 1) % animations.length];
-
-  // Step 1: Show "WINNER!" announcement with delay
-  slot.innerHTML = `
-    <div class="winner-announcement ${animationType}">
-      <div class="winner-title">🎉 WINNER! 🎉</div>
-      <div class="prize-number">Ticket: ${winner.ticket}</div>
-    </div>
-  `;
-
-  // Step 2: After 2 seconds, reveal the winner details
-  setTimeout(() => {
-    const mobileDisplay = appSettings.display.showMobileInWinner && winner.mobile ? `📱 ${winner.mobile}<br>` : '';
-    slot.innerHTML = `
-      <div class="winner-details-reveal ${animationType}">
-        <div class="winner-name-big">${winner.name}</div>
-        <div class="winner-info">
-          ${winner.college}<br>
-          ${mobileDisplay}
-          🎫 ${winner.ticket}
-        </div>
-      </div>
-    `;
-
-    // Update stats and winners list
-    updateStats();
-    updateWinnersList();
-
-    // Launch confetti after winner is revealed
-    setTimeout(() => {
-      startConfetti();
-    }, appSettings.animation.confettiStartDelay || 500);
-
-  }, appSettings.animation.winnerAnnouncementDelay || 2000);
-}
-
-// Update winners list display
-function updateWinnersList() {
-  if (winners.length === 0) {
-    winnersListEl.innerHTML = '<p class="no-winners">No winners yet. Start the lottery!</p>';
-    return;
-  }
-
-  winnersListEl.innerHTML = winners.map((winner, index) => {
-    const mobileDisplay = appSettings.display.showMobileInWinner && winner.mobile ? ` | 📱 ${winner.mobile}` : '';
-    return `
-      <div class="winner-item">
-        <div class="winner-name">#${index + 1} - ${winner.name}</div>
-        <div class="winner-details">
-          ${winner.college} | 🎫 ${winner.ticket}${mobileDisplay}<br>
-          <small style="opacity: 0.7;">🕒 ${winner.timestamp}</small>
-        </div>
-      </div>
-    `;
-  }).join('');
-}
-
-// Confetti Animation System
-const confettiCanvas = document.getElementById("confettiCanvas");
-const ctx = confettiCanvas.getContext("2d");
-let confettiPieces = [];
-let confettiAnimationId;
-
-// Resize canvas
-function resizeCanvas() {
-  confettiCanvas.width = window.innerWidth;
-  confettiCanvas.height = window.innerHeight;
-}
-
-// Confetti piece constructor
-function ConfettiPiece() {
-  this.x = Math.random() * confettiCanvas.width;
-  this.y = Math.random() * confettiCanvas.height - confettiCanvas.height;
-  this.size = Math.random() * 8 + 4;
-  this.speed = Math.random() * 3 + 2;
-  this.color = `hsl(${Math.random() * 360}, 100%, 50%)`;
-  this.rotation = Math.random() * 360;
-  this.rotationSpeed = (Math.random() - 0.5) * 10;
-  this.opacity = Math.random() * 0.8 + 0.2;
-}
-
-// Clear confetti animation
-function clearConfetti() {
-  confettiPieces = [];
-  if (confettiAnimationId) {
-    cancelAnimationFrame(confettiAnimationId);
-    confettiAnimationId = null;
-  }
-  // Clear any pending confetti timeout
-  if (confettiTimeoutId) {
-    clearTimeout(confettiTimeoutId);
-    confettiTimeoutId = null;
-  }
-  // Clear the canvas
-  ctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
-}
-
-// Start confetti animation
-function startConfetti() {
-  // Clear any existing confetti first
-  clearConfetti();
-
-  confettiPieces = [];
-  for (let i = 0; i < appSettings.animation.confettiCount; i++) {
-    confettiPieces.push(new ConfettiPiece());
-  }
-  animateConfetti();
-
-  // Stop confetti after configured duration
-  confettiTimeoutId = setTimeout(() => {
-    clearConfetti();
-  }, appSettings.animation.confettiDuration);
-}
-
-// Animate confetti
-function animateConfetti() {
-  ctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
-  
-  confettiPieces.forEach((piece, index) => {
-    piece.y += piece.speed;
-    piece.rotation += piece.rotationSpeed;
-    
-    if (piece.y > confettiCanvas.height) {
-      confettiPieces[index] = new ConfettiPiece();
+  function renderIdle() {
+    if (state.stats && state.stats.isComplete) {
+      setStatus(STATUS.COMPLETE);
+      renderMessage(copy('completeTitle'), `${state.stats.winnersCount}`);
+      return;
     }
-    
-    ctx.save();
-    ctx.translate(piece.x, piece.y);
-    ctx.rotate(piece.rotation * Math.PI / 180);
-    ctx.fillStyle = piece.color;
-    ctx.globalAlpha = piece.opacity;
-    ctx.beginPath();
-    ctx.arc(0, 0, piece.size, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  });
-  
-  if (confettiPieces.length > 0) {
-    confettiAnimationId = requestAnimationFrame(animateConfetti);
+
+    setStatus(STATUS.IDLE);
+    const lastWinner = state.winners[state.winners.length - 1];
+
+    if (lastWinner) {
+      renderWinnerCard(lastWinner, 'reveal-rise', true);
+      return;
+    }
+
+    renderMessage(copy('readyTitle'), copy('readyDetail'));
   }
-}
 
-// Event listeners
-window.addEventListener('resize', resizeCanvas);
-window.addEventListener('load', () => {
-  resizeCanvas();
-  init();
-});
+  /* ------------------------------------------------------------ draw cycle */
 
-// Initialize canvas size
-resizeCanvas();
+  function stopReel() {
+    if (state.reelTimerId) {
+      clearInterval(state.reelTimerId);
+      state.reelTimerId = null;
+    }
+  }
+
+  function startSlot() {
+    if (state.status !== STATUS.IDLE) return;
+
+    // The overlay sits over the stage; drawing takes the screen back.
+    if (welcome && welcome.isOpen() && state.settings.welcome.placement === 'overlay') welcome.close();
+
+    if (!state.stats || state.stats.isComplete) {
+      renderIdle();
+      return;
+    }
+
+    if (state.pool.length === 0) {
+      showNotice('There are no entries left to draw.', 'warn');
+      return;
+    }
+
+    confetti.stop();
+    state.stopRequested = false;
+    state.rollStartedAt = Date.now();
+    setStatus(STATUS.ROLLING);
+
+    const tick = () => {
+      const record = state.pool[Math.floor(Math.random() * state.pool.length)];
+      elements.reel.innerHTML = renderSlot('reel', record, 'slot-rolling');
+    };
+
+    tick();
+    state.reelTimerId = setInterval(tick, state.settings.animation.rollingSpeed);
+  }
+
+  async function stopSlot() {
+    if (state.status !== STATUS.ROLLING || state.stopRequested) return;
+
+    // Honour the configured minimum spin so an early click still reads as a
+    // draw rather than an instant cut to the result.
+    const elapsed = Date.now() - state.rollStartedAt;
+    const remaining = Math.max(0, state.settings.draw.minimumRollMs - elapsed);
+
+    state.stopRequested = true;
+    elements.stopBtn.disabled = true;
+
+    if (remaining > 0) await new Promise((resolve) => setTimeout(resolve, remaining));
+
+    stopReel();
+    setStatus(STATUS.REVEALING);
+
+    try {
+      const result = await api.drawWinner();
+      await revealWinner(result.winner);
+      state.stats = result.stats;
+      await refreshState();
+    } catch (error) {
+      showNotice(error.message, 'error');
+      await refreshState();
+      renderIdle();
+    } finally {
+      state.stopRequested = false;
+    }
+  }
+
+  function revealWinner(winner) {
+    const { animation } = state.settings;
+    const revealAnimation = REVEAL_ANIMATIONS[(winner.prizeNumber - 1) % REVEAL_ANIMATIONS.length];
+
+    elements.reel.innerHTML = `
+      <div class="winner-call ${revealAnimation}">
+        <p class="winner-eyebrow">${escapeHtml(copy('winnerEyebrow'))}</p>
+        ${renderSlot('call', winner.record)}
+      </div>`;
+
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        renderWinnerCard(winner, revealAnimation);
+        setTimeout(() => {
+          confetti.start({ count: animation.confettiCount, duration: animation.confettiDuration });
+        }, animation.confettiStartDelay);
+        resolve();
+      }, animation.winnerAnnouncementDelay);
+    });
+  }
+
+  /* ------------------------------------------------------------ data sync */
+
+  async function refreshState() {
+    const [stateResponse, poolResponse] = await Promise.all([api.getState(), api.getPool()]);
+
+    state.winners = stateResponse.winners;
+    state.stats = poolResponse.stats;
+    state.pool = poolResponse.pool;
+
+    renderStats();
+    renderWinners();
+
+    if (state.status !== STATUS.REVEALING) renderIdle();
+    else setStatus(state.stats.isComplete ? STATUS.COMPLETE : STATUS.IDLE);
+  }
+
+  /* -------------------------------------------------------------- controls */
+
+  function toggleFullscreen() {
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+      return;
+    }
+    document.documentElement.requestFullscreen().catch(() => {
+      showNotice('Fullscreen was blocked by the browser.', 'warn');
+    });
+  }
+
+  function bindControls() {
+    elements.startBtn.addEventListener('click', startSlot);
+    elements.stopBtn.addEventListener('click', stopSlot);
+    elements.fullscreenBtn.addEventListener('click', toggleFullscreen);
+    elements.winnersToggle.addEventListener('click', () => setWinnersPanel(elements.winnersPanel.hidden));
+
+    document.addEventListener('keydown', (event) => {
+      if (/^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName) || event.metaKey || event.ctrlKey || event.altKey) return;
+
+      if (event.code === 'Space' || event.key === 'Enter') {
+        event.preventDefault();
+        if (state.status === STATUS.ROLLING) stopSlot();
+        else startSlot();
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+      if (key === 'w') setWinnersPanel(elements.winnersPanel.hidden);
+      if (key === 'f') toggleFullscreen();
+      if (key === 'g' && welcome) welcome.toggle();
+      if (event.key === 'Escape' && welcome && welcome.isOpen()) welcome.close();
+    });
+  }
+
+  /* ------------------------------------------------------------------ boot */
+
+  async function init() {
+    try {
+      const settingsResponse = await api.getSettings();
+      applySettings(settingsResponse.appSettings);
+
+      await refreshState();
+      bindControls();
+
+      if (state.stats.totalTickets === 0) {
+        showNotice('No participants have been uploaded yet. Open the organiser console to add them.', 'warn');
+      }
+    } catch (error) {
+      renderMessage('Unable to load the draw', error.message);
+      showNotice(error.message, 'error');
+    } finally {
+      elements.loading.hidden = true;
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', init);
+})(window, document);

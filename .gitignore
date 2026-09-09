@@ -42,3 +42,23 @@ temp/
 *.bak
 *.backup
 *~
+
+# Runtime draw state — recreated by the server, never source
+winners.json
+
+# Playwright MCP artifacts
+.playwright-mcp/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Bundled offline runtime installers (large binaries, fetched per deployment)
+windows/vendor/*.msi
+windows/vendor/*.zip
+windows/vendor/node/
+
+# Written by the Windows installer
+windows/port.txt
