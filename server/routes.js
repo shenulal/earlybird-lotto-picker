@@ -46,6 +46,7 @@ function requireAuth(req, res, next) {
 function publicWinner(winner, allowedKeys) {
   return {
     prizeNumber: winner.prizeNumber,
+    drawIndex: winner.drawIndex || winner.prizeNumber,
     drawnAt: winner.drawnAt,
     record: schema.projectRecord(winner.record || {}, allowedKeys),
   };
@@ -54,6 +55,25 @@ function publicWinner(winner, allowedKeys) {
 function sendError(res, error) {
   if (error instanceof StorageError) return res.status(500).json({ ok: false, error: error.message });
   return res.status(500).json({ ok: false, error: 'Unexpected server error.' });
+}
+
+/**
+ * Merges an update over what is stored, one level into each section.
+ *
+ * A payload naming only `prizes.drawOrder` must not take the prize list with
+ * it, so sections are merged rather than replaced. Arrays are replaced whole —
+ * a caller sending a list means that list.
+ */
+function mergeSettings(stored, incoming) {
+  return Object.keys(incoming).reduce((merged, key) => {
+    const next = incoming[key];
+    const previous = stored[key];
+    const isSection =
+      next && previous && typeof next === 'object' && typeof previous === 'object' &&
+      !Array.isArray(next) && !Array.isArray(previous);
+
+    return { ...merged, [key]: isSection ? { ...previous, ...next } : next };
+  }, { ...stored });
 }
 
 function exportColumns(appSettings) {
@@ -311,9 +331,7 @@ function createApiRouter() {
     try {
       const settingsFile = loadSettingsFile();
       const incoming = (req.body && req.body.appSettings) || req.body || {};
-      // Merged over what is stored, so a partial payload cannot silently drop
-      // the field schema or the display slots.
-      const appSettings = normalizeAppSettings({ ...settingsFile.appSettings, ...incoming });
+      const appSettings = normalizeAppSettings(mergeSettings(settingsFile.appSettings, incoming));
       saveSettingsFile({ ...settingsFile, appSettings });
       await store.flush();
       res.json({ ok: true, appSettings });

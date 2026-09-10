@@ -22,6 +22,12 @@ const LOGO_POSITIONS = Object.freeze([
 ]);
 const BACKGROUND_FITS = Object.freeze(['cover', 'contain', 'fill', 'tile']);
 const DUPLICATE_POLICIES = Object.freeze(['skip', 'allow']);
+
+// Which end of the prize list the evening starts from.
+const PRIZE_DRAW_ORDERS = Object.freeze(['highest-first', 'lowest-first']);
+
+// Whether the prize is named before its draw, or held back until the winner.
+const PRIZE_ANNOUNCE_MODES = Object.freeze(['before', 'after']);
 const WELCOME_PLACEMENTS = Object.freeze(['overlay', 'panel']);
 
 const MAX_WELCOME_IMAGES = 20;
@@ -57,6 +63,8 @@ const DEFAULT_COPY = Object.freeze({
   welcomeToggle: 'Welcome',
   boardToggle: 'Draw board',
   prizesToggle: 'Prizes',
+  upNextLabel: 'Up next',
+  drawPrompt: 'Press Start to draw',
   prizesBack: 'Back to the draw',
   newDrawButton: 'New draw',
   newDrawConfirm: 'Clear the current draw and start over?',
@@ -192,6 +200,8 @@ function normalizePrizes(input) {
     heading: asText(source.heading, 'Prizes', 120),
     intro: asText(source.intro, '', 400),
     showOnWinner: asBoolean(source.showOnWinner, true),
+    drawOrder: asChoice(source.drawOrder, PRIZE_DRAW_ORDERS, 'highest-first'),
+    announceMode: asChoice(source.announceMode, PRIZE_ANNOUNCE_MODES, 'before'),
     showCaptions: asBoolean(source.showCaptions, true),
     intervalMs: clamp('prizeIntervalMs', source.intervalMs, 5000),
     items: unique,
@@ -403,6 +413,8 @@ module.exports = {
   MAX_WELCOME_IMAGES,
   MAX_PRIZES,
   MAX_PRIZE_IMAGES,
+  PRIZE_DRAW_ORDERS,
+  PRIZE_ANNOUNCE_MODES,
   ordinalLabel,
   normalizeAppSettings,
   loadSettingsFile,

@@ -40,6 +40,20 @@ def remaining_pool(
     return [ticket for ticket in tickets if str(ticket.get(identifier, "")).lower() not in drawn]
 
 
+def prize_number_for_draw(app_settings: Dict[str, Any], draw_index: int) -> int:
+    """The prize position a given draw awards.
+
+    Draws happen in sequence, but the rank they carry depends on which end of
+    the list the organiser chose to start from: highest-first awards 1st, 2nd,
+    3rd in turn, lowest-first counts back from the last prize so the evening
+    builds to the top one.
+    """
+    total = app_settings["totalPrizes"]
+    if app_settings["prizes"]["drawOrder"] == "lowest-first":
+        return max(1, total - draw_index)
+    return draw_index + 1
+
+
 def build_stats(
     app_settings: Dict[str, Any], tickets: Sequence[Dict[str, Any]], winners: Sequence[Dict[str, Any]]
 ) -> Dict[str, Any]:
@@ -52,6 +66,10 @@ def build_stats(
         "totalTickets": len(tickets),
         "remainingTickets": remaining_tickets,
         "isComplete": len(winners) >= total_prizes or remaining_tickets == 0,
+        # What the next Start will award, so the board can announce it first.
+        "nextPrizeNumber": prize_number_for_draw(app_settings, len(winners))
+        if len(winners) < total_prizes
+        else None,
     }
 
 
@@ -73,7 +91,14 @@ def draw_winner(app_settings: Dict[str, Any]) -> Dict[str, Any]:
     # secrets.randbelow is uniform and cryptographically sound, which matters
     # for a draw whose fairness has to be defensible.
     selected = pool[secrets.randbelow(len(pool))]
-    winner = {"prizeNumber": len(state["winners"]) + 1, "drawnAt": _now(), "record": selected}
+    winner = {
+        # The position awarded, which is not the sequence when the organiser
+        # draws from the lowest prize upwards.
+        "prizeNumber": prize_number_for_draw(app_settings, len(state["winners"])),
+        "drawIndex": len(state["winners"]) + 1,
+        "drawnAt": _now(),
+        "record": selected,
+    }
 
     next_state = {
         **state,

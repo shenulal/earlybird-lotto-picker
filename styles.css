@@ -561,6 +561,139 @@ body[data-align='right'] .stats { justify-content: flex-end; }
   letter-spacing: 0.03em;
 }
 
+/* ------------------------------------------- the prize about to be drawn */
+
+/* Named before the reel starts, so the room knows what is at stake. Built to
+   read from the back of a hall and to hold attention while the host talks. */
+.prize-call {
+  display: grid;
+  justify-items: center;
+  gap: clamp(14px, 1.8vh, 26px);
+  width: 100%;
+}
+
+.prize-call-eyebrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin: 0;
+  font-size: var(--text-eyebrow);
+  font-weight: 700;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+}
+
+.prize-call-eyebrow::before,
+.prize-call-eyebrow::after {
+  content: '';
+  height: 1px;
+  width: clamp(18px, 6vw, 74px);
+  background: linear-gradient(90deg, transparent, var(--accent-line));
+}
+
+.prize-call-eyebrow::after {
+  background: linear-gradient(90deg, var(--accent-line), transparent);
+}
+
+.prize-call-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(16px, 2.4vw, 34px);
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+
+.prize-call-media {
+  flex-shrink: 0;
+  width: clamp(120px, 15vw, 210px);
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--hairline) inset;
+  /* A slow breath keeps the moment alive while the host builds it up. */
+  animation: prizeBreathe 4.5s ease-in-out infinite;
+}
+
+.prize-call-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.prize-call-text {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  text-align: center;
+}
+
+.prize-call-name {
+  font-family: var(--font-display);
+  font-size: var(--text-headline);
+  line-height: 1.04;
+  color: var(--accent-ink);
+  text-shadow: 0 0 52px var(--accent-glow), 0 2px 24px rgba(0, 0, 0, 0.4);
+  overflow-wrap: anywhere;
+}
+
+.prize-call-note {
+  font-size: var(--text-meta);
+  font-weight: 300;
+  color: var(--ink-soft);
+  overflow-wrap: anywhere;
+}
+
+.prize-call-prompt {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.prize-call-prompt::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 12px var(--accent-glow);
+  animation: readyPulse 2.6s ease-in-out infinite;
+}
+
+@keyframes prizeBreathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.035); }
+}
+
+/* A prize on the stage lifts the frame, the same as a live reel does. */
+.stage[data-status='announcing'],
+.stage[data-status='idle']:has(.prize-call) {
+  border-color: color-mix(in oklab, var(--accent) 34%, transparent);
+  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.55), 0 0 60px var(--accent-veil);
+}
+
+.stage[data-status='announcing']::before,
+.stage[data-status='announcing']::after,
+.stage[data-status='idle']:has(.prize-call)::before,
+.stage[data-status='idle']:has(.prize-call)::after {
+  opacity: 0.9;
+}
+
+@media (max-width: 640px) {
+  .prize-call-media {
+    width: clamp(110px, 40vw, 180px);
+  }
+}
+
 /* ------------------------------------------------------------- the reel */
 
 /* The reel is a strip that travels, not text that is replaced. One transform

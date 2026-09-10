@@ -14,7 +14,14 @@
 
   const api = global.lotteryApi;
 
-  const STATUS = { IDLE: 'idle', ROLLING: 'rolling', REVEALING: 'revealing', COMPLETE: 'complete' };
+  const STATUS = {
+    IDLE: 'idle',
+    // The prize has been named and the reel is waiting on the operator.
+    ANNOUNCING: 'announcing',
+    ROLLING: 'rolling',
+    REVEALING: 'revealing',
+    COMPLETE: 'complete',
+  };
   const REVEAL_ANIMATIONS = ['reveal-rise', 'reveal-flip', 'reveal-zoom', 'reveal-swing', 'reveal-drop'];
 
   // Enough entries that the strip reads as a reel rather than a short loop.
@@ -206,10 +213,45 @@
   }
 
   /** The prize at this rank, when the organiser has listed one. */
-  function prizeFor(prizeNumber) {
+  function prizeAt(prizeNumber) {
     const { prizes } = state.settings;
-    if (!prizes.showOnWinner || !prizes.enabled) return null;
+    if (!prizes.enabled || !prizeNumber) return null;
     return prizes.items[prizeNumber - 1] || null;
+  }
+
+  function prizeFor(prizeNumber) {
+    return state.settings.prizes.showOnWinner ? prizeAt(prizeNumber) : null;
+  }
+
+  /**
+   * The prize the next Start will award, when the organiser chose to name it
+   * beforehand. The server decides the rank, since the order runs either way.
+   */
+  function upcomingPrize() {
+    if (state.settings.prizes.announceMode !== 'before') return null;
+    if (!state.stats || state.stats.isComplete) return null;
+    return prizeAt(state.stats.nextPrizeNumber);
+  }
+
+  /**
+   * The announcement that precedes a draw: the position, the prize itself and
+   * a photo of it, held until the operator starts the reel.
+   */
+  function renderPrizeAnnouncement(prize) {
+    const image = prize.images[0];
+    elements.reel.innerHTML = `
+      <div class="prize-call reveal-rise">
+        <p class="prize-call-eyebrow">${escapeHtml(copy('upNextLabel'))} &middot; ${escapeHtml(prize.label)}</p>
+        <div class="prize-call-body">
+          ${image ? `<span class="prize-call-media"><img src="${escapeHtml(image.src)}" alt=""
+              ${image.width && image.height ? `width="${image.width}" height="${image.height}"` : ''}></span>` : ''}
+          <span class="prize-call-text">
+            <span class="prize-call-name">${escapeHtml(prize.name)}</span>
+            ${prize.description ? `<span class="prize-call-note">${escapeHtml(prize.description)}</span>` : ''}
+          </span>
+        </div>
+        <p class="prize-call-prompt">${escapeHtml(copy('drawPrompt'))}</p>
+      </div>`;
   }
 
   function renderWinnerCard(winner, animation, isReplay = false) {
@@ -233,8 +275,17 @@
     }
 
     setStatus(STATUS.IDLE);
-    const lastWinner = state.winners[state.winners.length - 1];
 
+    // What comes next matters more than what just happened, so the upcoming
+    // prize takes the stage ahead of the previous winner.
+    const next = upcomingPrize();
+    if (next) {
+      renderPrizeAnnouncement(next);
+      setStatus(STATUS.ANNOUNCING);
+      return;
+    }
+
+    const lastWinner = state.winners[state.winners.length - 1];
     if (lastWinner) {
       renderWinnerCard(lastWinner, 'reveal-rise', true);
       return;
@@ -253,7 +304,7 @@
   }
 
   function startSlot() {
-    if (state.status !== STATUS.IDLE) return;
+    if (state.status !== STATUS.IDLE && state.status !== STATUS.ANNOUNCING) return;
 
     if (!state.stats || state.stats.isComplete) {
       renderIdle();
@@ -262,6 +313,16 @@
 
     if (state.pool.length === 0) {
       showNotice('There are no entries left to draw.', 'warn');
+      return;
+    }
+
+    // Between draws the winner is still on screen. The first Start brings up
+    // the next prize; the second rolls for it, so the host controls the pause.
+    const next = upcomingPrize();
+    if (next && state.status !== STATUS.ANNOUNCING) {
+      confetti.stop();
+      renderPrizeAnnouncement(next);
+      setStatus(STATUS.ANNOUNCING);
       return;
     }
 

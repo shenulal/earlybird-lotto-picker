@@ -1271,3 +1271,98 @@ kbd {
 .sidebar-foot .link {
   line-height: 1.7;
 }
+
+/* --------------------------------------------------------- running order */
+
+/* The sequence the evening runs in, so the order setting is never guesswork. */
+.running-order {
+  margin-top: 16px;
+  padding: 16px 18px;
+  border: 1px solid var(--c-line-strong);
+  border-left: 3px solid var(--c-amber);
+  border-radius: var(--radius-sm);
+  background: var(--c-surface-2);
+}
+
+.running-order-title {
+  margin: 0 0 12px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--c-text-faint);
+}
+
+.running-order-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.running-order-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px 8px 8px;
+  border: 1px solid var(--c-line);
+  border-radius: 999px;
+  background: var(--c-surface);
+}
+
+/* A position with nothing linked still draws a winner, so it is flagged
+   rather than hidden. */
+.running-order-step.is-unlinked {
+  border-style: dashed;
+  border-color: var(--c-line-strong);
+}
+
+.running-order-step.is-unlinked .running-order-name {
+  color: var(--c-text-faint);
+  font-style: italic;
+}
+
+.running-order-index {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--c-amber-soft);
+  color: var(--c-amber);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.running-order-body {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.running-order-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--c-text-faint);
+}
+
+.running-order-name {
+  font-size: 0.86rem;
+  color: var(--c-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 30ch;
+}
+
+.running-order-note {
+  margin: 12px 0 0;
+  font-size: 0.8rem;
+  color: var(--c-text-soft);
+}

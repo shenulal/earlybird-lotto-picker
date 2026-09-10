@@ -459,6 +459,22 @@
 
           <div class="grid-2" style="margin-top:16px">
             <label class="field">
+              <span class="field-label">Draw order</span>
+              <select id="prizesDrawOrder">
+                <option value="highest-first">Highest prize first — 1st, then 2nd, then 3rd</option>
+                <option value="lowest-first">Lowest prize first — 3rd, then 2nd, then 1st</option>
+              </select>
+              <span class="field-hint">Set this before the draw begins. It decides which prize each Start awards.</span>
+            </label>
+            <label class="field">
+              <span class="field-label">Prize announcement</span>
+              <select id="prizesAnnounceMode">
+                <option value="before">Show the prize before each draw</option>
+                <option value="after">Hide it until the winner is announced</option>
+              </select>
+              <span class="field-hint">Shown on the board with its position, then Start rolls the reel.</span>
+            </label>
+            <label class="field">
               <span class="field-label">Heading</span>
               <input type="text" id="prizesHeadingInput" maxlength="120" placeholder="Prizes">
             </label>
@@ -491,6 +507,12 @@
             <dt>Per prize</dt><dd>Up to 12 photos, shown as a slider</dd>
             <dt>Maximum</dt><dd><span data-upload-limit>8 MB</span> each</dd>
           </dl>
+
+          <div class="running-order" id="runningOrder" hidden>
+            <p class="running-order-title">Running order</p>
+            <ol class="running-order-list" id="runningOrderList"></ol>
+            <p class="running-order-note" id="runningOrderNote"></p>
+          </div>
 
           <div class="prize-editor" id="prizeEditor"></div>
         </div>

@@ -90,6 +90,11 @@
       prizesEnabled: document.getElementById('prizesEnabled'),
       prizesShowOnWinner: document.getElementById('prizesShowOnWinner'),
       prizesShowCaptions: document.getElementById('prizesShowCaptions'),
+      prizesDrawOrder: document.getElementById('prizesDrawOrder'),
+      prizesAnnounceMode: document.getElementById('prizesAnnounceMode'),
+      runningOrder: document.getElementById('runningOrder'),
+      runningOrderList: document.getElementById('runningOrderList'),
+      runningOrderNote: document.getElementById('runningOrderNote'),
       prizesHeadingInput: document.getElementById('prizesHeadingInput'),
       prizesIntroInput: document.getElementById('prizesIntroInput'),
       prizesInterval: document.getElementById('prizesInterval'),
@@ -480,10 +485,14 @@
       elements.prizesEnabled.checked = prizes.enabled;
       elements.prizesShowOnWinner.checked = prizes.showOnWinner;
       elements.prizesShowCaptions.checked = prizes.showCaptions;
+      elements.prizesDrawOrder.value = prizes.drawOrder;
+      elements.prizesAnnounceMode.value = prizes.announceMode;
       elements.prizesHeadingInput.value = prizes.heading;
       elements.prizesIntroInput.value = prizes.intro;
       elements.prizesInterval.value = prizes.intervalMs;
       elements.prizeCountPill.textContent = `${prizes.items.length} prize${prizes.items.length === 1 ? '' : 's'}`;
+
+      renderRunningOrder();
 
       if (prizes.items.length === 0) {
         elements.prizeEditor.innerHTML = '<p class="slot-empty">No prizes yet. Add the first one above.</p>';
@@ -541,6 +550,51 @@
         .join('');
     }
 
+    /**
+     * The sequence the evening will actually run in, spelled out before
+     * anyone presses Start — the setting alone is easy to misread.
+     */
+    function renderRunningOrder() {
+      const settings = context.getSettings();
+      const { prizes } = settings;
+      const total = settings.totalPrizes;
+
+      if (!prizes.enabled || total < 1) {
+        elements.runningOrder.hidden = true;
+        return;
+      }
+
+      const ranks = Array.from({ length: total }, (_, index) =>
+        prizes.drawOrder === 'lowest-first' ? Math.max(1, total - index) : index + 1
+      );
+
+      elements.runningOrder.hidden = false;
+      elements.runningOrderList.innerHTML = ranks
+        .map((rank, index) => {
+          const prize = prizes.items[rank - 1];
+          const label = prize ? prize.label : `Prize ${rank}`;
+          const name = prize ? prize.name : 'No prize linked to this position';
+          return `
+            <li class="running-order-step${prize ? '' : ' is-unlinked'}">
+              <span class="running-order-index">${index + 1}</span>
+              <span class="running-order-body">
+                <span class="running-order-label">${escapeHtml(label)}</span>
+                <span class="running-order-name">${escapeHtml(name)}</span>
+              </span>
+            </li>`;
+        })
+        .join('');
+
+      const unlinked = ranks.filter((rank) => !prizes.items[rank - 1]).length;
+      const announced = prizes.announceMode === 'before'
+        ? 'Each prize is shown on the board before its draw.'
+        : 'Prizes stay hidden until each winner is announced.';
+
+      elements.runningOrderNote.textContent = unlinked > 0
+        ? `${announced} ${unlinked} of ${total} draw(s) have no prize linked — add one, or reduce the prize count in Settings.`
+        : announced;
+    }
+
     function collectPrizes() {
       const settings = context.getSettings();
 
@@ -571,6 +625,8 @@
           enabled: elements.prizesEnabled.checked,
           showOnWinner: elements.prizesShowOnWinner.checked,
           showCaptions: elements.prizesShowCaptions.checked,
+          drawOrder: elements.prizesDrawOrder.value,
+          announceMode: elements.prizesAnnounceMode.value,
           heading: elements.prizesHeadingInput.value.trim(),
           intro: elements.prizesIntroInput.value,
           intervalMs: Number(elements.prizesInterval.value),
@@ -672,6 +728,10 @@
       elements.savePrizesBtn.addEventListener('click', () => context.save(collectPrizes(), 'Prizes saved.'));
       elements.revertPrizesBtn.addEventListener('click', renderPrizes);
       elements.addPrizeBtn.addEventListener('click', addPrize);
+
+      [elements.prizesDrawOrder, elements.prizesAnnounceMode, elements.prizesEnabled].forEach((control) =>
+        control.addEventListener('change', () => context.applySettings(collectPrizes()))
+      );
 
       elements.prizeEditor.addEventListener('click', (event) => {
         const row = event.target.closest('.prize-row');

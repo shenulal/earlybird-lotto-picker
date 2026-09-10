@@ -30,6 +30,22 @@ function remainingPool(tickets, winners, identifier) {
   return tickets.filter((ticket) => !drawn.has(String(ticket[identifier] || '').toLowerCase()));
 }
 
+/**
+ * The prize position a given draw awards.
+ *
+ * Draws happen in sequence, but the rank they carry depends on which end of
+ * the list the organiser chose to start from: highest-first awards 1st, 2nd,
+ * 3rd in turn, lowest-first counts back from the last prize so the evening
+ * builds to the top one.
+ */
+function prizeNumberForDraw(appSettings, drawIndex) {
+  const total = appSettings.totalPrizes;
+  if (appSettings.prizes.drawOrder === 'lowest-first') {
+    return Math.max(1, total - drawIndex);
+  }
+  return drawIndex + 1;
+}
+
 function buildStats(appSettings, tickets, winners) {
   const totalPrizes = appSettings.totalPrizes;
   const remainingTickets = remainingPool(tickets, winners, appSettings.data.identifier).length;
@@ -41,6 +57,8 @@ function buildStats(appSettings, tickets, winners) {
     totalTickets: tickets.length,
     remainingTickets,
     isComplete: winners.length >= totalPrizes || remainingTickets === 0,
+    // What the next Start will award, so the board can announce it first.
+    nextPrizeNumber: winners.length < totalPrizes ? prizeNumberForDraw(appSettings, winners.length) : null,
   };
 }
 
@@ -69,7 +87,10 @@ function drawWinner(appSettings) {
   // fairness has to be defensible.
   const selected = pool[crypto.randomInt(0, pool.length)];
   const winner = {
-    prizeNumber: state.winners.length + 1,
+    // The position awarded, which is not the sequence when the organiser
+    // draws from the lowest prize upwards.
+    prizeNumber: prizeNumberForDraw(appSettings, state.winners.length),
+    drawIndex: state.winners.length + 1,
     drawnAt: new Date().toISOString(),
     record: selected,
   };
@@ -104,6 +125,7 @@ function resetDraw(appSettings) {
 }
 
 module.exports = {
+  prizeNumberForDraw,
   loadDrawState,
   saveDrawState,
   readTickets,

@@ -31,6 +31,12 @@ LOGO_POSITIONS = (
 )
 BACKGROUND_FITS = ("cover", "contain", "fill", "tile")
 DUPLICATE_POLICIES = ("skip", "allow")
+
+# Which end of the prize list the evening starts from.
+PRIZE_DRAW_ORDERS = ("highest-first", "lowest-first")
+
+# Whether the prize is named before its draw, or held back until the winner.
+PRIZE_ANNOUNCE_MODES = ("before", "after")
 WELCOME_PLACEMENTS = ("overlay", "panel")
 
 MAX_WELCOME_IMAGES = 20
@@ -73,6 +79,8 @@ DEFAULT_COPY = {
     "welcomeToggle": "Welcome",
     "boardToggle": "Draw board",
     "prizesToggle": "Prizes",
+    "upNextLabel": "Up next",
+    "drawPrompt": "Press Start to draw",
     "prizesBack": "Back to the draw",
     "newDrawButton": "New draw",
     "newDrawConfirm": "Clear the current draw and start over?",
@@ -238,6 +246,8 @@ def _normalize_prizes(raw: Any) -> Dict[str, Any]:
         "heading": _as_text(source.get("heading"), "Prizes", 120),
         "intro": _as_text(source.get("intro"), "", 400),
         "showOnWinner": _as_bool(source.get("showOnWinner"), True),
+        "drawOrder": _as_choice(source.get("drawOrder"), PRIZE_DRAW_ORDERS, "highest-first"),
+        "announceMode": _as_choice(source.get("announceMode"), PRIZE_ANNOUNCE_MODES, "before"),
         "showCaptions": _as_bool(source.get("showCaptions"), True),
         "intervalMs": _clamp("prizeIntervalMs", source.get("intervalMs"), 5000),
         "items": unique,

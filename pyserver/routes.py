@@ -44,9 +44,27 @@ def public_winner(winner: Dict[str, Any], allowed_keys: Sequence[str]) -> Dict[s
     """The board only ever receives the fields its own display slots reference."""
     return {
         "prizeNumber": winner.get("prizeNumber"),
+        "drawIndex": winner.get("drawIndex") or winner.get("prizeNumber"),
         "drawnAt": winner.get("drawnAt"),
         "record": schema.project_record(winner.get("record") or {}, allowed_keys),
     }
+
+
+def merge_settings(stored: Dict[str, Any], incoming: Dict[str, Any]) -> Dict[str, Any]:
+    """Merge an update over what is stored, one level into each section.
+
+    A payload naming only ``prizes.drawOrder`` must not take the prize list
+    with it, so sections are merged rather than replaced. Lists are replaced
+    whole — a caller sending a list means that list.
+    """
+    merged = dict(stored)
+    for key, value in incoming.items():
+        previous = stored.get(key)
+        if isinstance(value, dict) and isinstance(previous, dict):
+            merged[key] = {**previous, **value}
+        else:
+            merged[key] = value
+    return merged
 
 
 def export_columns(app_settings: Dict[str, Any]) -> List[Tuple[str, str]]:
@@ -247,9 +265,7 @@ def put_settings():
     payload = body()
     settings_file = load_settings_file()
     incoming = payload.get("appSettings") or payload or {}
-    # Merged over what is stored, so a partial payload cannot silently drop the
-    # field schema or the display slots.
-    app_settings = normalize_app_settings({**settings_file["appSettings"], **incoming})
+    app_settings = normalize_app_settings(merge_settings(settings_file["appSettings"], incoming))
     save_settings_file({**settings_file, "appSettings": app_settings})
     return jsonify({"ok": True, "appSettings": app_settings})
 

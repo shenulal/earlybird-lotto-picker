@@ -24,6 +24,7 @@ The screen the audience sees.
 - Winner reveal with confetti, cycling through five reveal animations
 - Optional winners panel and prize counters
 - Links to the welcome screen and the prize screen, which are pages of their own
+- Prizes announced ahead of each draw, in the order the organiser chose
 - **New draw** sits beside Start and Stop: clears the results and starts over
   without leaving the board. Offered to a signed-in organiser, or to anyone
   once `draw.allowResetFromBoard` is on; otherwise it explains what is needed
@@ -369,6 +370,32 @@ A list built in the console, in rank order — the first entry is first prize.
 - **Name the prize on the winner card** ties the list to the draw by position,
   so the first winner is announced with first prize.
 
+### Running the prizes
+
+Two settings decide how the evening plays, and both belong to the organiser
+before anything is drawn:
+
+| Setting | Choice |
+|---|---|
+| **Draw order** | *Highest prize first* — 1st, then 2nd, then 3rd<br>*Lowest prize first* — 3rd, then 2nd, then 1st, building to the top prize |
+| **Prize announcement** | *Show the prize before each draw*<br>*Hide it until the winner is announced* |
+
+The console prints the **running order** underneath — the actual sequence, in
+order, with the prize linked to each position — so the setting is never
+guesswork. A position with no prize linked is flagged there rather than
+discovered on stage.
+
+With the prize announced beforehand, a draw runs in three beats:
+
+1. **Up next · Third prize** — the position, the prize, its photo and
+   description, held on screen while the host builds it up.
+2. **Start** rolls the reel for that prize.
+3. **Stop** reveals the winner, named with the prize they have won.
+
+Start then brings up the next prize, so the winner stays on screen for as long
+as the room needs. With announcements hidden, Start rolls straight away and the
+prize is revealed only with the winner.
+
 Nothing about the list is fixed: add, remove and reorder as many as the event
 needs.
 
@@ -404,6 +431,8 @@ needs.
 | `prizes.items[]` | Rank label, name, description and photos, in rank order |
 | `prizes.intervalMs` | How long each prize photo holds |
 | `prizes.showOnWinner` | Name the matching prize on the winner card |
+| `prizes.drawOrder` | `highest-first` (1st → 3rd) or `lowest-first` (3rd → 1st) |
+| `prizes.announceMode` | `before` names the prize ahead of its draw, `after` holds it back |
 | `welcome.showCaptions` | Show the caption under the carousel |
 | `copy.*` | Every string on the board — headings, buttons, empty states, footer |
 | `ui.primaryColor` | Accent colour across the board |
