@@ -1148,3 +1148,83 @@ kbd {
   padding: 6px 12px;
   font-size: 0.78rem;
 }
+
+/* ------------------------------------------------------------- prizes */
+
+.prize-editor {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.prize-row {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius);
+  background: var(--c-surface-2);
+}
+
+.prize-row-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Rank is position in the list, so it is shown rather than edited. */
+.prize-row-rank {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background: var(--c-amber-soft);
+  color: var(--c-amber);
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.prize-row-head .prize-label {
+  flex: 1 1 160px;
+  min-width: 0;
+  padding: 7px 11px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.prize-row-actions {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.prize-row-actions .btn {
+  padding: 5px 10px;
+  font-size: 0.75rem;
+}
+
+.prize-photos {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+}
+
+.prize-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+  width: 100%;
+}
+
+.prize-photo-grid:empty {
+  display: none;
+}
+
+/* Prize photos are landscape, unlike the portrait guest shots. */
+.prize-photo-grid .guest-item img {
+  aspect-ratio: 4 / 3;
+}

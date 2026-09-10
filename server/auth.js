@@ -8,14 +8,36 @@ const PBKDF2_DIGEST = 'sha256';
 const SALT_BYTES = 16;
 
 const SESSION_COOKIE = 'eb_session';
-const SESSION_TTL_MS = 8 * 60 * 60 * 1000; // one long event day
+
+// Long enough to cover setting up days before an event and still be signed in
+// on the night. Override with SESSION_TTL_HOURS.
+const SESSION_TTL_HOURS = Math.min(Math.max(Number(process.env.SESSION_TTL_HOURS) || 24 * 14, 1), 24 * 90);
+const SESSION_TTL_MS = SESSION_TTL_HOURS * 60 * 60 * 1000;
 
 const MAX_LOGIN_ATTEMPTS = 8;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 
-// Regenerated on restart unless pinned via env, which logs everyone out on
-// redeploy — acceptable for a single-operator event tool.
-const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
+// Last resort only: a process-local secret means a second instance rejects
+// this one's cookies, so it is used solely when there is no credential to
+// derive from yet.
+const EPHEMERAL_SECRET = crypto.randomBytes(32).toString('hex');
+
+/**
+ * The key that signs session cookies.
+ *
+ * Derived from the stored credential when SESSION_SECRET is not configured, so
+ * every instance of a horizontally-scaled deployment agrees without any setup —
+ * a per-process random key made sessions fail as soon as a second instance
+ * served a request. Changing the password rotates the key, which correctly
+ * signs out anyone holding an older cookie.
+ */
+function sessionSecret(credential) {
+  if (process.env.SESSION_SECRET) return process.env.SESSION_SECRET;
+  if (credential && credential.hash && credential.salt) {
+    return crypto.createHash('sha256').update(`pickora:${credential.salt}:${credential.hash}`).digest('hex');
+  }
+  return EPHEMERAL_SECRET;
+}
 
 function hashPassword(password, salt = crypto.randomBytes(SALT_BYTES).toString('hex')) {
   const derived = crypto
@@ -41,23 +63,23 @@ function verifyPassword(password, credential) {
   return expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
 }
 
-function sign(value) {
-  return crypto.createHmac('sha256', SESSION_SECRET).update(value).digest('base64url');
+function sign(value, credential) {
+  return crypto.createHmac('sha256', sessionSecret(credential)).update(value).digest('base64url');
 }
 
-function createSessionToken(username) {
+function createSessionToken(username, credential) {
   const payload = Buffer.from(
     JSON.stringify({ username, expiresAt: Date.now() + SESSION_TTL_MS })
   ).toString('base64url');
 
-  return `${payload}.${sign(payload)}`;
+  return `${payload}.${sign(payload, credential)}`;
 }
 
-function readSessionToken(token) {
+function readSessionToken(token, credential) {
   if (typeof token !== 'string' || !token.includes('.')) return null;
 
   const [payload, signature] = token.split('.');
-  const expected = sign(payload);
+  const expected = sign(payload, credential);
 
   if (
     signature.length !== expected.length ||
@@ -119,6 +141,8 @@ function isLockedOut(clientKey) {
 module.exports = {
   SESSION_COOKIE,
   SESSION_TTL_MS,
+  SESSION_TTL_HOURS,
+  sessionSecret,
   MAX_LOGIN_ATTEMPTS,
   hashPassword,
   verifyPassword,

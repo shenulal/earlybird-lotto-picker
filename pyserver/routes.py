@@ -9,6 +9,7 @@ from flask import Blueprint, Response, jsonify, request, session
 from . import draw, images, schema, tickets as ticket_store
 from .auth import LoginThrottle, hash_password, verify_password
 from .settings import (
+    MAX_PRIZE_IMAGES,
     MAX_WELCOME_IMAGES,
     ensure_admin_credentials,
     load_settings_file,
@@ -578,6 +579,76 @@ def delete_welcome_image():
 
     # Only delete the file once nothing else references it.
     if not any(image["src"] == src for image in remaining):
+        images.remove_image_asset(src)
+
+    return jsonify({"ok": True, "appSettings": app_settings})
+
+
+# ------------------------------------------------------------ prize images
+
+
+@api.post("/admin/prizes/<prize_id>/images")
+@require_auth
+def add_prize_image(prize_id: str):
+    settings_file = load_settings_file()
+    prizes = settings_file["appSettings"]["prizes"]
+    index = next((i for i, item in enumerate(prizes["items"]) if item["id"] == prize_id), -1)
+
+    if index == -1:
+        return jsonify({"ok": False, "error": "That prize no longer exists."}), 404
+    if len(prizes["items"][index]["images"]) >= MAX_PRIZE_IMAGES:
+        return jsonify({"ok": False, "error": f"A prize holds at most {MAX_PRIZE_IMAGES} photos."}), 409
+
+    payload = body()
+    try:
+        asset = images.save_image_asset("prize", payload.get("content"), payload.get("name"))
+    except ValueError as error:
+        return jsonify({"ok": False, "error": str(error)}), 400
+
+    if any(image["src"] == asset["src"] for image in prizes["items"][index]["images"]):
+        return jsonify({"ok": False, "error": "That photo is already on this prize."}), 409
+
+    entry = {
+        "src": asset["src"],
+        "caption": str(payload.get("caption") or "").strip(),
+        "width": asset["width"],
+        "height": asset["height"],
+    }
+    items = [
+        {**item, "images": [*item["images"], entry]} if position == index else item
+        for position, item in enumerate(prizes["items"])
+    ]
+
+    app_settings = normalize_app_settings(
+        {**settings_file["appSettings"], "prizes": {**prizes, "items": items}}
+    )
+    save_settings_file({**settings_file, "appSettings": app_settings})
+    return jsonify({"ok": True, "asset": asset, "appSettings": app_settings})
+
+
+@api.delete("/admin/prizes/<prize_id>/images")
+@require_auth
+def delete_prize_image(prize_id: str):
+    src = str(body().get("src") or "")
+    settings_file = load_settings_file()
+    prizes = settings_file["appSettings"]["prizes"]
+
+    items = [
+        {**item, "images": [i for i in item["images"] if i["src"] != src]} if item["id"] == prize_id else item
+        for item in prizes["items"]
+    ]
+
+    app_settings = normalize_app_settings(
+        {**settings_file["appSettings"], "prizes": {**prizes, "items": items}}
+    )
+    save_settings_file({**settings_file, "appSettings": app_settings})
+
+    # Kept while any other prize or the welcome carousel still shows it.
+    still_used = any(
+        image["src"] == src
+        for image in [*(i for item in items for i in item["images"]), *app_settings["welcome"]["images"]]
+    )
+    if not still_used:
         images.remove_image_asset(src)
 
     return jsonify({"ok": True, "appSettings": app_settings})

@@ -15,7 +15,10 @@ PBKDF2_ITERATIONS = 120000
 PBKDF2_KEYLEN = 32
 SALT_BYTES = 16
 
-SESSION_TTL_SECONDS = 8 * 60 * 60
+# Long enough to cover setting up days before an event and still be signed in
+# on the night. Override with SESSION_TTL_HOURS.
+SESSION_TTL_HOURS = min(max(int(os.environ.get("SESSION_TTL_HOURS") or 24 * 14), 1), 24 * 90)
+SESSION_TTL_SECONDS = SESSION_TTL_HOURS * 60 * 60
 MAX_LOGIN_ATTEMPTS = 8
 LOGIN_WINDOW_SECONDS = 15 * 60
 
@@ -87,5 +90,23 @@ class LoginThrottle:
         return entry["count"] >= MAX_LOGIN_ATTEMPTS
 
 
-def session_secret() -> str:
-    return os.environ.get("SESSION_SECRET") or secrets.token_hex(32)
+_EPHEMERAL_SECRET = secrets.token_hex(32)
+
+
+def session_secret(credential: Optional[Dict[str, object]] = None) -> str:
+    """The key that signs session cookies.
+
+    Derived from the stored credential when ``SESSION_SECRET`` is not set, so
+    every worker process agrees without any configuration — a per-process
+    random key signs people out as soon as a second worker serves a request.
+    Changing the password rotates the key, which correctly ends older sessions.
+    """
+    configured = os.environ.get("SESSION_SECRET")
+    if configured:
+        return configured
+
+    if credential and credential.get("hash") and credential.get("salt"):
+        seed = f"pickora:{credential['salt']}:{credential['hash']}"
+        return hashlib.sha256(seed.encode("utf-8")).hexdigest()
+
+    return _EPHEMERAL_SECRET

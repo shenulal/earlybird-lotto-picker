@@ -59,6 +59,8 @@
     deleteAsset: (kind) => request(`/api/admin/assets/${kind}`, { method: 'DELETE' }),
     addWelcomeImage: (payload) => request('/api/admin/welcome/images', { method: 'POST', body: payload }),
     removeWelcomeImage: (src) => request('/api/admin/welcome/images', { method: 'DELETE', body: { src } }),
+    addPrizeImage: (id, payload) => request(`/api/admin/prizes/${encodeURIComponent(id)}/images`, { method: 'POST', body: payload }),
+    removePrizeImage: (id, src) => request(`/api/admin/prizes/${encodeURIComponent(id)}/images`, { method: 'DELETE', body: { src } }),
     undoLastDraw: () => request('/api/admin/draw/undo', { method: 'POST', body: {} }),
     resetDraw: () => request('/api/admin/draw/reset', { method: 'POST', body: {} }),
     winnersCsvUrl: '/api/admin/export/winners.csv',

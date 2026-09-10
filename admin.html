@@ -53,6 +53,7 @@
         <button type="button" class="nav-item" data-panel="display">Display</button>
         <button type="button" class="nav-item" data-panel="branding">Branding</button>
         <button type="button" class="nav-item" data-panel="welcome">Welcome</button>
+        <button type="button" class="nav-item" data-panel="prizes">Prizes</button>
         <button type="button" class="nav-item" data-panel="settings">Settings</button>
         <button type="button" class="nav-item" data-panel="wording">Wording</button>
         <button type="button" class="nav-item" data-panel="account">Account</button>
@@ -349,7 +350,7 @@
         <header class="panel-head">
           <div>
             <h1 id="welcomeHeading">Guest welcome</h1>
-            <p class="panel-lede">Greet a chief guest or celebrity on the draw board with a message and a rotating set of photos. The operator can show or hide it at any time with the <strong>Welcome</strong> button, or the <kbd>G</kbd> key.</p>
+            <p class="panel-lede">Greet a chief guest or celebrity with a message and a rotating set of photos, on its own screen at <a class="link" href="/welcome" target="_blank" rel="noopener">/welcome</a>. The draw board links to it, and <kbd>G</kbd> opens it.</p>
           </div>
         </header>
 
@@ -358,7 +359,7 @@
           <div class="switches">
             <label class="switch">
               <input type="checkbox" id="welcomeEnabled">
-              <span><strong>Show the guest welcome on the board</strong></span>
+              <span><strong>Show the welcome screen</strong><small>Adds a Welcome link to the draw board.</small></span>
             </label>
             <label class="switch">
               <input type="checkbox" id="welcomeShowOnLoad">
@@ -423,6 +424,77 @@
         <div class="form-actions">
           <button type="button" class="btn btn-primary" id="saveWelcomeBtn">Save welcome</button>
           <button type="button" class="btn btn-ghost" id="revertWelcomeBtn">Revert</button>
+        </div>
+      </section>
+
+
+      <!-- ------------------------------------------------------ prizes -->
+      <section class="panel" id="panel-prizes" aria-labelledby="prizesHeading" hidden>
+        <header class="panel-head">
+          <div>
+            <h1 id="prizesHeading">Prizes</h1>
+            <p class="panel-lede">Build the prize list for this event. Order is rank — the first entry is first prize — and it is matched to the draw by position, so prize 1 goes with the first winner. The list has its own screen at <a class="link" href="/prizes" target="_blank" rel="noopener">/prizes</a>.</p>
+          </div>
+        </header>
+
+        <div class="card">
+          <h2 class="card-title">Prize screen</h2>
+          <div class="switches">
+            <label class="switch">
+              <input type="checkbox" id="prizesEnabled">
+              <span><strong>Show the prize screen</strong><small>Adds a Prizes link to the draw board.</small></span>
+            </label>
+            <label class="switch">
+              <input type="checkbox" id="prizesShowOnWinner">
+              <span><strong>Name the prize on the winner card</strong><small>The first winner is announced with first prize, and so on.</small></span>
+            </label>
+            <label class="switch">
+              <input type="checkbox" id="prizesShowCaptions">
+              <span><strong>Show photo captions</strong></span>
+            </label>
+          </div>
+
+          <div class="grid-2" style="margin-top:16px">
+            <label class="field">
+              <span class="field-label">Heading</span>
+              <input type="text" id="prizesHeadingInput" maxlength="120" placeholder="Prizes">
+            </label>
+            <label class="field">
+              <span class="field-label">Carousel interval (ms)</span>
+              <input type="number" id="prizesInterval" min="1500" max="60000" step="500">
+              <span class="field-hint">How long each photo holds. 1500–60000.</span>
+            </label>
+          </div>
+
+          <label class="field" style="margin-top:16px">
+            <span class="field-label">Introduction</span>
+            <textarea id="prizesIntroInput" rows="2" maxlength="400" placeholder="Shown under the heading on the prize screen."></textarea>
+          </label>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2 class="card-title">Prize list</h2>
+            <div class="card-actions">
+              <span class="pill" id="prizeCountPill">0 prizes</span>
+              <button type="button" class="btn btn-ghost" id="addPrizeBtn">Add a prize</button>
+            </div>
+          </div>
+
+          <dl class="size-guide size-guide-inline">
+            <dt>Recommended</dt><dd>1200 × 900 px landscape (4:3)</dd>
+            <dt>Minimum</dt><dd>600 × 450 px</dd>
+            <dt>Aspect</dt><dd>4:3 — other shapes are centre-cropped</dd>
+            <dt>Per prize</dt><dd>Up to 12 photos, shown as a slider</dd>
+            <dt>Maximum</dt><dd><span data-upload-limit>8 MB</span> each</dd>
+          </dl>
+
+          <div class="prize-editor" id="prizeEditor"></div>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-primary" id="savePrizesBtn">Save prizes</button>
+          <button type="button" class="btn btn-ghost" id="revertPrizesBtn">Revert</button>
         </div>
       </section>
 

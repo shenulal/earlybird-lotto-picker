@@ -15,6 +15,7 @@ const {
   saveSettingsFile,
   ensureAdminCredentials,
   MAX_WELCOME_IMAGES,
+  MAX_PRIZE_IMAGES,
 } = require('./settings');
 
 const MIN_PASSWORD_LENGTH = 8;
@@ -22,7 +23,13 @@ const ASSET_KINDS = ['logo', 'background'];
 
 function currentSession(req) {
   const cookies = auth.parseCookies(req.headers.cookie);
-  return auth.readSessionToken(cookies[auth.SESSION_COOKIE]);
+  const token = cookies[auth.SESSION_COOKIE];
+  if (!token) return null;
+
+  // The signing key is derived from the stored credential, so it has to be
+  // loaded to verify — cheap, since the snapshot is already in memory.
+  const { adminAuth } = loadSettingsFile();
+  return auth.readSessionToken(token, adminAuth);
 }
 
 function requireAuth(req, res, next) {
@@ -246,7 +253,7 @@ function createApiRouter() {
       }
 
       auth.clearFailedLogins(clientKey);
-      res.cookie(auth.SESSION_COOKIE, auth.createSessionToken(credential.username), {
+      res.cookie(auth.SESSION_COOKIE, auth.createSessionToken(credential.username, credential), {
         httpOnly: true,
         sameSite: 'lax',
         maxAge: auth.SESSION_TTL_MS,
@@ -340,20 +347,20 @@ function createApiRouter() {
       }
 
       const nextUsername = username || credential.username;
-      saveSettingsFile({
-        ...settingsFile,
-        adminAuth: {
-          ...auth.hashPassword(newPassword),
-          username: nextUsername,
-          source: 'file',
-          isDefaultPassword: false,
-          updatedAt: new Date().toISOString(),
-        },
-      });
+      // Held onto: the signing key is derived from it, so the replacement
+      // cookie has to be signed with the new credential, not the old one.
+      const updated = {
+        ...auth.hashPassword(newPassword),
+        username: nextUsername,
+        source: 'file',
+        isDefaultPassword: false,
+        updatedAt: new Date().toISOString(),
+      };
 
+      saveSettingsFile({ ...settingsFile, adminAuth: updated });
       await store.flush();
 
-      res.cookie(auth.SESSION_COOKIE, auth.createSessionToken(nextUsername), {
+      res.cookie(auth.SESSION_COOKIE, auth.createSessionToken(nextUsername, updated), {
         httpOnly: true,
         sameSite: 'lax',
         maxAge: auth.SESSION_TTL_MS,
@@ -630,6 +637,67 @@ function createApiRouter() {
 
       // Only delete the file once nothing else references it.
       if (!remaining.some((image) => image.src === src)) await images.removeImageAsset(src);
+
+      return res.json({ ok: true, appSettings });
+    } catch (error) {
+      return sendError(res, error);
+    }
+  });
+
+  /* ------------------------------------------------------------ prize images */
+
+  router.post('/admin/prizes/:id/images', requireAuth, async (req, res) => {
+    try {
+      const settingsFile = loadSettingsFile();
+      const prizes = settingsFile.appSettings.prizes;
+      const index = prizes.items.findIndex((item) => item.id === req.params.id);
+
+      if (index === -1) return res.status(404).json({ ok: false, error: 'That prize no longer exists.' });
+      if (prizes.items[index].images.length >= MAX_PRIZE_IMAGES) {
+        return res.status(409).json({ ok: false, error: `A prize holds at most ${MAX_PRIZE_IMAGES} photos.` });
+      }
+
+      const asset = await images.saveImageAsset('prize', (req.body || {}).content, (req.body || {}).name);
+      if (prizes.items[index].images.some((image) => image.src === asset.src)) {
+        return res.status(409).json({ ok: false, error: 'That photo is already on this prize.' });
+      }
+
+      const entry = { src: asset.src, caption: String((req.body || {}).caption || '').trim(), width: asset.width, height: asset.height };
+      const items = prizes.items.map((item, position) =>
+        position === index ? { ...item, images: [...item.images, entry] } : item
+      );
+
+      const appSettings = normalizeAppSettings({ ...settingsFile.appSettings, prizes: { ...prizes, items } });
+      saveSettingsFile({ ...settingsFile, appSettings });
+      await store.flush();
+
+      return res.json({ ok: true, asset, appSettings });
+    } catch (error) {
+      if (error instanceof StorageError) return sendError(res, error);
+      return res.status(400).json({ ok: false, error: error.message });
+    }
+  });
+
+  router.delete('/admin/prizes/:id/images', requireAuth, async (req, res) => {
+    const src = String((req.body || {}).src || '');
+
+    try {
+      const settingsFile = loadSettingsFile();
+      const prizes = settingsFile.appSettings.prizes;
+      const items = prizes.items.map((item) =>
+        item.id === req.params.id ? { ...item, images: item.images.filter((image) => image.src !== src) } : item
+      );
+
+      const appSettings = normalizeAppSettings({ ...settingsFile.appSettings, prizes: { ...prizes, items } });
+      saveSettingsFile({ ...settingsFile, appSettings });
+      await store.flush();
+
+      // Kept while any other prize or the welcome carousel still shows it.
+      const stillUsed = [
+        ...items.flatMap((item) => item.images),
+        ...appSettings.welcome.images,
+      ].some((image) => image.src === src);
+      if (!stillUsed) await images.removeImageAsset(src);
 
       return res.json({ ok: true, appSettings });
     } catch (error) {

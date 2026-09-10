@@ -23,7 +23,7 @@ The screen the audience sees.
 - **Start** / **Stop** — Stop asks the server to draw, so the result is recorded once
 - Winner reveal with confetti, cycling through five reveal animations
 - Optional winners panel and prize counters
-- A guest welcome with a photo carousel, for greeting a chief guest
+- Links to the welcome screen and the prize screen, which are pages of their own
 - **New draw** sits beside Start and Stop: clears the results and starts over
   without leaving the board. Offered to a signed-in organiser, or to anyone
   once `draw.allowResetFromBoard` is on; otherwise it explains what is needed
@@ -47,6 +47,7 @@ Behind a sign-in.
 | **Display** | Choose exactly which fields appear while spinning, on the announcement, on the winner card and in the winners list |
 | **Branding** | Upload the logo and backdrop, with size and resolution validated on the server |
 | **Welcome** | Greet a chief guest with a message and a carousel of photos |
+| **Prizes** | Build the prize list, each with its own photo carousel |
 | **Settings** | Prize count, draw behaviour, colours, alignment, language, animation timings |
 | **Wording** | Every string on the draw board |
 | **Account** | Change the username and password |
@@ -333,26 +334,41 @@ existing deployment looks unchanged.
 
 ---
 
-## Guest welcome
+## Guest welcome and prizes
 
-To greet a chief guest or celebrity, **Welcome** puts a message and a rotating
-set of photos on the board.
+Both are **pages of their own**, not overlays on the board, so either can be
+projected on a second screen, linked to, or left open on a foyer display:
 
-- **Photos** — 800 × 1000 px portrait suits the layout; upload up to 20, drag-and-drop or file
-  picker, each with an optional caption. Reorder them with the arrows; the list
-  order is the carousel order. Portrait crops suit the layout best.
-- **Carousel interval** — how long each photo holds, 1.5–60 seconds.
-- **Placement** — `overlay` centres it over the board, `panel` docks it in a
-  corner so the stage stays visible behind.
-- **Open automatically** — show it as soon as the board loads, or leave it for
-  the operator to bring up at the right moment.
+| Screen | Address |
+|---|---|
+| Draw board | `/` |
+| Guest welcome | `/welcome` |
+| Prizes | `/prizes` |
 
-On the board the operator controls it with the **Welcome** button or the
-<kbd>G</kbd> key; <kbd>Esc</kbd> closes it, and starting a draw closes an
-overlay automatically so the stage is never covered mid-draw.
+The board links to whichever ones have something to show, and each page links
+back and across. On the board, <kbd>G</kbd> opens the welcome and <kbd>P</kbd>
+the prizes.
 
-Photos are validated exactly like the branding images and stored under
-`assets/` by content hash. The same photo cannot be added twice.
+### Guest welcome
+
+A heading, a message and a carousel of photos, for greeting a chief guest.
+Photos are 800 × 1000 px portrait by preference, up to 20, each with an
+optional caption, reorderable; the carousel interval is yours to set.
+
+### Prizes
+
+A list built in the console, in rank order — the first entry is first prize.
+
+- **Rank labels** default to *First prize*, *Second prize* and so on, and
+  renumber themselves when you reorder. Type your own — *Grand prize* — and it
+  is left alone.
+- **Each prize** has a name, a description, and up to 12 photos shown as a
+  slider with arrows and dots. 1200 × 900 px landscape suits the layout.
+- **Name the prize on the winner card** ties the list to the draw by position,
+  so the first winner is announced with first prize.
+
+Nothing about the list is fixed: add, remove and reorder as many as the event
+needs.
 
 ---
 
@@ -382,6 +398,10 @@ Photos are validated exactly like the branding images and stored under
 | `welcome.title`, `message` | Heading and message; line breaks are preserved |
 | `welcome.images[]` | Photo path, caption and dimensions, in carousel order |
 | `welcome.intervalMs` | How long each photo holds (1500–60000) |
+| `prizes.enabled`, `heading`, `intro` | Whether the prize screen shows, and its wording |
+| `prizes.items[]` | Rank label, name, description and photos, in rank order |
+| `prizes.intervalMs` | How long each prize photo holds |
+| `prizes.showOnWinner` | Name the matching prize on the winner card |
 | `welcome.showCaptions` | Show the caption under the carousel |
 | `copy.*` | Every string on the board — headings, buttons, empty states, footer |
 | `ui.primaryColor` | Accent colour across the board |
@@ -434,6 +454,8 @@ Organiser (signed-in only):
 | `DELETE` | `/api/admin/assets/:kind` |
 | `POST` | `/api/admin/welcome/images` |
 | `DELETE` | `/api/admin/welcome/images` |
+| `POST` | `/api/admin/prizes/:id/images` |
+| `DELETE` | `/api/admin/prizes/:id/images` |
 | `POST` | `/api/admin/draw/undo` |
 | `POST` | `/api/admin/draw/reset` |
 | `GET` | `/api/admin/export/winners.csv` |
@@ -448,7 +470,13 @@ winner is appended to `winners.json` before the response is sent, so a refresh,
 a crashed browser or a second screen can never lose or duplicate a result.
 
 Failed sign-ins are throttled to 8 attempts per 15 minutes per address. Session
-cookies are HttpOnly, SameSite=Lax, and marked Secure behind HTTPS.
+cookies are HttpOnly, SameSite=Lax, and marked Secure behind HTTPS, and last
+14 days by default — set `SESSION_TTL_HOURS` to change that.
+
+The key that signs them is derived from the stored credential unless
+`SESSION_SECRET` is set, so every instance of a scaled deployment agrees
+without configuration. Changing the password rotates the key, which signs out
+anyone holding an older cookie.
 
 ---
 
@@ -462,7 +490,10 @@ pickora/
 │   └── admin-config.js                   # fields, display slots, branding, wording
 ├── api.js                                # shared API client
 ├── confetti.js                           # confetti animation
-├── welcome.js                            # guest welcome carousel
+├── welcome.html / prizes.html            # the two feature screens
+├── feature-page.js                       # their shared controller
+├── carousel.js                           # the shared image slider
+├── theme.js                              # one identity across every page
 ├── fonts/                                # bundled webfonts (no CDN)
 ├── server.js                             # local entry point (no dependencies)
 ├── api/index.js                          # serverless entry point (Vercel)

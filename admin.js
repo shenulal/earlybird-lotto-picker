@@ -665,17 +665,22 @@
 
   /* ------------------------------------------------- configurable editors */
 
-  /** Persists a whole settings object edited by one of the config panels. */
-  async function saveConfiguration(appSettings, message) {
+  /**
+   * Persists a whole settings object edited by one of the config panels.
+   * `quiet` is for saves that only exist to make a follow-up call possible —
+   * committing a draft prize before attaching a photo to it, say.
+   */
+  async function saveConfiguration(appSettings, message, options = {}) {
     try {
       const result = await api.saveSettings(appSettings);
       state.overview = { ...state.overview, appSettings: result.appSettings };
       if (configEditors) configEditors.render();
       fillSettingsForm(result.appSettings);
       elements.brandEvent.textContent = result.appSettings.eventName;
-      toast(message);
+      if (!options.quiet) toast(message);
     } catch (error) {
       toast(error.message, 'error');
+      throw error;
     }
   }
 

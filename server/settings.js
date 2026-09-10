@@ -25,6 +25,8 @@ const DUPLICATE_POLICIES = Object.freeze(['skip', 'allow']);
 const WELCOME_PLACEMENTS = Object.freeze(['overlay', 'panel']);
 
 const MAX_WELCOME_IMAGES = 20;
+const MAX_PRIZES = 20;
+const MAX_PRIZE_IMAGES = 12;
 const WELCOME_INTERVAL_LIMITS = Object.freeze([1500, 60000]);
 
 // Used only when there is no configuration and no participant file to learn
@@ -53,6 +55,8 @@ const DEFAULT_COPY = Object.freeze({
   fullscreenButton: 'Fullscreen',
   organiserLink: 'Organiser',
   welcomeToggle: 'Welcome',
+  prizesToggle: 'Prizes',
+  prizesBack: 'Back to the draw',
   newDrawButton: 'New draw',
   newDrawConfirm: 'Clear the current draw and start over?',
   footer: 'Pickora · by Shenu',
@@ -70,6 +74,7 @@ const CLAMPS = Object.freeze({
   logoMaxHeight: [24, 480],
   overlayOpacity: [0, 100],
   welcomeIntervalMs: WELCOME_INTERVAL_LIMITS,
+  prizeIntervalMs: WELCOME_INTERVAL_LIMITS,
 });
 
 function clamp(key, value, fallback) {
@@ -121,15 +126,11 @@ function normalizePalette(input) {
   return colors.length > 0 ? colors : [...DEFAULT_CONFETTI_PALETTE];
 }
 
-/**
- * The guest welcome: a message plus a carousel of portraits, shown to greet a
- * special guest before or between draws.
- */
-function normalizeWelcome(input) {
-  const source = input && typeof input === 'object' ? input : {};
-  const rawImages = Array.isArray(source.images) ? source.images : [];
+/** Normalises a carousel image list, dropping anything unusable. */
+function normalizeImages(input, limit) {
+  const raw = Array.isArray(input) ? input : [];
 
-  const images = rawImages
+  return raw
     .map((image) => {
       const entry = image && typeof image === 'object' ? image : { src: image };
       const src = asAssetPath(entry.src);
@@ -142,7 +143,82 @@ function normalizeWelcome(input) {
       };
     })
     .filter(Boolean)
-    .slice(0, MAX_WELCOME_IMAGES);
+    .slice(0, limit);
+}
+
+/**
+ * The prize list. Order is rank: the first entry is first prize, and it is
+ * matched to a draw by position, so prize 1 goes with the first winner.
+ */
+function normalizePrizes(input) {
+  const source = input && typeof input === 'object' ? input : {};
+  const raw = Array.isArray(source.items) ? source.items : [];
+
+  const items = raw
+    .map((item, index) => {
+      const entry = item && typeof item === 'object' ? item : {};
+      const name = asText(entry.name, '', 140);
+      if (!name) return null;
+
+      return {
+        // `.test()` stringifies, so an absent id would match as "undefined".
+        id: typeof entry.id === 'string' && /^[a-z0-9-]{1,40}$/.test(entry.id) ? entry.id : `prize-${index + 1}`,
+        // A default label follows the position, so reordering renumbers it.
+        // A label the organiser actually wrote — "Grand prize" — is kept.
+        label: isDefaultLabel(entry.label) ? ordinalLabel(index) : asText(entry.label, ordinalLabel(index), 60),
+        name,
+        description: asText(entry.description, '', 600),
+        images: normalizeImages(entry.images, MAX_PRIZE_IMAGES),
+      };
+    })
+    .filter(Boolean)
+    .slice(0, MAX_PRIZES);
+
+  // Ids must stay unique; a duplicate would make image uploads ambiguous.
+  const seen = new Set();
+  const unique = items.map((item, index) => {
+    if (!seen.has(item.id)) {
+      seen.add(item.id);
+      return item;
+    }
+    const replacement = `prize-${index + 1}-${Math.random().toString(36).slice(2, 7)}`;
+    seen.add(replacement);
+    return { ...item, id: replacement };
+  });
+
+  return {
+    enabled: asBoolean(source.enabled, false),
+    heading: asText(source.heading, 'Prizes', 120),
+    intro: asText(source.intro, '', 400),
+    showOnWinner: asBoolean(source.showOnWinner, true),
+    showCaptions: asBoolean(source.showCaptions, true),
+    intervalMs: clamp('prizeIntervalMs', source.intervalMs, 5000),
+    items: unique,
+  };
+}
+
+const ORDINALS = Object.freeze([
+  'First prize', 'Second prize', 'Third prize', 'Fourth prize', 'Fifth prize',
+  'Sixth prize', 'Seventh prize', 'Eighth prize', 'Ninth prize', 'Tenth prize',
+]);
+
+function ordinalLabel(index) {
+  return ORDINALS[index] || `Prize ${index + 1}`;
+}
+
+function isDefaultLabel(label) {
+  if (typeof label !== 'string' || !label.trim()) return true;
+  const trimmed = label.trim();
+  return ORDINALS.includes(trimmed) || /^Prize \d+$/.test(trimmed);
+}
+
+/**
+ * The guest welcome: a message plus a carousel of portraits, shown to greet a
+ * special guest before or between draws.
+ */
+function normalizeWelcome(input) {
+  const source = input && typeof input === 'object' ? input : {};
+  const images = normalizeImages(source.images, MAX_WELCOME_IMAGES);
 
   return {
     enabled: asBoolean(source.enabled, false),
@@ -251,6 +327,7 @@ function normalizeAppSettings(input) {
 
     branding: normalizeBranding(source.branding),
     welcome: normalizeWelcome(source.welcome),
+    prizes: normalizePrizes(source.prizes),
     copy: normalizeCopy(source.copy),
 
     ui: {
@@ -323,6 +400,9 @@ module.exports = {
   DUPLICATE_POLICIES,
   WELCOME_PLACEMENTS,
   MAX_WELCOME_IMAGES,
+  MAX_PRIZES,
+  MAX_PRIZE_IMAGES,
+  ordinalLabel,
   normalizeAppSettings,
   loadSettingsFile,
   saveSettingsFile,

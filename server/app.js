@@ -62,7 +62,10 @@ function createApp() {
     }
   });
 
+  /* Extensionless routes for the screens an organiser links to or projects. */
   app.get('/admin', (_req, res) => res.sendFile(path.join(PATHS.root, 'admin.html')));
+  app.get('/welcome', (_req, res) => res.sendFile(path.join(PATHS.root, 'welcome.html')));
+  app.get('/prizes', (_req, res) => res.sendFile(path.join(PATHS.root, 'prizes.html')));
 
   app.use(
     express.static(PATHS.root, {

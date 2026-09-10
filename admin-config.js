@@ -86,6 +86,18 @@
       guestInput: document.getElementById('guestInput'),
       saveWelcomeBtn: document.getElementById('saveWelcomeBtn'),
       revertWelcomeBtn: document.getElementById('revertWelcomeBtn'),
+
+      prizesEnabled: document.getElementById('prizesEnabled'),
+      prizesShowOnWinner: document.getElementById('prizesShowOnWinner'),
+      prizesShowCaptions: document.getElementById('prizesShowCaptions'),
+      prizesHeadingInput: document.getElementById('prizesHeadingInput'),
+      prizesIntroInput: document.getElementById('prizesIntroInput'),
+      prizesInterval: document.getElementById('prizesInterval'),
+      prizeCountPill: document.getElementById('prizeCountPill'),
+      prizeEditor: document.getElementById('prizeEditor'),
+      addPrizeBtn: document.getElementById('addPrizeBtn'),
+      savePrizesBtn: document.getElementById('savePrizesBtn'),
+      revertPrizesBtn: document.getElementById('revertPrizesBtn'),
     };
 
     /* ---------------------------------------------------------- fields */
@@ -460,6 +472,187 @@
       context.applySettings({ ...settings, welcome: { ...settings.welcome, images } });
     }
 
+    /* ------------------------------------------------------------ prizes */
+
+    function renderPrizes() {
+      const { prizes } = context.getSettings();
+
+      elements.prizesEnabled.checked = prizes.enabled;
+      elements.prizesShowOnWinner.checked = prizes.showOnWinner;
+      elements.prizesShowCaptions.checked = prizes.showCaptions;
+      elements.prizesHeadingInput.value = prizes.heading;
+      elements.prizesIntroInput.value = prizes.intro;
+      elements.prizesInterval.value = prizes.intervalMs;
+      elements.prizeCountPill.textContent = `${prizes.items.length} prize${prizes.items.length === 1 ? '' : 's'}`;
+
+      if (prizes.items.length === 0) {
+        elements.prizeEditor.innerHTML = '<p class="slot-empty">No prizes yet. Add the first one above.</p>';
+        return;
+      }
+
+      elements.prizeEditor.innerHTML = prizes.items
+        .map(
+          (prize, index) => `
+          <section class="prize-row" data-id="${escapeHtml(prize.id)}">
+            <header class="prize-row-head">
+              <span class="prize-row-rank">${index + 1}</span>
+              <input type="text" class="prize-label" value="${escapeHtml(prize.label)}" maxlength="60" aria-label="Rank label">
+              <div class="prize-row-actions">
+                <button type="button" class="btn btn-ghost prize-move" data-direction="-1" ${index === 0 ? 'disabled' : ''} aria-label="Move up">↑</button>
+                <button type="button" class="btn btn-ghost prize-move" data-direction="1" ${index === prizes.items.length - 1 ? 'disabled' : ''} aria-label="Move down">↓</button>
+                <button type="button" class="btn btn-danger prize-remove">Remove</button>
+              </div>
+            </header>
+
+            <div class="grid-2">
+              <label class="field">
+                <span class="field-label">Prize</span>
+                <input type="text" class="prize-name" value="${escapeHtml(prize.name)}" maxlength="140" placeholder="iPhone 18 Pro Max">
+              </label>
+              <label class="field">
+                <span class="field-label">Description</span>
+                <textarea class="prize-description" rows="2" maxlength="600" placeholder="What the winner receives.">${escapeHtml(prize.description)}</textarea>
+              </label>
+            </div>
+
+            <div class="prize-photos">
+              <div class="prize-photo-grid">
+                ${prize.images
+                  .map(
+                    (image) => `
+                    <figure class="guest-item" data-src="${escapeHtml(image.src)}">
+                      <img src="${escapeHtml(image.src)}" alt="">
+                      <figcaption>
+                        <input type="text" class="prize-caption" data-src="${escapeHtml(image.src)}" value="${escapeHtml(image.caption)}" maxlength="120" placeholder="Caption (optional)">
+                        <span class="guest-meta">${image.width ? `${image.width}×${image.height}` : ''}</span>
+                      </figcaption>
+                      <div class="guest-actions">
+                        <button type="button" class="btn btn-danger prize-photo-remove">Remove</button>
+                      </div>
+                    </figure>`
+                  )
+                  .join('')}
+              </div>
+              <input type="file" class="sr-only prize-photo-input" id="prize-photo-${escapeHtml(prize.id)}" accept="image/png,image/jpeg,image/gif,image/webp" multiple>
+              <label class="btn btn-ghost btn-small" for="prize-photo-${escapeHtml(prize.id)}">Add photos</label>
+            </div>
+          </section>`
+        )
+        .join('');
+    }
+
+    function collectPrizes() {
+      const settings = context.getSettings();
+
+      const items = Array.from(elements.prizeEditor.querySelectorAll('.prize-row')).map((row) => {
+        const id = row.dataset.id;
+        const existing = settings.prizes.items.find((prize) => prize.id === id) || { images: [] };
+        const images = Array.from(row.querySelectorAll('.guest-item')).map((figure) => {
+          const src = figure.dataset.src;
+          const stored = existing.images.find((image) => image.src === src) || {};
+          const caption = figure.querySelector('.prize-caption');
+          return { ...stored, src, caption: caption ? caption.value.trim() : '' };
+        });
+
+        return {
+          ...existing,
+          id,
+          label: row.querySelector('.prize-label').value.trim(),
+          name: row.querySelector('.prize-name').value.trim(),
+          description: row.querySelector('.prize-description').value.trim(),
+          images,
+        };
+      });
+
+      return {
+        ...settings,
+        prizes: {
+          ...settings.prizes,
+          enabled: elements.prizesEnabled.checked,
+          showOnWinner: elements.prizesShowOnWinner.checked,
+          showCaptions: elements.prizesShowCaptions.checked,
+          heading: elements.prizesHeadingInput.value.trim(),
+          intro: elements.prizesIntroInput.value,
+          intervalMs: Number(elements.prizesInterval.value),
+          items,
+        },
+      };
+    }
+
+    /** New prizes are held locally until saved, like every other edit here. */
+    function addPrize() {
+      const draft = collectPrizes();
+      const next = draft.prizes.items.length + 1;
+      context.applySettings({
+        ...draft,
+        prizes: {
+          ...draft.prizes,
+          items: [
+            ...draft.prizes.items,
+            { id: `prize-${next}-${Math.random().toString(36).slice(2, 7)}`, label: '', name: `Prize ${next}`, description: '', images: [] },
+          ],
+        },
+      });
+    }
+
+    function removePrize(id) {
+      if (!global.confirm('Remove this prize? Its photos are released when you save.')) return;
+      const draft = collectPrizes();
+      context.applySettings({
+        ...draft,
+        prizes: { ...draft.prizes, items: draft.prizes.items.filter((prize) => prize.id !== id) },
+      });
+    }
+
+    function movePrize(id, direction) {
+      const draft = collectPrizes();
+      const items = [...draft.prizes.items];
+      const from = items.findIndex((prize) => prize.id === id);
+      const to = from + direction;
+      if (from < 0 || to < 0 || to >= items.length) return;
+
+      [items[from], items[to]] = [items[to], items[from]];
+      context.applySettings({ ...draft, prizes: { ...draft.prizes, items } });
+    }
+
+    /* Photos attach to a saved prize, so unsaved edits are committed first. */
+    async function uploadPrizePhotos(id, files) {
+      const list = Array.from(files || []);
+      if (list.length === 0) return;
+
+      const pending = collectPrizes();
+      if (!pending.prizes.items.some((prize) => prize.id === id)) return;
+      await context.save(pending, 'Prizes saved.', { quiet: true });
+
+      for (const file of list) {
+        try {
+          const content = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result));
+            reader.onerror = () => reject(new Error(`${file.name} could not be read.`));
+            reader.readAsDataURL(file);
+          });
+          const result = await api.addPrizeImage(id, { content, name: file.name });
+          context.applySettings(result.appSettings);
+        } catch (error) {
+          context.toast(`${file.name}: ${error.message}`, 'error');
+          return;
+        }
+      }
+
+      context.toast(`Added ${list.length} photo${list.length === 1 ? '' : 's'}.`);
+    }
+
+    async function removePrizePhoto(id, src) {
+      if (!global.confirm('Remove this photo?')) return;
+      try {
+        context.applySettings((await api.removePrizeImage(id, src)).appSettings);
+        context.toast('Photo removed.');
+      } catch (error) {
+        context.toast(error.message, 'error');
+      }
+    }
+
     /* ------------------------------------------------------------ wiring */
 
     function bind() {
@@ -475,6 +668,32 @@
       elements.saveBrandingBtn.addEventListener('click', () => context.save(collectBranding(), 'Branding saved.'));
 
       elements.saveWelcomeBtn.addEventListener('click', () => context.save(collectWelcome(), 'Guest welcome saved.'));
+
+      elements.savePrizesBtn.addEventListener('click', () => context.save(collectPrizes(), 'Prizes saved.'));
+      elements.revertPrizesBtn.addEventListener('click', renderPrizes);
+      elements.addPrizeBtn.addEventListener('click', addPrize);
+
+      elements.prizeEditor.addEventListener('click', (event) => {
+        const row = event.target.closest('.prize-row');
+        if (!row) return;
+
+        if (event.target.closest('.prize-remove')) return removePrize(row.dataset.id);
+        if (event.target.closest('.prize-photo-remove')) {
+          const figure = event.target.closest('.guest-item');
+          return removePrizePhoto(row.dataset.id, figure.dataset.src);
+        }
+        const move = event.target.closest('.prize-move');
+        if (move) movePrize(row.dataset.id, Number(move.dataset.direction));
+        return undefined;
+      });
+
+      elements.prizeEditor.addEventListener('change', (event) => {
+        const input = event.target.closest('.prize-photo-input');
+        if (!input) return;
+        const row = input.closest('.prize-row');
+        uploadPrizePhotos(row.dataset.id, input.files);
+        input.value = '';
+      });
       elements.revertWelcomeBtn.addEventListener('click', renderWelcome);
       elements.guestInput.addEventListener('change', (event) => {
         uploadGuestPhotos(event.target.files);
@@ -560,6 +779,7 @@
         renderCopy();
         renderBranding();
         renderWelcome();
+        renderPrizes();
       },
     };
   }

@@ -46,6 +46,10 @@ temp/
 # Runtime draw state — recreated by the server, never source
 winners.json
 
+# Uploaded logos, backdrops and prize photos. Runtime data, and on a hosted
+# deployment they live in the key-value store rather than here.
+assets/
+
 # Playwright MCP artifacts
 .playwright-mcp/
 

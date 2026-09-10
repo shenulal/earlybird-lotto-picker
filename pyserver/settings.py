@@ -6,6 +6,7 @@ works under either runtime.
 
 import os
 import re
+import secrets
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
@@ -33,6 +34,15 @@ DUPLICATE_POLICIES = ("skip", "allow")
 WELCOME_PLACEMENTS = ("overlay", "panel")
 
 MAX_WELCOME_IMAGES = 20
+MAX_PRIZES = 20
+MAX_PRIZE_IMAGES = 12
+
+ORDINALS = (
+    "First prize", "Second prize", "Third prize", "Fourth prize", "Fifth prize",
+    "Sixth prize", "Seventh prize", "Eighth prize", "Ninth prize", "Tenth prize",
+)
+
+PRIZE_ID = re.compile(r"^[a-z0-9-]{1,40}$")
 WELCOME_INTERVAL_LIMITS = (1500, 60000)
 
 # Used only when there is no configuration and no participant file to learn
@@ -61,6 +71,8 @@ DEFAULT_COPY = {
     "fullscreenButton": "Fullscreen",
     "organiserLink": "Organiser",
     "welcomeToggle": "Welcome",
+    "prizesToggle": "Prizes",
+    "prizesBack": "Back to the draw",
     "newDrawButton": "New draw",
     "newDrawConfirm": "Clear the current draw and start over?",
     "footer": "Pickora · by Shenu",
@@ -78,6 +90,7 @@ CLAMPS = {
     "logoMaxHeight": (24, 480),
     "overlayOpacity": (0, 100),
     "welcomeIntervalMs": WELCOME_INTERVAL_LIMITS,
+    "prizeIntervalMs": WELCOME_INTERVAL_LIMITS,
 }
 
 ASSET_PATH = re.compile(r"^assets/[A-Za-z0-9._-]+$")
@@ -135,14 +148,23 @@ def _normalize_palette(raw: Any) -> list:
     return colors or list(DEFAULT_CONFETTI_PALETTE)
 
 
-def _normalize_welcome(raw: Any) -> Dict[str, Any]:
-    """The guest welcome: a message plus a carousel of portraits, shown to
-    greet a special guest before or between draws."""
-    source = raw if isinstance(raw, dict) else {}
-    raw_images = source.get("images") if isinstance(source.get("images"), list) else []
+def ordinal_label(index: int) -> str:
+    return ORDINALS[index] if index < len(ORDINALS) else f"Prize {index + 1}"
 
+
+def _is_default_label(label: Any) -> bool:
+    if not isinstance(label, str) or not label.strip():
+        return True
+    trimmed = label.strip()
+    return trimmed in ORDINALS or bool(re.match(r"^Prize \d+$", trimmed))
+
+
+def _normalize_images(raw: Any, limit: int) -> list:
+    """Normalise a carousel image list, dropping anything unusable."""
+    items = raw if isinstance(raw, list) else []
     images = []
-    for entry in raw_images:
+
+    for entry in items:
         image = entry if isinstance(entry, dict) else {"src": entry}
         src = _as_asset_path(image.get("src"))
         if not src:
@@ -163,8 +185,69 @@ def _normalize_welcome(raw: Any) -> Dict[str, Any]:
                 "height": dimension(image.get("height")),
             }
         )
-        if len(images) >= MAX_WELCOME_IMAGES:
+        if len(images) >= limit:
             break
+
+    return images
+
+
+def _normalize_prizes(raw: Any) -> Dict[str, Any]:
+    """The prize list. Order is rank: the first entry is first prize, and it is
+    matched to a draw by position, so prize 1 goes with the first winner."""
+    source = raw if isinstance(raw, dict) else {}
+    items_raw = source.get("items") if isinstance(source.get("items"), list) else []
+
+    items = []
+    for index, entry in enumerate(items_raw):
+        item = entry if isinstance(entry, dict) else {}
+        name = _as_text(item.get("name"), "", 140)
+        if not name:
+            continue
+
+        candidate = item.get("id")
+        identifier = candidate if isinstance(candidate, str) and PRIZE_ID.match(candidate) else f"prize-{index + 1}"
+
+        items.append(
+            {
+                "id": identifier,
+                # A default label follows the position, so reordering renumbers
+                # it. A label the organiser actually wrote is kept.
+                "label": ordinal_label(index)
+                if _is_default_label(item.get("label"))
+                else _as_text(item.get("label"), ordinal_label(index), 60),
+                "name": name,
+                "description": _as_text(item.get("description"), "", 600),
+                "images": _normalize_images(item.get("images"), MAX_PRIZE_IMAGES),
+            }
+        )
+        if len(items) >= MAX_PRIZES:
+            break
+
+    # Ids must stay unique; a duplicate would make image uploads ambiguous.
+    seen = set()
+    unique = []
+    for index, item in enumerate(items):
+        if item["id"] in seen:
+            item = {**item, "id": f"prize-{index + 1}-{secrets.token_hex(3)}"}
+        seen.add(item["id"])
+        unique.append(item)
+
+    return {
+        "enabled": _as_bool(source.get("enabled"), False),
+        "heading": _as_text(source.get("heading"), "Prizes", 120),
+        "intro": _as_text(source.get("intro"), "", 400),
+        "showOnWinner": _as_bool(source.get("showOnWinner"), True),
+        "showCaptions": _as_bool(source.get("showCaptions"), True),
+        "intervalMs": _clamp("prizeIntervalMs", source.get("intervalMs"), 5000),
+        "items": unique,
+    }
+
+
+def _normalize_welcome(raw: Any) -> Dict[str, Any]:
+    """The guest welcome: a message plus a carousel of portraits, shown to
+    greet a special guest before or between draws."""
+    source = raw if isinstance(raw, dict) else {}
+    images = _normalize_images(source.get("images"), MAX_WELCOME_IMAGES)
 
     return {
         "enabled": _as_bool(source.get("enabled"), False),
@@ -281,6 +364,7 @@ def normalize_app_settings(raw: Any) -> Dict[str, Any]:
         },
         "branding": _normalize_branding(source.get("branding")),
         "welcome": _normalize_welcome(source.get("welcome")),
+        "prizes": _normalize_prizes(source.get("prizes")),
         "copy": _normalize_copy(source.get("copy")),
         "ui": {
             "primaryColor": _as_text(ui.get("primaryColor"), "#ffeb3b", 40),

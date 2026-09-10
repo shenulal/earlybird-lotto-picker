@@ -32,9 +32,12 @@
         <span class="tool-label" id="winnersToggleLabel">Winners</span>
         <span class="tool-badge" id="winnersBadge">0</span>
       </button>
-      <button type="button" class="tool" id="welcomeToggle" aria-controls="welcomePanel" aria-expanded="false" hidden>
-        <span class="tool-label" id="welcomeToggleLabel">Welcome</span>
-      </button>
+      <a class="tool" id="welcomeLink" href="/welcome" hidden>
+        <span class="tool-label" id="welcomeLinkLabel">Welcome</span>
+      </a>
+      <a class="tool" id="prizesLink" href="/prizes" hidden>
+        <span class="tool-label" id="prizesLinkLabel">Prizes</span>
+      </a>
       <button type="button" class="tool" id="fullscreenBtn" title="Fullscreen (F)">
         <span class="tool-label">Fullscreen</span>
       </button>
@@ -87,33 +90,13 @@
     <ol class="winners-list" id="winnersList"></ol>
   </aside>
 
-  <!-- Guest welcome: a message plus a carousel of portraits. -->
-  <section class="welcome" id="welcomePanel" aria-labelledby="welcomeTitle" hidden>
-    <div class="welcome-card">
-      <button type="button" class="welcome-close" id="welcomeClose" aria-label="Close welcome">&times;</button>
-
-      <div class="welcome-figure" id="welcomeFigure" aria-live="off">
-        <ol class="welcome-track" id="welcomeTrack"></ol>
-        <button type="button" class="welcome-nav welcome-prev" id="welcomePrev" aria-label="Previous photo">&#8249;</button>
-        <button type="button" class="welcome-nav welcome-next" id="welcomeNext" aria-label="Next photo">&#8250;</button>
-        <div class="welcome-dots" id="welcomeDots" role="tablist" aria-label="Choose a photo"></div>
-      </div>
-
-      <div class="welcome-body">
-        <p class="welcome-eyebrow" id="welcomeTitle">Our special guest</p>
-        <p class="welcome-message" id="welcomeMessage"></p>
-        <p class="welcome-caption" id="welcomeCaption"></p>
-      </div>
-    </div>
-  </section>
-
   <footer class="board-footer">
     <p id="boardFooter"></p>
   </footer>
 
   <script src="api.js" defer></script>
+  <script src="theme.js" defer></script>
   <script src="confetti.js" defer></script>
-  <script src="welcome.js" defer></script>
   <script src="script.js" defer></script>
 </body>
 </html>

@@ -16,7 +16,6 @@ from pyserver.routes import api
 from pyserver.settings import DEFAULT_ADMIN_PASSWORD, DEFAULT_ADMIN_USERNAME, ensure_admin_credentials
 
 app = Flask(__name__, static_folder=None)
-app.secret_key = session_secret()
 app.permanent_session_lifetime = timedelta(seconds=SESSION_TTL_SECONDS)
 app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax")
 app.register_blueprint(api, url_prefix="/api")
@@ -40,6 +39,17 @@ def admin():
     return send_from_directory(ROOT_DIR, "admin.html")
 
 
+# Extensionless routes for the screens an organiser links to or projects.
+@app.get("/welcome")
+def welcome_page():
+    return send_from_directory(ROOT_DIR, "welcome.html")
+
+
+@app.get("/prizes")
+def prizes_page():
+    return send_from_directory(ROOT_DIR, "prizes.html")
+
+
 @app.get("/<path:filename>")
 def serve_static(filename: str):
     # appsettings.json carries the hashed admin credentials and winners.json the
@@ -54,6 +64,12 @@ def serve_static(filename: str):
     return send_from_directory(ROOT_DIR, filename)
 
 
+def configure_session_key() -> None:
+    """Derived from the stored credential so every worker signs alike."""
+    credential = ensure_admin_credentials()["settingsFile"].get("adminAuth")
+    app.secret_key = session_secret(credential)
+
+
 def report_credential_status() -> None:
     try:
         status = ensure_admin_credentials()
@@ -65,7 +81,9 @@ def report_credential_status() -> None:
         print(f"⚠️  Could not prepare admin credentials: {error}")
 
 
+configure_session_key()
 report_credential_status()
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))

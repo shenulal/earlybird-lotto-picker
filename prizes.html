@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>Prizes</title>
+  <link rel="stylesheet" href="fonts/fonts.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="feature-page">
+  <div class="board-backdrop" aria-hidden="true"></div>
+  <img class="board-logo" id="boardLogo" alt="" hidden>
+
+  <header class="board-header">
+    <div class="board-identity">
+      <h1 class="event-name" id="eventName">Pickora</h1>
+      <p class="organization-name" id="organizationName" hidden></p>
+    </div>
+    <nav class="board-tools" aria-label="Page controls">
+      <a class="tool" id="welcomeLink" href="/welcome" hidden><span class="tool-label">Welcome</span></a>
+      <a class="tool tool-primary" href="/"><span class="tool-label" id="backLabel">Back to the draw</span></a>
+    </nav>
+  </header>
+
+  <main class="feature" aria-labelledby="featureHeading">
+    <header class="feature-intro">
+      <h2 class="feature-eyebrow" id="featureHeading">Prizes</h2>
+      <p class="feature-lede" id="prizesIntro" hidden></p>
+    </header>
+    <ol class="prize-list" id="prizeList"></ol>
+    <p class="feature-empty" id="prizesEmpty" hidden>No prizes have been added yet.</p>
+  </main>
+
+  <footer class="board-footer"><p id="boardFooter"></p></footer>
+
+  <script>window.PICKORA_PAGE = 'prizes';</script>
+  <script src="api.js" defer></script>
+  <script src="theme.js" defer></script>
+  <script src="carousel.js" defer></script>
+  <script src="feature-page.js" defer></script>
+</body>
+</html>

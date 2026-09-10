@@ -35,6 +35,10 @@
     winnersList: document.getElementById('winnersList'),
     winnersBadge: document.getElementById('winnersBadge'),
     organiserLink: document.getElementById('organiserLink'),
+    welcomeLink: document.getElementById('welcomeLink'),
+    welcomeLinkLabel: document.getElementById('welcomeLinkLabel'),
+    prizesLink: document.getElementById('prizesLink'),
+    prizesLinkLabel: document.getElementById('prizesLinkLabel'),
     newDrawBtn: document.getElementById('newDrawBtn'),
     newDrawLabel: document.getElementById('newDrawLabel'),
     stats: document.getElementById('stats'),
@@ -50,18 +54,6 @@
     notice: document.getElementById('notice'),
     confettiCanvas: document.getElementById('confettiCanvas'),
 
-    welcomePanel: document.getElementById('welcomePanel'),
-    welcomeToggle: document.getElementById('welcomeToggle'),
-    welcomeToggleLabel: document.getElementById('welcomeToggleLabel'),
-    welcomeClose: document.getElementById('welcomeClose'),
-    welcomeFigure: document.getElementById('welcomeFigure'),
-    welcomeTrack: document.getElementById('welcomeTrack'),
-    welcomeDots: document.getElementById('welcomeDots'),
-    welcomePrev: document.getElementById('welcomePrev'),
-    welcomeNext: document.getElementById('welcomeNext'),
-    welcomeTitle: document.getElementById('welcomeTitle'),
-    welcomeMessage: document.getElementById('welcomeMessage'),
-    welcomeCaption: document.getElementById('welcomeCaption'),
   };
 
   const state = {
@@ -78,7 +70,6 @@
   };
 
   let confetti = null;
-  let welcome = null;
 
   /* ------------------------------------------------------------- utilities */
 
@@ -124,32 +115,6 @@
 
   /* ------------------------------------------------------------- rendering */
 
-  function applyBranding(settings) {
-    const { branding, ui } = settings;
-    const root = document.documentElement;
-
-    root.style.setProperty('--accent', ui.primaryColor);
-    root.style.setProperty('--stage-backdrop', ui.backgroundColor || 'none');
-    root.style.setProperty('--backdrop-image', branding.background.src ? `url('${encodeURI(branding.background.src)}')` : 'none');
-    root.style.setProperty('--backdrop-fit', branding.background.fit === 'tile' ? 'auto' : branding.background.fit);
-    root.style.setProperty('--backdrop-repeat', branding.background.fit === 'tile' ? 'repeat' : 'no-repeat');
-    root.style.setProperty('--backdrop-overlay', String(branding.background.overlayOpacity / 100));
-    root.style.setProperty('--logo-max-height', `${branding.logo.maxHeight}px`);
-
-    const hasLogo = Boolean(branding.logo.src) && branding.logo.position !== 'hidden';
-    elements.logo.hidden = !hasLogo;
-    if (hasLogo) {
-      elements.logo.src = branding.logo.src;
-      elements.logo.alt = settings.organizationName || settings.eventName;
-      document.body.dataset.logoPosition = branding.logo.position;
-      // Explicit dimensions keep the logo from shifting the layout as it loads.
-      if (branding.logo.width && branding.logo.height) {
-        elements.logo.width = branding.logo.width;
-        elements.logo.height = branding.logo.height;
-      }
-    }
-  }
-
   function applyCopy(settings) {
     elements.startBtn.querySelector('.control-text').textContent = settings.copy.startButton;
     elements.stopBtn.querySelector('.control-text').textContent = settings.copy.stopButton;
@@ -157,7 +122,8 @@
     elements.winnersHeading.textContent = settings.copy.winnersHeading;
     elements.fullscreenBtn.querySelector('.tool-label').textContent = settings.copy.fullscreenButton;
     elements.organiserLink.textContent = settings.copy.organiserLink;
-    elements.welcomeToggleLabel.textContent = settings.copy.welcomeToggle;
+    elements.welcomeLinkLabel.textContent = settings.copy.welcomeToggle;
+    elements.prizesLinkLabel.textContent = settings.copy.prizesToggle;
     elements.newDrawLabel.textContent = settings.copy.newDrawButton;
     elements.loadingText.textContent = settings.copy.loading;
     elements.footer.textContent = settings.copy.footer;
@@ -172,17 +138,22 @@
     state.labels = settings.data.fields.reduce((map, field) => ({ ...map, [field.key]: field.label }), {});
 
     document.title = settings.eventName;
-    document.documentElement.lang = settings.locale || 'en';
-    document.documentElement.dir = settings.direction;
     document.body.dataset.align = settings.ui.boardAlignment;
-
-    elements.eventName.textContent = settings.eventName;
-    elements.organizationName.textContent = settings.organizationName || '';
-    elements.organizationName.hidden = !(settings.ui.showOrganizationName && settings.organizationName);
     elements.stats.hidden = !settings.ui.showStats;
 
-    applyBranding(settings);
+    global.applyPickoraTheme(settings, {
+      logo: elements.logo,
+      eventName: elements.eventName,
+      organizationName: elements.organizationName,
+      footer: elements.footer,
+    });
     applyCopy(settings);
+
+    // Each screen is linked only when it has something to show.
+    const hasWelcome = settings.welcome.enabled && (settings.welcome.images.length > 0 || settings.welcome.message);
+    const hasPrizes = settings.prizes.enabled && settings.prizes.items.length > 0;
+    elements.welcomeLink.hidden = !hasWelcome;
+    elements.prizesLink.hidden = !hasPrizes;
     // Shown to everyone: hiding it made the option look absent. Permission
     // decides what a click does, not whether the control exists.
     elements.newDrawBtn.dataset.locked = String(!state.canReset);
@@ -193,22 +164,6 @@
 
     confetti = global.createConfetti(elements.confettiCanvas, { palette: settings.animation.confettiPalette });
 
-    if (!welcome) {
-      welcome = global.createWelcome({
-        panel: elements.welcomePanel,
-        toggle: elements.welcomeToggle,
-        close: elements.welcomeClose,
-        figure: elements.welcomeFigure,
-        track: elements.welcomeTrack,
-        dots: elements.welcomeDots,
-        prev: elements.welcomePrev,
-        next: elements.welcomeNext,
-        title: elements.welcomeTitle,
-        message: elements.welcomeMessage,
-        caption: elements.welcomeCaption,
-      });
-    }
-    welcome.apply(settings.welcome);
   }
 
   function setWinnersPanel(isOpen) {
@@ -261,12 +216,23 @@
       </p>`;
   }
 
+  /** The prize at this rank, when the organiser has listed one. */
+  function prizeFor(prizeNumber) {
+    const { prizes } = state.settings;
+    if (!prizes.showOnWinner || !prizes.enabled) return null;
+    return prizes.items[prizeNumber - 1] || null;
+  }
+
   function renderWinnerCard(winner, animation, isReplay = false) {
     const eyebrow = isReplay ? copy('lastWinnerEyebrow') : copy('winnerEyebrow');
+    const prize = prizeFor(winner.prizeNumber);
+    const rank = prize ? prize.label : `${copy('prizeLabel')} ${winner.prizeNumber}`;
+
     elements.reel.innerHTML = `
       <div class="winner-card ${animation}">
-        <p class="winner-eyebrow">${escapeHtml(eyebrow)} &middot; ${escapeHtml(copy('prizeLabel'))} ${escapeHtml(winner.prizeNumber)}</p>
+        <p class="winner-eyebrow">${escapeHtml(eyebrow)} &middot; ${escapeHtml(rank)}</p>
         ${renderSlot('card', winner.record)}
+        ${prize ? `<p class="winner-prize">${escapeHtml(prize.name)}</p>` : ''}
       </div>`;
   }
 
@@ -299,9 +265,6 @@
 
   function startSlot() {
     if (state.status !== STATUS.IDLE) return;
-
-    // The overlay sits over the stage; drawing takes the screen back.
-    if (welcome && welcome.isOpen() && state.settings.welcome.placement === 'overlay') welcome.close();
 
     if (!state.stats || state.stats.isComplete) {
       renderIdle();
@@ -492,9 +455,9 @@
       const key = event.key.toLowerCase();
       if (key === 'w') setWinnersPanel(elements.winnersPanel.hidden);
       if (key === 'f') toggleFullscreen();
-      if (key === 'g' && welcome) welcome.toggle();
+      if (key === 'g' && !elements.welcomeLink.hidden) global.location.assign('/welcome');
+      if (key === 'p' && !elements.prizesLink.hidden) global.location.assign('/prizes');
       if (key === 'n') startNewDraw();
-      if (event.key === 'Escape' && welcome && welcome.isOpen()) welcome.close();
     });
   }
 
