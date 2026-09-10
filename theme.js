@@ -76,38 +76,61 @@
     );
   }
 
-  /** True when a screen has something to show; drives the dimmed state. */
+  /**
+   * Whether the organiser has asked for this screen at all.
+   *
+   * These are the "Show the welcome screen" and "Show the prize screen"
+   * switches in the console, ticked by default. Unticking one is a deliberate
+   * choice about what the audience sees, so the link goes rather than dims.
+   */
+  function isOffered(key, settings) {
+    if (key === 'welcome') return settings.welcome.enabled;
+    if (key === 'prizes') return settings.prizes.enabled;
+    return true;
+  }
+
+  /** True when an offered screen actually has something on it. */
   function hasContent(key, settings) {
     if (key === 'welcome') {
-      return settings.welcome.enabled && (settings.welcome.images.length > 0 || Boolean(settings.welcome.message));
+      return settings.welcome.images.length > 0 || Boolean(settings.welcome.message);
     }
     if (key === 'prizes') {
-      return settings.prizes.enabled && settings.prizes.items.length > 0;
+      return settings.prizes.items.length > 0;
     }
     return true;
   }
 
   /**
-   * The same three screens on every page, with the current one marked.
+   * The screens the organiser has switched on, with the current one marked.
    *
-   * A screen that is not set up yet is dimmed rather than hidden: hiding it
-   * makes the feature look absent, and the operator still needs a way in to
-   * see that there is nothing there.
+   * A screen that is switched on but not filled in yet is dimmed rather than
+   * dropped: the operator still needs a way in to see that there is nothing
+   * there. The screen being viewed always appears, even if it was switched
+   * off, so nobody who followed a link ends up with no way back.
    */
   function renderScreenNav(current, settings) {
     const mount = document.getElementById('screenNav');
     if (!mount) return;
 
-    mount.innerHTML = SCREENS.map((screen) => {
-      const label = settings.copy[screen.copyKey];
-      const isCurrent = screen.key === current;
-      const empty = !hasContent(screen.key, settings);
+    const visible = SCREENS.filter(
+      (screen) => screen.key === current || isOffered(screen.key, settings)
+    );
 
-      return `<a class="screen-link" href="${screen.href}"
+    mount.innerHTML = visible
+      .map((screen) => {
+        const label = settings.copy[screen.copyKey];
+        const isCurrent = screen.key === current;
+        const empty = !hasContent(screen.key, settings);
+
+        return `<a class="screen-link" href="${screen.href}"
         ${isCurrent ? 'aria-current="page"' : ''}
         ${empty ? 'data-empty="true" title="Nothing set up for this screen yet"' : ''}
       >${escapeHtml(label)}</a>`;
-    }).join('');
+      })
+      .join('');
+
+    // With only the board left there is nothing to navigate between.
+    mount.hidden = visible.length < 2;
   }
 
   global.applyPickoraTheme = applyTheme;

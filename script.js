@@ -24,9 +24,6 @@
   };
   const REVEAL_ANIMATIONS = ['reveal-rise', 'reveal-flip', 'reveal-zoom', 'reveal-swing', 'reveal-drop'];
 
-  // Enough entries that the strip reads as a reel rather than a short loop.
-  const REEL_ITEMS = 12;
-
   const prefersReducedMotion = global.matchMedia('(prefers-reduced-motion: reduce)');
 
   const elements = {
@@ -67,12 +64,13 @@
     stats: null,
     status: STATUS.IDLE,
     canReset: false,
-    reelTimerId: null,
     rollStartedAt: 0,
     stopRequested: false,
+    deal: () => null,
   };
 
   let confetti = null;
+  let reel = null;
 
   /* ------------------------------------------------------------- utilities */
 
@@ -85,6 +83,66 @@
 
   function copy(key) {
     return (state.settings && state.settings.copy[key]) || '';
+  }
+
+  /**
+   * A whole number below `bound`, every value equally likely.
+   *
+   * Rejection sampling rather than a plain remainder, which would favour the
+   * low end of the range whenever the range does not divide evenly.
+   */
+  function randomBelow(bound) {
+    const buffer = new Uint32Array(1);
+    const limit = Math.floor(0x100000000 / bound) * bound;
+    let value = limit;
+    while (value >= limit) {
+      global.crypto.getRandomValues(buffer);
+      [value] = buffer;
+    }
+    return value % bound;
+  }
+
+  /**
+   * Deals entries for the reel from a shuffled deck.
+   *
+   * Picking independently at random each time would let some entries never
+   * appear while others came round repeatedly, which looks like the board
+   * favours them. A shuffle shows every remaining entry once before any of
+   * them repeats, so all of them get the same time on screen. The winner
+   * itself is drawn by the server, uniformly, and never here.
+   */
+  function createDeck(pool) {
+    let deck = [];
+
+    return function deal() {
+      if (pool.length === 0) return null;
+
+      if (deck.length === 0) {
+        deck = pool.slice();
+        for (let index = deck.length - 1; index > 0; index -= 1) {
+          const swap = randomBelow(index + 1);
+          const held = deck[index];
+          deck[index] = deck[swap];
+          deck[swap] = held;
+        }
+      }
+
+      return deck.pop();
+    };
+  }
+
+  /**
+   * Puts markup on the stage.
+   *
+   * Anything that writes here replaces the reel, so the reel is torn down
+   * first — otherwise its animation frames keep painting a detached element.
+   */
+  function setStage(html) {
+    if (reel) {
+      reel.destroy();
+      reel = null;
+    }
+    elements.reel.innerHTML = html;
   }
 
   function showNotice(message, tone = 'info') {
@@ -205,11 +263,11 @@
   }
 
   function renderMessage(title, detail = '') {
-    elements.reel.innerHTML = `
+    setStage(`
       <p class="stage-message">
         <span class="stage-message-title">${escapeHtml(title)}</span>
         ${detail ? `<span class="stage-message-detail">${escapeHtml(detail)}</span>` : ''}
-      </p>`;
+      </p>`);
   }
 
   /** The prize at this rank, when the organiser has listed one. */
@@ -239,7 +297,7 @@
    */
   function renderPrizeAnnouncement(prize) {
     const image = prize.images[0];
-    elements.reel.innerHTML = `
+    setStage(`
       <div class="prize-call reveal-rise">
         <p class="prize-call-eyebrow">${escapeHtml(copy('upNextLabel'))} &middot; ${escapeHtml(prize.label)}</p>
         <div class="prize-call-body">
@@ -251,7 +309,7 @@
           </span>
         </div>
         <p class="prize-call-prompt">${escapeHtml(copy('drawPrompt'))}</p>
-      </div>`;
+      </div>`);
   }
 
   function renderWinnerCard(winner, animation, isReplay = false) {
@@ -259,12 +317,12 @@
     const prize = prizeFor(winner.prizeNumber);
     const rank = prize ? prize.label : `${copy('prizeLabel')} ${winner.prizeNumber}`;
 
-    elements.reel.innerHTML = `
+    setStage(`
       <div class="winner-card ${animation}">
         <p class="winner-eyebrow">${escapeHtml(eyebrow)} &middot; ${escapeHtml(rank)}</p>
         ${renderSlot('card', winner.record)}
         ${prize ? `<p class="winner-prize">${escapeHtml(prize.name)}</p>` : ''}
-      </div>`;
+      </div>`);
   }
 
   function renderIdle() {
@@ -296,13 +354,6 @@
 
   /* ------------------------------------------------------------ draw cycle */
 
-  function stopReel() {
-    if (state.reelTimerId) {
-      clearInterval(state.reelTimerId);
-      state.reelTimerId = null;
-    }
-  }
-
   function startSlot() {
     if (state.status !== STATUS.IDLE && state.status !== STATUS.ANNOUNCING) return;
 
@@ -333,67 +384,44 @@
     startReel();
   }
 
-  /** One strip item: a full slot render of a randomly chosen entry. */
-  function reelItem() {
-    const record = state.pool[Math.floor(Math.random() * state.pool.length)];
-    return `<li class="reel-item">${renderSlot('reel', record, 'slot-rolling')}</li>`;
+  /** Hands the reel a fresh shuffle of whoever is still in the draw. */
+  function startReel() {
+    state.deal = createDeck(state.pool);
+
+    setStage('');
+    reel = global.createPickoraReel(elements.reel, {
+      renderItem: (record) => renderSlot('reel', record, 'slot-rolling'),
+      deal: () => state.deal(),
+      reducedMotion: prefersReducedMotion.matches,
+    });
+    reel.start(state.settings.animation.rollingSpeed);
   }
 
   /**
-   * Spins the reel as a continuously translating strip rather than swapping
-   * the text on a timer. Replacing the element on every tick restarts its
-   * transition, which reads as a blink; a single transform animation stays on
-   * the compositor and looks smooth at any configured speed.
+   * Brings the reel to rest and reveals who it stopped on.
+   *
+   * The reel starts slowing on this call, not after a wait — the configured
+   * minimum roll is spent decelerating instead of holding the operator's
+   * keypress. The draw is asked for at the same moment, so the answer is
+   * usually in hand while the reel is still slowing and it can come to rest
+   * on the winner itself.
    */
-  function startReel() {
-    const speed = state.settings.animation.rollingSpeed;
-
-    // The list is rendered twice so translating by exactly half loops seamlessly.
-    const items = Array.from({ length: REEL_ITEMS }, reelItem).join('');
-    elements.reel.innerHTML = `
-      <div class="reel-window">
-        <ul class="reel-strip" style="--reel-duration:${REEL_ITEMS * speed}ms">${items}${items}</ul>
-      </div>`;
-
-    const strip = elements.reel.querySelector('.reel-strip');
-
-    if (prefersReducedMotion.matches) {
-      // No travel: step the values slowly instead, so the board still reads
-      // as live without any sustained motion.
-      strip.classList.add('is-static');
-      state.reelTimerId = setInterval(() => {
-        const first = strip.querySelector('.reel-item');
-        if (first) first.outerHTML = reelItem();
-      }, Math.max(speed * 8, 400));
-      return;
-    }
-
-    // Refresh the values each time the loop comes around, so a small pool
-    // does not visibly repeat. The swap happens at the seam, out of sight.
-    strip.addEventListener('animationiteration', () => {
-      const refreshed = Array.from({ length: REEL_ITEMS }, reelItem).join('');
-      strip.innerHTML = refreshed + refreshed;
-    });
-  }
-
   async function stopSlot() {
-    if (state.status !== STATUS.ROLLING || state.stopRequested) return;
-
-    // Honour the configured minimum spin so an early click still reads as a
-    // draw rather than an instant cut to the result.
-    const elapsed = Date.now() - state.rollStartedAt;
-    const remaining = Math.max(0, state.settings.draw.minimumRollMs - elapsed);
+    if (state.status !== STATUS.ROLLING || state.stopRequested || !reel) return;
 
     state.stopRequested = true;
     elements.stopBtn.disabled = true;
 
-    if (remaining > 0) await new Promise((resolve) => setTimeout(resolve, remaining));
+    const elapsed = Date.now() - state.rollStartedAt;
+    const settling = reel.settle(state.settings.draw.minimumRollMs - elapsed);
 
-    stopReel();
-    setStatus(STATUS.REVEALING);
+    const drawing = api.drawWinner();
+    // Handled by the await below; this branch only feeds the reel.
+    drawing.then((result) => reel && reel.land(result.winner.record)).catch(() => {});
 
     try {
-      const result = await api.drawWinner();
+      const [result] = await Promise.all([drawing, settling]);
+      setStatus(STATUS.REVEALING);
       await revealWinner(result.winner);
       state.stats = result.stats;
       await refreshState();
@@ -410,11 +438,11 @@
     const { animation } = state.settings;
     const revealAnimation = REVEAL_ANIMATIONS[(winner.prizeNumber - 1) % REVEAL_ANIMATIONS.length];
 
-    elements.reel.innerHTML = `
+    setStage(`
       <div class="winner-call ${revealAnimation}">
         <p class="winner-eyebrow">${escapeHtml(copy('winnerEyebrow'))}</p>
         ${renderSlot('call', winner.record)}
-      </div>`;
+      </div>`);
 
     return new Promise((resolve) => {
       setTimeout(() => {
@@ -494,6 +522,8 @@
 
     document.addEventListener('keydown', (event) => {
       if (/^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName) || event.metaKey || event.ctrlKey || event.altKey) return;
+      // A held key repeats; one press is one action.
+      if (event.repeat) return;
 
       if (event.code === 'Space' || event.key === 'Enter') {
         event.preventDefault();

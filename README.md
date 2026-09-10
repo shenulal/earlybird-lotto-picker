@@ -280,7 +280,7 @@ lines, and each line names a field and an emphasis level:
 
 | Slot | When it shows |
 |---|---|
-| **While spinning** | The reel, cycling through remaining entries |
+| **While spinning** | The reel, dealing through the remaining entries |
 | **Winner announcement** | The first reveal, held for the announcement delay |
 | **Winner card** | The full result |
 | **Winners list row** | One row per winner in the side panel |
@@ -350,10 +350,14 @@ projected on a second screen, linked to, or left open on a foyer display:
 | Prizes | `/prizes` |
 
 All three carry the same navigation in the same place, with the current screen
-marked. A screen with nothing set up yet is dimmed but still reachable — so it
-never looks as though the feature is missing. On the board, <kbd>G</kbd> opens
-the welcome and <kbd>P</kbd> the prizes; the console sidebar opens any of them
-in a new tab.
+marked. **Show the welcome screen** and **Show the prize screen** decide which
+links appear — both ticked by default, so a new install has all three. Unticking
+one is a deliberate choice about what the audience sees, so the link goes; a
+screen that is switched on but not filled in yet is dimmed instead, and stays
+reachable, so it never looks as though the feature is missing. The screen being
+viewed always appears, even when switched off, so a link followed from elsewhere
+is never a dead end. On the board, <kbd>G</kbd> opens the welcome and
+<kbd>P</kbd> the prizes; the console sidebar opens any of them in a new tab.
 
 ### Guest welcome
 
@@ -393,7 +397,7 @@ With the prize announced beforehand, a draw runs in three beats:
 1. **Up next · Third prize** — the position, the prize, its photo and
    description, held on screen while the host builds it up.
 2. **Start** rolls the reel for that prize.
-3. **Stop** reveals the winner, named with the prize they have won.
+3. **Stop** slows it to rest on the winner, who is then named with their prize.
 
 Start then brings up the next prize, so the winner stays on screen for as long
 as the room needs. With announcements hidden, Start rolls straight away and the
@@ -401,6 +405,34 @@ prize is revealed only with the winner.
 
 Nothing about the list is fixed: add, remove and reorder as many as the event
 needs.
+
+---
+
+## The reel
+
+The reel is a tape of entries that spins up, cruises and — the moment Stop is
+pressed — slows to rest on a whole entry. Three things follow from that:
+
+- **Stop is felt at once.** The slowdown begins on the keypress, one frame
+  later. `draw.minimumRollMs` is spent decelerating rather than holding the reel
+  at full speed, so pressing Stop early gives a longer, gentler stop instead of
+  a wait with no feedback.
+- **It comes to rest on the winner.** The draw is requested the instant Stop is
+  pressed, so the answer is usually in hand while the reel is still slowing and
+  it can land on the entry that actually won, rather than on a stranger who is
+  then replaced.
+- **Every entry gets the same time on screen.** Entries are dealt from a
+  shuffled deck, so all of them appear once before any of them repeats.
+  Sampling at random each frame would let some never appear at all, which looks
+  like the board favours the ones it keeps showing.
+
+The winner itself is never chosen in the browser. The server draws it with
+`crypto.randomInt` (Node) or `secrets.randbelow` (Flask) — uniform over the
+remaining pool, and not something a viewer can influence.
+
+Speed comes from `animation.rollingSpeed`, in milliseconds per entry. With
+`prefers-reduced-motion` the tape does not travel at all: the entry in the
+window steps on a slow timer instead.
 
 ---
 
@@ -419,7 +451,7 @@ needs.
 | `display.autoStopWhenPrizesExhausted` | Stop once every prize is awarded |
 | `draw.publicDrawEnabled` | Turn off to freeze the public board between rounds |
 | `draw.requireAuthForDraw` | Only a signed-in browser may draw |
-| `draw.minimumRollMs` | Stop is held until the reel has run this long |
+| `draw.minimumRollMs` | Shortest a roll may last; an early Stop is spent slowing down rather than waiting |
 | `animation.rollingSpeed` | Milliseconds per entry on the reel |
 | `animation.winnerAnnouncementDelay` | Pause between the announcement and the winner card |
 | `animation.confettiStartDelay`, `confettiDuration`, `confettiCount` | Confetti timing and density |

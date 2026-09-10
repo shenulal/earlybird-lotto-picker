@@ -272,7 +272,9 @@ def _normalize_prizes(raw: Any) -> Dict[str, Any]:
         unique.append(item)
 
     return {
-        "enabled": _as_bool(source.get("enabled"), False),
+        # Ticked by default: the screen is part of the product, and an organiser
+        # who does not want it in the board's navigation unticks it.
+        "enabled": _as_bool(source.get("enabled"), True),
         "heading": _as_text(source.get("heading"), "Prizes", 120),
         "intro": _as_text(source.get("intro"), "", 400),
         "showOnWinner": _as_bool(source.get("showOnWinner"), True),
@@ -291,7 +293,8 @@ def _normalize_welcome(raw: Any) -> Dict[str, Any]:
     images = _normalize_images(source.get("images"), MAX_WELCOME_IMAGES)
 
     return {
-        "enabled": _as_bool(source.get("enabled"), False),
+        # Ticked by default, as for the prize screen.
+        "enabled": _as_bool(source.get("enabled"), True),
         "showOnLoad": _as_bool(source.get("showOnLoad"), True),
         "placement": _as_choice(source.get("placement"), WELCOME_PLACEMENTS, "overlay"),
         "title": _as_text(source.get("title"), "Our special guest", 120),

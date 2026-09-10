@@ -225,7 +225,9 @@ function normalizePrizes(input) {
   });
 
   return {
-    enabled: asBoolean(source.enabled, false),
+    // Ticked by default: the screen is part of the product, and an organiser
+    // who does not want it in the board's navigation unticks it.
+    enabled: asBoolean(source.enabled, true),
     heading: asText(source.heading, 'Prizes', 120),
     intro: asText(source.intro, '', 400),
     showOnWinner: asBoolean(source.showOnWinner, true),
@@ -261,7 +263,8 @@ function normalizeWelcome(input) {
   const images = normalizeImages(source.images, MAX_WELCOME_IMAGES);
 
   return {
-    enabled: asBoolean(source.enabled, false),
+    // Ticked by default, as for the prize screen.
+    enabled: asBoolean(source.enabled, true),
     showOnLoad: asBoolean(source.showOnLoad, true),
     placement: asChoice(source.placement, WELCOME_PLACEMENTS, 'overlay'),
     title: asText(source.title, 'Our special guest', 120),
