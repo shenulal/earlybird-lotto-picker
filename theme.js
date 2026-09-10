@@ -19,6 +19,14 @@
     root.style.setProperty('--backdrop-repeat', branding.background.fit === 'tile' ? 'repeat' : 'no-repeat');
     root.style.setProperty('--backdrop-overlay', String(branding.background.overlayOpacity / 100));
     root.style.setProperty('--logo-max-height', `${branding.logo.maxHeight}px`);
+    /* A wide logo needs more room beside the event name than a square one, so
+       the header reserves its rendered width — bounded by the same cap the
+       image itself is bounded by. */
+    const aspect = branding.logo.width && branding.logo.height ? branding.logo.width / branding.logo.height : 1;
+    root.style.setProperty(
+      '--logo-reserve',
+      `min(calc(var(--logo-max-height) * ${aspect.toFixed(3)}), 38vw, 420px)`
+    );
 
     root.lang = settings.locale || 'en';
     root.dir = settings.direction;

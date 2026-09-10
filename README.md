@@ -330,8 +330,11 @@ Under **Branding** you can upload a **logo** and a **background**.
   fit mode (cover, contain, fill, tile) and a darkening overlay that keeps large
   text readable over busy artwork.
 
-If no background is uploaded the board falls back to `Background.png`, so an
-existing deployment looks unchanged.
+Until an organiser uploads their own, the board wears the bundled Pickora
+placeholders — `pickora-logo.png` and `pickora-background.jpg`, both regenerated
+by `tools/make-default-artwork.py`. The event artwork that used to ship as the
+default now lives in [`archive/`](archive/README.md), and a settings file that
+still names it is remapped to the placeholder when it is read.
 
 ---
 
@@ -537,7 +540,9 @@ pickora/
 ├── tickets.json / appsettings.json       # data
 ├── assets/                               # uploaded logo, backdrop, guest photos
 ├── windows/                              # one-click installer and shortcuts
-└── Background.png / logo.jpg             # bundled artwork
+├── tools/make-default-artwork.py         # regenerates the placeholder artwork
+├── archive/                              # the event artwork this replaced
+└── pickora-logo.png / -background.jpg    # bundled placeholder identity
 ```
 
 ## License

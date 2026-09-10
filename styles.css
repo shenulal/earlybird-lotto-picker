@@ -17,6 +17,10 @@
   --backdrop-repeat: no-repeat;
   --backdrop-overlay: 0.45;
   --logo-max-height: 96px;
+  /* How much horizontal room the logo actually takes at that height. Set from
+     the uploaded file's aspect ratio in theme.js; a square is assumed until
+     then, which is what a logo with no recorded dimensions gets. */
+  --logo-reserve: var(--logo-max-height);
 
   /* --- derived from the accent, so any hue stays coherent -------------- */
   --accent-glow: color-mix(in oklab, var(--accent) 42%, transparent);
@@ -177,8 +181,8 @@ body[data-logo-position='bottom-center'] .board-logo {
 }
 
 /* The header would collide with a logo pinned to the same corner. */
-body[data-logo-position='top-left'] .board-header { padding-left: calc(var(--logo-max-height) + 46px); }
-body[data-logo-position='top-right'] .board-header { padding-right: calc(var(--logo-max-height) + 46px); }
+body[data-logo-position='top-left'] .board-header { padding-left: calc(var(--logo-reserve) + 46px); }
+body[data-logo-position='top-right'] .board-header { padding-right: calc(var(--logo-reserve) + 46px); }
 
 /* A centred logo needs the whole strip below it, and the stage below that. */
 body[data-logo-position='top-center'] .board-header {
