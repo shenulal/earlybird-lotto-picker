@@ -139,6 +139,50 @@
     mount.hidden = visible.length < 2;
   }
 
+  /* One console, however many times the link is pressed. */
+  const CONSOLE_WINDOW = 'pickora-console';
+
+  /**
+   * Sends every organiser link to the same tab.
+   *
+   * The named target alone reuses the tab, but it also re-navigates it, which
+   * would throw away whatever the organiser was part-way through typing. So
+   * the tab is claimed empty first: a console already open is simply brought
+   * forward untouched, and only a freshly created one is pointed at /admin.
+   *
+   * If the browser refuses to open a window at all, nothing is prevented and
+   * the link's own named target still does the reuse.
+   */
+  function bindConsoleLinks() {
+    document.addEventListener('click', (event) => {
+      const link = event.target.closest && event.target.closest('a[data-console-link]');
+      if (!link) return;
+      // Leave the modified clicks alone: those are the reader asking for a new
+      // tab, a new window or a background tab on purpose.
+      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+
+      let consoleWindow = null;
+      try {
+        consoleWindow = global.open('', CONSOLE_WINDOW);
+      } catch (_error) {
+        consoleWindow = null;
+      }
+      if (!consoleWindow) return;
+
+      event.preventDefault();
+      try {
+        // A tab that is already showing the console keeps its state.
+        if (consoleWindow.location.href === 'about:blank') consoleWindow.location.href = link.href;
+      } catch (_error) {
+        // Reading across origins is refused; sending it to the console is safe.
+        consoleWindow.location.href = link.href;
+      }
+      consoleWindow.focus();
+    });
+  }
+
+  bindConsoleLinks();
+
   global.applyPickoraTheme = applyTheme;
   global.renderPickoraNav = renderScreenNav;
 })(window, document);

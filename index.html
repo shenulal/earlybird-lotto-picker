@@ -38,8 +38,12 @@
       <button type="button" class="tool" id="fullscreenBtn" title="Fullscreen (F)">
         <span class="tool-label">Fullscreen</span>
       </button>
-      <!-- FIX: opens in its own tab so the board being projected stays put. -->
-      <a class="tool tool-quiet" id="organiserLink" href="/admin" target="_blank" rel="noopener">Organiser</a>
+      <!-- Opens in its own tab so the board being projected stays put, and in
+           a *named* tab so a second click returns to the console already open
+           rather than stacking up another. rel="noopener" is deliberately
+           absent: it forces a fresh context every time, which would defeat
+           that, and the console is our own same-origin page. -->
+      <a class="tool tool-quiet" id="organiserLink" href="/admin" target="pickora-console" data-console-link>Organiser</a>
     </nav>
   </header>
 
