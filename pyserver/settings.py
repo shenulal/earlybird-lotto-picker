@@ -561,6 +561,9 @@ def normalize_app_settings(raw: Any) -> Dict[str, Any]:
             # NEW: on by default, so a board configured before this existed
             # keeps showing the event name exactly as it did.
             "showEventName": _as_bool(ui.get("showEventName"), True),
+            # NEW: whether the board offers "New draw" at all. On by default,
+            # for the same reason. Who may *use* it is draw.allowResetFromBoard.
+            "showNewDrawButton": _as_bool(ui.get("showNewDrawButton"), True),
             "showOrganizationName": _as_bool(ui.get("showOrganizationName"), True),
             "showWinnersPanel": _as_bool(ui.get("showWinnersPanel"), False),
             "showStats": _as_bool(ui.get("showStats"), False),

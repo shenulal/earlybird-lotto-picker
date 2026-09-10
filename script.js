@@ -64,6 +64,7 @@
     stats: null,
     status: STATUS.IDLE,
     canReset: false,
+    canStartNewDraw: true,   // NEW
     rollStartedAt: 0,
     stopRequested: false,
     deal: () => null,
@@ -208,8 +209,13 @@
     });
     applyCopy(settings);
     global.renderPickoraNav('board', settings);
-    // Shown to everyone: hiding it made the option look absent. Permission
-    // decides what a click does, not whether the control exists.
+    /* NEW: the organiser decides whether the board offers a new draw at all.
+       When it is offered it is shown to everyone, dimmed rather than absent if
+       they may not use it — permission decides what a click does, not whether
+       the control exists. Switching it off is a different statement: this
+       board does not start draws, so the control is not there to be found. */
+    state.canStartNewDraw = settings.ui.showNewDrawButton !== false;
+    elements.newDrawBtn.hidden = !state.canStartNewDraw;
     elements.newDrawBtn.dataset.locked = String(!state.canReset);
     elements.newDrawBtn.title = state.canReset
       ? 'Clear the current draw and start over (N)'
@@ -490,6 +496,8 @@
 
   /** Clears every recorded winner so the next Start begins a fresh draw. */
   async function startNewDraw() {
+    // NEW: a hidden control must not still answer to its shortcut.
+    if (!state.canStartNewDraw) return;
     if (state.status === STATUS.ROLLING || state.status === STATUS.REVEALING) return;
 
     if (!state.canReset) {

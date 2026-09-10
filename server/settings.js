@@ -522,6 +522,9 @@ function normalizeAppSettings(input) {
       // NEW: on by default, so a board configured before this existed keeps
       // showing the event name exactly as it did.
       showEventName: asBoolean(ui.showEventName, true),
+      // NEW: whether the board offers "New draw" at all. On by default, for
+      // the same reason. Who may *use* it is draw.allowResetFromBoard.
+      showNewDrawButton: asBoolean(ui.showNewDrawButton, true),
       showOrganizationName: asBoolean(ui.showOrganizationName, true),
       showWinnersPanel: asBoolean(ui.showWinnersPanel, false),
       showStats: asBoolean(ui.showStats, false),

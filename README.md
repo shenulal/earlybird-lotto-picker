@@ -31,7 +31,9 @@ The screen the audience sees.
 - Prizes announced ahead of each draw, in the order the organiser chose
 - **New draw** sits beside Start and Stop: clears the results and starts over
   without leaving the board. Offered to a signed-in organiser, or to anyone
-  once `draw.allowResetFromBoard` is on; otherwise it explains what is needed
+  once `draw.allowResetFromBoard` is on; otherwise it explains what is needed.
+  It can also be switched off altogether, for a board nobody should be able to
+  reset from the floor
 - Keyboard: `Space` / `Enter` start and stop, `W` winners panel, `G` guest
   welcome, `N` new draw, `F` fullscreen
 - Survives a refresh — the draw state lives on the server, not in the tab
@@ -524,6 +526,7 @@ well formed and scanned as nothing at all.
 | `animation.confettiPalette` | Up to 12 hex colours for the confetti |
 | `animation.celebration` | Which celebration fires: `classic`, `streamers`, `stars`, `balloons`, `snow`, `money`, `mix` or `none` |
 | `ui.showEventName` | Show the event name on the board. Off gives the header back to the draw |
+| `ui.showNewDrawButton` | Offer "New draw" on the board at all. Off removes the button and its N shortcut |
 | `social.channels[]` | The links, in order: `{ id, type, url, label }` |
 | `social.qr.style` | `standard`, `colored`, `logo` or `rounded` |
 | `social.qr.position` | `bottom-left`, `bottom-right`, `bottom-center`, `top-right`, `sidebar` or `footer` |
