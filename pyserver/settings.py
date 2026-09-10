@@ -19,7 +19,15 @@ DEFAULT_ADMIN_PASSWORD = "pickora"
 
 BOARD_ALIGNMENTS = ("left", "center", "right")
 DIRECTIONS = ("ltr", "rtl")
-LOGO_POSITIONS = ("top-left", "top-right", "bottom-left", "bottom-right", "hidden")
+LOGO_POSITIONS = (
+    "top-left",
+    "top-center",
+    "top-right",
+    "bottom-left",
+    "bottom-center",
+    "bottom-right",
+    "hidden",
+)
 BACKGROUND_FITS = ("cover", "contain", "fill", "tile")
 DUPLICATE_POLICIES = ("skip", "allow")
 WELCOME_PLACEMENTS = ("overlay", "panel")
@@ -53,6 +61,8 @@ DEFAULT_COPY = {
     "fullscreenButton": "Fullscreen",
     "organiserLink": "Organiser",
     "welcomeToggle": "Welcome",
+    "newDrawButton": "New draw",
+    "newDrawConfirm": "Clear the current draw and start over?",
     "footer": "Pickora · by Shenu",
     "loading": "Preparing the draw…",
 }
@@ -266,6 +276,7 @@ def normalize_app_settings(raw: Any) -> Dict[str, Any]:
         "draw": {
             "publicDrawEnabled": _as_bool(draw.get("publicDrawEnabled"), True),
             "requireAuthForDraw": _as_bool(draw.get("requireAuthForDraw"), False),
+            "allowResetFromBoard": _as_bool(draw.get("allowResetFromBoard"), False),
             "minimumRollMs": _clamp("minimumRollMs", draw.get("minimumRollMs"), 1200),
         },
         "branding": _normalize_branding(source.get("branding")),

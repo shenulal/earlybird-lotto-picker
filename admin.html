@@ -122,6 +122,7 @@
             <p class="upload-headline">Drop a <strong>.csv</strong> or <strong>.json</strong> file here</p>
             <label class="btn btn-ghost" for="fileInput">Choose a file</label>
             <p class="upload-hint">Any columns you like — the first row names them. One column must uniquely identify each entry.</p>
+            <a class="btn btn-ghost btn-small" id="templateBtn" href="/api/admin/export/template.csv" download>Download template CSV</a>
           </div>
 
           <div class="upload-summary" id="uploadSummary" hidden></div>
@@ -268,14 +269,23 @@
                 <label class="btn btn-ghost" for="logoInput">Upload logo</label>
                 <button type="button" class="btn btn-danger" id="logoRemoveBtn">Remove</button>
               </div>
-              <p class="asset-meta" id="logoMeta">PNG, JPEG, GIF, WebP or SVG. Up to 8 MB and 8000px per side.</p>
+              <p class="asset-meta" id="logoMeta"></p>
+              <dl class="size-guide">
+                <dt>Recommended</dt><dd>600 × 300 px, transparent PNG</dd>
+                <dt>Minimum</dt><dd>200 × 100 px</dd>
+                <dt>Aspect</dt><dd>Landscape; it is scaled to the height set below</dd>
+                <dt>Formats</dt><dd>PNG, JPEG, GIF, WebP, SVG</dd>
+                <dt>Maximum</dt><dd><span data-upload-limit>8 MB</span>, 8000 px per side</dd>
+              </dl>
               <div class="grid-2">
                 <label class="field">
                   <span class="field-label">Position</span>
                   <select id="logoPosition">
                     <option value="top-left">Top left</option>
+                    <option value="top-center">Top centre</option>
                     <option value="top-right">Top right</option>
                     <option value="bottom-left">Bottom left</option>
+                    <option value="bottom-center">Bottom centre</option>
                     <option value="bottom-right">Bottom right</option>
                     <option value="hidden">Hidden</option>
                   </select>
@@ -299,7 +309,15 @@
                 <label class="btn btn-ghost" for="backgroundInput">Upload background</label>
                 <button type="button" class="btn btn-danger" id="backgroundRemoveBtn">Remove</button>
               </div>
-              <p class="asset-meta" id="backgroundMeta">For a 1080p projector, 1920×1080 or larger is recommended.</p>
+              <p class="asset-meta" id="backgroundMeta"></p>
+              <dl class="size-guide">
+                <dt>Recommended</dt><dd>1920 × 1080 px (1080p projector or screen)</dd>
+                <dt>Large screens</dt><dd>2560 × 1440 px or 3840 × 2160 px</dd>
+                <dt>Minimum</dt><dd>1280 × 720 px</dd>
+                <dt>Aspect</dt><dd>16:9 — anything else is cropped by the fit mode</dd>
+                <dt>Formats</dt><dd>PNG, JPEG, GIF, WebP</dd>
+                <dt>Maximum</dt><dd><span data-upload-limit>8 MB</span>, 8000 px per side</dd>
+              </dl>
               <div class="grid-2">
                 <label class="field">
                   <span class="field-label">Fit</span>
@@ -383,7 +401,14 @@
             <input type="file" id="guestInput" class="sr-only" accept="image/png,image/jpeg,image/gif,image/webp" multiple>
             <p class="upload-headline">Drop guest photos here</p>
             <label class="btn btn-ghost" for="guestInput">Choose photos</label>
-            <p class="upload-hint">PNG, JPEG, GIF or WebP. Up to 8 MB each, 20 photos in total. Portrait crops look best.</p>
+            <p class="upload-hint">Up to 20 photos.</p>
+            <dl class="size-guide size-guide-inline">
+              <dt>Recommended</dt><dd>800 × 1000 px portrait (4:5)</dd>
+              <dt>Minimum</dt><dd>400 × 500 px</dd>
+              <dt>Aspect</dt><dd>4:5 portrait — other shapes are centre-cropped</dd>
+              <dt>Formats</dt><dd>PNG, JPEG, GIF, WebP</dd>
+              <dt>Maximum</dt><dd><span data-upload-limit>8 MB</span> each</dd>
+            </dl>
           </div>
 
           <div class="guest-grid" id="guestGrid"></div>
@@ -467,6 +492,10 @@
               <label class="switch">
                 <input type="checkbox" name="display.autoStopWhenPrizesExhausted">
                 <span><strong>Stop automatically when all prizes are awarded</strong></span>
+              </label>
+              <label class="switch">
+                <input type="checkbox" name="draw.allowResetFromBoard">
+                <span><strong>Allow "New draw" on the board without signing in</strong><small>The button is always available to a signed-in organiser. Turn this on for a board that nobody else can reach.</small></span>
               </label>
             </div>
           </div>

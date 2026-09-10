@@ -274,6 +274,15 @@
       data.sample.length > 0 ? `Showing the first ${data.sample.length} of ${data.ticketCount}.` : '';
   }
 
+  /** The cap differs between a filesystem and a key-value deployment. */
+  function renderUploadLimits(limits) {
+    if (!limits) return;
+    const megabytes = Math.round(limits.maxUploadBytes / 1048576);
+    document.querySelectorAll('[data-upload-limit]').forEach((element) => {
+      element.textContent = `${megabytes} MB`;
+    });
+  }
+
   function renderAccount(account, appSettings) {
     const isEnvManaged = account.credentialSource === 'environment';
 
@@ -295,6 +304,7 @@
     renderWinners(overview.winners, overview.appSettings);
     renderParticipants(overview.data, overview.appSettings);
     renderAccount(overview.account, overview.appSettings);
+    renderUploadLimits(overview.limits);
     fillSettingsForm(overview.appSettings);
     if (configEditors) configEditors.render();
     elements.undoBtn.disabled = overview.winners.length === 0;
@@ -530,6 +540,7 @@
     'ui.showStats',
     'draw.publicDrawEnabled',
     'draw.requireAuthForDraw',
+    'draw.allowResetFromBoard',
   ];
 
   function field(name) {

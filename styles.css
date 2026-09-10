@@ -163,9 +163,31 @@ body[data-logo-position='top-right'] .board-logo { top: 20px; right: 22px; }
 body[data-logo-position='bottom-left'] .board-logo { bottom: 48px; left: 22px; }
 body[data-logo-position='bottom-right'] .board-logo { bottom: 48px; right: 22px; }
 
+/* Centred placements are the common choice for an event banner. */
+body[data-logo-position='top-center'] .board-logo {
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+body[data-logo-position='bottom-center'] .board-logo {
+  bottom: 48px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
 /* The header would collide with a logo pinned to the same corner. */
 body[data-logo-position='top-left'] .board-header { padding-left: calc(var(--logo-max-height) + 46px); }
 body[data-logo-position='top-right'] .board-header { padding-right: calc(var(--logo-max-height) + 46px); }
+
+/* A centred logo needs the whole strip below it, and the stage below that. */
+body[data-logo-position='top-center'] .board-header {
+  padding-top: calc(var(--logo-max-height) + 30px);
+}
+
+body[data-logo-position='bottom-center'] .board-footer {
+  padding-bottom: calc(var(--logo-max-height) + 22px);
+}
 
 /* ----------------------------------------------------------------- header */
 
@@ -275,6 +297,16 @@ body[data-logo-position='top-right'] .board-header { padding-right: calc(var(--l
 .tool[aria-expanded='true'] {
   color: var(--accent-ink);
   background: var(--accent-veil);
+}
+
+.tool-danger {
+  color: var(--negative);
+}
+
+.tool-danger:hover,
+.tool-danger:focus-visible {
+  color: var(--negative);
+  background: color-mix(in oklab, var(--negative) 18%, transparent);
 }
 
 .tool-quiet {

@@ -189,6 +189,26 @@ function createApiRouter() {
     }
   });
 
+  /* Clearing the draw from the board itself. Refused unless the organiser
+     allowed it in the settings, or is signed in on this browser — otherwise
+     any viewer could wipe the results mid-event. */
+  router.post('/draw/reset', async (req, res) => {
+    try {
+      const { appSettings } = loadSettingsFile();
+      const isAdmin = Boolean(currentSession(req));
+
+      if (!appSettings.draw.allowResetFromBoard && !isAdmin) {
+        return res.status(403).json({ ok: false, error: 'Sign in as an organiser to start a new draw.' });
+      }
+
+      const result = draw.resetDraw(appSettings);
+      await store.flush();
+      return res.json(result);
+    } catch (error) {
+      return sendError(res, error);
+    }
+  });
+
   /* ------------------------------------------------------------------ auth */
 
   router.get('/auth/session', async (req, res) => {
@@ -265,6 +285,10 @@ function createApiRouter() {
           ticketCount: source.tickets.length,
           issues: source.issues,
           sample: source.tickets.slice(0, 8),
+        },
+        limits: {
+          storage: store.driver.name,
+          maxUploadBytes: store.maxBlobBytes,
         },
         stats: draw.buildStats(appSettings, source.tickets, state.winners),
         winners: state.winners,
@@ -450,6 +474,28 @@ function createApiRouter() {
       return res.json({ ok: true, ticketCount: 0, stats: draw.buildStats(appSettings, [], state.winners) });
     } catch (error) {
       return sendError(res, error);
+    }
+  });
+
+  /* A starting file whose columns match this event's own fields, so an
+     import lands without any renaming. */
+  router.get('/admin/export/template.csv', requireAuth, (_req, res) => {
+    try {
+      const { appSettings } = loadSettingsFile();
+      const { fields, identifier } = appSettings.data;
+      const columns = fields.map((field) => ({ key: field.key, label: field.label }));
+
+      const example = (index) =>
+        fields.reduce((row, field) => {
+          if (field.key === identifier) return { ...row, [field.key]: `ENTRY-${String(index).padStart(3, '0')}` };
+          return { ...row, [field.key]: `Example ${field.label.toLowerCase()} ${index}` };
+        }, {});
+
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', 'attachment; filename="pickora-template.csv"');
+      res.send(ticketStore.toCsv([example(1), example(2)], columns));
+    } catch (error) {
+      sendError(res, error);
     }
   });
 

@@ -142,6 +142,20 @@ def post_draw():
     return jsonify({**result, "winner": public_winner(result["winner"], allowed)})
 
 
+@api.post("/draw/reset")
+def post_board_reset():
+    """Clearing the draw from the board itself.
+
+    Refused unless the organiser allowed it in the settings, or is signed in on
+    this browser — otherwise any viewer could wipe the results mid-event.
+    """
+    app_settings = load_settings_file()["appSettings"]
+    if not app_settings["draw"]["allowResetFromBoard"] and not current_username():
+        return jsonify({"ok": False, "error": "Sign in as an organiser to start a new draw."}), 403
+
+    return jsonify(draw.reset_draw(app_settings))
+
+
 # -------------------------------------------------------------------- auth
 
 
@@ -217,6 +231,7 @@ def get_overview():
                 "issues": source["issues"],
                 "sample": source["tickets"][:8],
             },
+            "limits": {"storage": "filesystem", "maxUploadBytes": images.MAX_BYTES},
             "stats": draw.build_stats(app_settings, source["tickets"], state["winners"]),
             "winners": state["winners"],
             "startedAt": state["startedAt"],
@@ -408,6 +423,33 @@ def clear_tickets():
     ticket_store.save_tickets([])
     app_settings = load_settings_file()["appSettings"]
     return jsonify({"ok": True, "ticketCount": 0, "stats": draw.build_stats(app_settings, [], state["winners"])})
+
+
+@api.get("/admin/export/template.csv")
+@require_auth
+def export_template():
+    """A starting file whose columns match this event's own fields, so an
+    import lands without any renaming."""
+    app_settings = load_settings_file()["appSettings"]
+    fields = app_settings["data"]["fields"]
+    identifier = app_settings["data"]["identifier"]
+    columns = [(f["key"], f["label"]) for f in fields]
+
+    def example(index: int) -> Dict[str, Any]:
+        row = {}
+        for field in fields:
+            if field["key"] == identifier:
+                row[field["key"]] = f"ENTRY-{index:03d}"
+            else:
+                row[field["key"]] = f"Example {field['label'].lower()} {index}"
+        return row
+
+    csv_text = ticket_store.to_csv([example(1), example(2)], columns)
+    return Response(
+        csv_text,
+        mimetype="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="pickora-template.csv"'},
+    )
 
 
 @api.get("/admin/export/tickets.csv")

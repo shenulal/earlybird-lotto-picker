@@ -11,7 +11,15 @@ const DEFAULT_ADMIN_PASSWORD = 'pickora';
 
 const BOARD_ALIGNMENTS = Object.freeze(['left', 'center', 'right']);
 const DIRECTIONS = Object.freeze(['ltr', 'rtl']);
-const LOGO_POSITIONS = Object.freeze(['top-left', 'top-right', 'bottom-left', 'bottom-right', 'hidden']);
+const LOGO_POSITIONS = Object.freeze([
+  'top-left',
+  'top-center',
+  'top-right',
+  'bottom-left',
+  'bottom-center',
+  'bottom-right',
+  'hidden',
+]);
 const BACKGROUND_FITS = Object.freeze(['cover', 'contain', 'fill', 'tile']);
 const DUPLICATE_POLICIES = Object.freeze(['skip', 'allow']);
 const WELCOME_PLACEMENTS = Object.freeze(['overlay', 'panel']);
@@ -45,6 +53,8 @@ const DEFAULT_COPY = Object.freeze({
   fullscreenButton: 'Fullscreen',
   organiserLink: 'Organiser',
   welcomeToggle: 'Welcome',
+  newDrawButton: 'New draw',
+  newDrawConfirm: 'Clear the current draw and start over?',
   footer: 'Pickora · by Shenu',
   loading: 'Preparing the draw…',
 });
@@ -235,6 +245,7 @@ function normalizeAppSettings(input) {
     draw: {
       publicDrawEnabled: asBoolean(draw.publicDrawEnabled, true),
       requireAuthForDraw: asBoolean(draw.requireAuthForDraw, false),
+      allowResetFromBoard: asBoolean(draw.allowResetFromBoard, false),
       minimumRollMs: clamp('minimumRollMs', draw.minimumRollMs, 1200),
     },
 

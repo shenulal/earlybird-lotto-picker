@@ -224,21 +224,31 @@ function seedFromBundle(documents) {
   );
 }
 
-/** Loads every document once. Concurrent callers share the same promise. */
+/**
+ * Loads the current documents. Called once per request, and deliberately not
+ * cached across requests: a file edited by hand must be picked up without a
+ * restart, and two serverless instances must not drift apart while both are
+ * serving the same event. Concurrent callers share one load.
+ */
 async function hydrate({ force = false } = {}) {
-  if (snapshot.loaded && !force) return;
-  if (!hydration || force) {
-    hydration = driver
-      .loadDocuments()
-      .then((documents) => {
-        snapshot.documents = driver.servesBlobsAsFiles ? documents : seedFromBundle(documents);
-        snapshot.loaded = true;
-        snapshot.dirty.clear();
-      })
-      .finally(() => {
-        hydration = null;
-      });
+  // Never discard writes that have not reached the store yet.
+  if (snapshot.dirty.size > 0 && !force) return;
+  if (hydration) {
+    await hydration;
+    return;
   }
+
+  hydration = driver
+    .loadDocuments()
+    .then((documents) => {
+      snapshot.documents = driver.servesBlobsAsFiles ? documents : seedFromBundle(documents);
+      snapshot.loaded = true;
+      snapshot.dirty.clear();
+    })
+    .finally(() => {
+      hydration = null;
+    });
+
   await hydration;
 }
 

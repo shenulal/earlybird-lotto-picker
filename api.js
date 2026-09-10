@@ -43,6 +43,7 @@
     getPool: () => request('/api/pool'),
     getState: () => request('/api/state'),
     drawWinner: () => request('/api/draw', { method: 'POST', body: {} }),
+    resetFromBoard: () => request('/api/draw/reset', { method: 'POST', body: {} }),
 
     getSession: () => request('/api/auth/session'),
     login: (username, password) => request('/api/auth/login', { method: 'POST', body: { username, password } }),

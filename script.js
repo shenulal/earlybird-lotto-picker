@@ -35,6 +35,8 @@
     winnersList: document.getElementById('winnersList'),
     winnersBadge: document.getElementById('winnersBadge'),
     organiserLink: document.getElementById('organiserLink'),
+    newDrawBtn: document.getElementById('newDrawBtn'),
+    newDrawLabel: document.getElementById('newDrawLabel'),
     stats: document.getElementById('stats'),
     totalPrizes: document.getElementById('totalPrizes'),
     remainingPrizes: document.getElementById('remainingPrizes'),
@@ -69,6 +71,7 @@
     winners: [],
     stats: null,
     status: STATUS.IDLE,
+    canReset: false,
     reelTimerId: null,
     rollStartedAt: 0,
     stopRequested: false,
@@ -155,13 +158,17 @@
     elements.fullscreenBtn.querySelector('.tool-label').textContent = settings.copy.fullscreenButton;
     elements.organiserLink.textContent = settings.copy.organiserLink;
     elements.welcomeToggleLabel.textContent = settings.copy.welcomeToggle;
+    elements.newDrawLabel.textContent = settings.copy.newDrawButton;
     elements.loadingText.textContent = settings.copy.loading;
     elements.footer.textContent = settings.copy.footer;
     elements.footer.hidden = !settings.copy.footer;
   }
 
-  function applySettings(settings) {
+  function applySettings(settings, session = {}) {
     state.settings = settings;
+    // Offered only to someone allowed to use it, so a viewer cannot clear the
+    // results in the middle of an event.
+    state.canReset = Boolean(session.authenticated) || settings.draw.allowResetFromBoard;
     state.labels = settings.data.fields.reduce((map, field) => ({ ...map, [field.key]: field.label }), {});
 
     document.title = settings.eventName;
@@ -176,6 +183,7 @@
 
     applyBranding(settings);
     applyCopy(settings);
+    elements.newDrawBtn.hidden = !state.canReset;
     setWinnersPanel(settings.ui.showWinnersPanel);
 
     confetti = global.createConfetti(elements.confettiCanvas, { palette: settings.animation.confettiPalette });
@@ -429,11 +437,34 @@
     });
   }
 
+  /** Clears every recorded winner so the next Start begins a fresh draw. */
+  async function startNewDraw() {
+    if (state.status === STATUS.ROLLING || state.status === STATUS.REVEALING) return;
+
+    const drawn = state.stats ? state.stats.winnersCount : 0;
+    const detail = drawn > 0 ? `\n\n${drawn} recorded winner(s) will be cleared. This cannot be undone.` : '';
+    if (!global.confirm(`${copy('newDrawConfirm')}${detail}`)) return;
+
+    elements.newDrawBtn.disabled = true;
+    try {
+      confetti.stop();
+      await api.resetFromBoard();
+      await refreshState();
+      renderIdle();
+      showNotice('A new draw has started.', 'info');
+    } catch (error) {
+      showNotice(error.message, 'error');
+    } finally {
+      elements.newDrawBtn.disabled = false;
+    }
+  }
+
   function bindControls() {
     elements.startBtn.addEventListener('click', startSlot);
     elements.stopBtn.addEventListener('click', stopSlot);
     elements.fullscreenBtn.addEventListener('click', toggleFullscreen);
     elements.winnersToggle.addEventListener('click', () => setWinnersPanel(elements.winnersPanel.hidden));
+    elements.newDrawBtn.addEventListener('click', startNewDraw);
 
     document.addEventListener('keydown', (event) => {
       if (/^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName) || event.metaKey || event.ctrlKey || event.altKey) return;
@@ -449,6 +480,7 @@
       if (key === 'w') setWinnersPanel(elements.winnersPanel.hidden);
       if (key === 'f') toggleFullscreen();
       if (key === 'g' && welcome) welcome.toggle();
+      if (key === 'n' && state.canReset) startNewDraw();
       if (event.key === 'Escape' && welcome && welcome.isOpen()) welcome.close();
     });
   }
@@ -458,7 +490,7 @@
   async function init() {
     try {
       const settingsResponse = await api.getSettings();
-      applySettings(settingsResponse.appSettings);
+      applySettings(settingsResponse.appSettings, settingsResponse.session);
 
       await refreshState();
       bindControls();

@@ -24,7 +24,9 @@ The screen the audience sees.
 - Winner reveal with confetti, cycling through five reveal animations
 - Optional winners panel and prize counters
 - A guest welcome with a photo carousel, for greeting a chief guest
-- Keyboard: `Space` / `Enter` start and stop, `W` winners panel, `G` guest welcome, `F` fullscreen
+- **New draw** clears the results and starts over, without leaving the board
+- Keyboard: `Space` / `Enter` start and stop, `W` winners panel, `G` guest
+  welcome, `N` new draw, `F` fullscreen
 - Survives a refresh — the draw state lives on the server, not in the tab
 
 The board holds **no participant data beyond what it is configured to show**.
@@ -38,7 +40,7 @@ Behind a sign-in.
 | Section | What it does |
 |---|---|
 | **Overview** | Live counters, data-health warnings, results table, CSV export, undo last draw, reset draw |
-| **Participants** | Upload the entry list as CSV or JSON with a column preview, export it, or delete it |
+| **Participants** | Download a template, upload the entry list with a column preview, export it, or delete it |
 | **Fields** | Rename columns, mark sensitive ones, choose the identifier and what appears in the export |
 | **Display** | Choose exactly which fields appear while spinning, on the announcement, on the winner card and in the winners list |
 | **Branding** | Upload the logo and backdrop, with size and resolution validated on the server |
@@ -253,6 +255,9 @@ On upload the console shows the detected columns and proposes:
 
 You can change any of these under **Fields** before or after importing.
 
+**Download template CSV** gives you a starting file whose columns are this
+event's own fields, so an import lands without renaming anything.
+
 **Current list** shows what is loaded, with **Export CSV** to take a copy and
 **Delete all entries** to empty it. Deleting is refused while a draw is in
 progress unless you confirm.
@@ -300,13 +305,24 @@ column never leaves a stray label on screen.
 
 Under **Branding** you can upload a **logo** and a **background**.
 
-- Accepted: PNG, JPEG, GIF, WebP, SVG. Up to 8 MB, between 16px and 8000px a side.
+- Recommended sizes are stated beside each upload in the console, along with
+  the maximum this deployment accepts:
+
+  | Asset | Recommended | Minimum |
+  |---|---|---|
+  | Logo | 600 × 300 px, transparent PNG | 200 × 100 px |
+  | Background | 1920 × 1080 px (2560 × 1440 or 3840 × 2160 for large screens) | 1280 × 720 px |
+  | Guest photo | 800 × 1000 px portrait (4:5) | 400 × 500 px |
+
+- Accepted: PNG, JPEG, GIF, WebP, SVG. Between 16px and 8000px a side, and up
+  to 8 MB on a filesystem or 2 MB on a key-value deployment.
 - Dimensions are read from the file header on the server and shown back to you,
   so you can check them against the screen you are projecting onto. For a 1080p
   projector, 1920×1080 or larger is recommended for the backdrop.
 - Files are stored under `assets/` with a content hash in the name; replacing or
   removing an image deletes the file it no longer needs.
-- The logo has a corner position and an on-screen height; the background has a
+- The logo sits in any of six places — the four corners plus top centre and
+  bottom centre — with an on-screen height; the background has a
   fit mode (cover, contain, fill, tile) and a darkening overlay that keeps large
   text readable over busy artwork.
 
@@ -320,7 +336,7 @@ existing deployment looks unchanged.
 To greet a chief guest or celebrity, **Welcome** puts a message and a rotating
 set of photos on the board.
 
-- **Photos** — upload as many as you like up to 20, drag-and-drop or file
+- **Photos** — 800 × 1000 px portrait suits the layout; upload up to 20, drag-and-drop or file
   picker, each with an optional caption. Reorder them with the arrows; the list
   order is the carousel order. Portrait crops suit the layout best.
 - **Carousel interval** — how long each photo holds, 1.5–60 seconds.
@@ -369,6 +385,8 @@ Photos are validated exactly like the branding images and stored under
 | `ui.primaryColor` | Accent colour across the board |
 | `ui.backgroundColor` | CSS painted behind the backdrop image |
 | `ui.boardAlignment` | `left` / `center` / `right` — moves the stage clear of artwork |
+| `branding.logo.position` | `top-left` / `top-center` / `top-right` / `bottom-left` / `bottom-center` / `bottom-right` / `hidden` |
+| `draw.allowResetFromBoard` | Let anyone use **New draw** on the board; otherwise it is offered only to a signed-in organiser |
 | `ui.showWinnersPanel`, `ui.showStats`, `ui.showOrganizationName` | Board furniture |
 
 Every value is validated and clamped server-side, so a bad entry cannot break
@@ -388,6 +406,7 @@ Public:
 | `GET` | `/api/pool` | Remaining ticket numbers + counters |
 | `GET` | `/api/state` | Winners so far + counters |
 | `POST` | `/api/draw` | Draw one winner |
+| `POST` | `/api/draw/reset` | Clear the draw from the board (organiser, or when allowed) |
 
 Session:
 
@@ -408,6 +427,7 @@ Organiser (signed-in only):
 | `POST` | `/api/admin/tickets` |
 | `DELETE` | `/api/admin/tickets` |
 | `GET` | `/api/admin/export/tickets.csv` |
+| `GET` | `/api/admin/export/template.csv` |
 | `POST` | `/api/admin/assets/:kind` |
 | `DELETE` | `/api/admin/assets/:kind` |
 | `POST` | `/api/admin/welcome/images` |

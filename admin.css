@@ -1103,3 +1103,48 @@ kbd {
 .guest-actions .guest-remove {
   margin-left: auto;
 }
+
+
+/* --------------------------------------------------- image size guidance */
+
+/* Stated up front so the organiser prepares artwork at the right size rather
+   than discovering the limits at upload time. */
+.size-guide {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius-sm);
+  background: var(--c-surface-2);
+  font-size: 0.79rem;
+}
+
+.size-guide dt {
+  color: var(--c-text-faint);
+  white-space: nowrap;
+}
+
+.size-guide dd {
+  margin: 0;
+  color: var(--c-text-soft);
+}
+
+.size-guide dd:first-of-type {
+  color: var(--c-text);
+  font-weight: 700;
+}
+
+.size-guide-inline {
+  margin-top: 12px;
+  text-align: left;
+  max-width: 420px;
+  margin-inline: auto;
+}
+
+.btn-small {
+  margin-top: 10px;
+  padding: 6px 12px;
+  font-size: 0.78rem;
+}
