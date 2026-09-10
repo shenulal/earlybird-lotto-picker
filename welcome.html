@@ -54,13 +54,25 @@
     </nav>
   </div>
 
-  <main class="feature" aria-labelledby="featureHeading">
-    <section class="feature-card" id="welcomeCard">
-      <div class="feature-media" id="welcomeMedia"></div>
-      <div class="feature-body">
-        <p class="feature-eyebrow" id="featureHeading">Our special guest</p>
-        <p class="feature-message" id="welcomeMessage"></p>
+  <!-- CHANGED: rebuilt around the hierarchy the screen actually has — a label,
+       the heading, the message, and then the photographs as the thing everyone
+       is looking at. The heading used to be set as a tiny eyebrow while the
+       message ran at 3rem in a condensed display face, which is why the page
+       read as shouty and unbalanced. -->
+  <main class="feature welcome-stage" aria-labelledby="featureHeading">
+    <section class="welcome" id="welcomeCard">
+      <div class="welcome-glow" aria-hidden="true"></div>
+
+      <div class="welcome-intro">
+        <p class="welcome-eyebrow" id="welcomeEyebrow" hidden></p>
+        <h2 class="welcome-title" id="featureHeading">Our special guest</h2>
+        <span class="welcome-rule" aria-hidden="true"></span>
+        <p class="welcome-message" id="welcomeMessage"></p>
       </div>
+
+      <figure class="welcome-media" id="welcomeMedia"></figure>
+
+      <nav class="welcome-actions" id="welcomeActions" aria-label="Where to next" hidden></nav>
     </section>
     <p class="feature-empty" id="welcomeEmpty" hidden>No welcome has been set up yet.</p>
   </main>

@@ -394,8 +394,18 @@ is never a dead end. On the board, <kbd>G</kbd> opens the welcome and
 ### Guest welcome
 
 A heading, a message and a carousel of photos, for greeting a chief guest.
-Photos are 800 × 1000 px portrait by preference, up to 20, each with an
-optional caption, reorderable; the carousel interval is yours to set.
+
+The screen reads top to bottom — a small label, the heading, a rule, the
+message, then the photographs as the thing the room is looking at. The heading
+is set in the display face, the message as prose held to a readable measure,
+and each part arrives just after the one above it. The whole composition is
+sized to fit the screen it is on, so a projected welcome never has to be
+scrolled.
+
+Photos are framed 4:3, so 1200 × 900 px landscape is the size to aim for; up to
+20, each with an optional caption, reorderable, and the carousel interval is
+yours to set. Anything a different shape is cropped to fit, favouring the top of
+the frame so faces are not cut off.
 
 ### Prizes
 
