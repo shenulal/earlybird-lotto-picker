@@ -21,7 +21,8 @@ The screen the audience sees.
 
 - Large-format reel animation over the event backdrop
 - **Start** / **Stop** — Stop asks the server to draw, so the result is recorded once
-- Winner reveal with confetti, cycling through five reveal animations
+- Winner reveal with a full celebration — twisting streamers, tumbling stars,
+  flipping foil and drifting dots — cycling through five reveal animations
 - Optional winners panel and prize counters
 - Links to the welcome screen and the prize screen, which are pages of their own
 - Prizes announced ahead of each draw, in the order the organiser chose
@@ -479,7 +480,7 @@ window steps on a slow timer instead.
 | `draw.minimumRollMs` | Shortest a roll may last; an early Stop is spent slowing down rather than waiting |
 | `animation.rollingSpeed` | Milliseconds per entry on the reel |
 | `animation.winnerAnnouncementDelay` | Pause between the announcement and the winner card |
-| `animation.confettiStartDelay`, `confettiDuration`, `confettiCount` | Confetti timing and density |
+| `animation.confettiStartDelay`, `confettiDuration`, `confettiCount` | Confetti timing and density. Two cannons fire from the bottom corners, a softer fall keeps coming from above, and emission stops early so the last pieces drift out of frame rather than being cut off |
 | `animation.confettiPalette` | Up to 12 hex colours for the confetti |
 | `branding.logo` | Uploaded file, corner position, on-screen height |
 | `branding.background` | Uploaded file, fit mode, darkening overlay |
@@ -581,7 +582,7 @@ pickora/
 │   ├── admin.js                          # console shell, data, draw supervision
 │   └── admin-config.js                   # fields, display slots, branding, wording
 ├── api.js                                # shared API client
-├── confetti.js                           # confetti animation
+├── confetti.js                           # streamers, stars, foil and dots
 ├── welcome.html / prizes.html            # the two feature screens
 ├── feature-page.js                       # their shared controller
 ├── carousel.js                           # the shared image slider
