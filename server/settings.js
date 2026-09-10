@@ -146,6 +146,18 @@ function brandingAsset(value, fallback) {
   return RETIRED_ASSETS.get(resolved) || resolved;
 }
 
+/**
+ * A remembered Google Sheets export address.
+ *
+ * Only ever set from the address sheets.js built, so what is stored can be
+ * re-fetched without the organiser pasting the link again.
+ */
+function asSheetUrl(value) {
+  if (typeof value !== 'string') return '';
+  const trimmed = value.trim();
+  return /^https:\/\/docs\.google\.com\/spreadsheets\//.test(trimmed) ? trimmed.slice(0, 500) : '';
+}
+
 function normalizeCopy(input) {
   const source = input && typeof input === 'object' ? input : {};
   return Object.keys(DEFAULT_COPY).reduce(
@@ -308,10 +320,14 @@ function normalizeBranding(input) {
 function normalizeData(input, legacyDisplay) {
   const source = input && typeof input === 'object' ? input : {};
   const duplicatePolicy = asChoice(source.duplicatePolicy, DUPLICATE_POLICIES, 'skip');
+  // Where the list last came from, so a linked sheet can be pulled again.
+  const sourceUrl = asSheetUrl(source.sourceUrl);
+  const sourceSyncedAt = asText(source.sourceSyncedAt, '', 40);
+  const provenance = { sourceUrl, sourceSyncedAt };
   const fields = schema.normalizeFields(source.fields);
 
   if (fields.length > 0) {
-    return { identifier: schema.pickIdentifier(fields, source.identifier), fields, duplicatePolicy };
+    return { identifier: schema.pickIdentifier(fields, source.identifier), fields, duplicatePolicy, ...provenance };
   }
 
   const inferred = ticketStore.inferSchemaFromFile();
@@ -321,10 +337,15 @@ function normalizeData(input, legacyDisplay) {
       legacyDisplay.showMobileInWinner === true
         ? inferred.fields.map((field) => ({ ...field, sensitive: false }))
         : inferred.fields;
-    return { identifier: inferred.identifier, fields: adjusted, duplicatePolicy };
+    return { identifier: inferred.identifier, fields: adjusted, duplicatePolicy, ...provenance };
   }
 
-  return { identifier: DEFAULT_FIELDS[0].key, fields: schema.normalizeFields(DEFAULT_FIELDS), duplicatePolicy };
+  return {
+    identifier: DEFAULT_FIELDS[0].key,
+    fields: schema.normalizeFields(DEFAULT_FIELDS),
+    duplicatePolicy,
+    ...provenance,
+  };
 }
 
 function normalizeAppSettings(input) {

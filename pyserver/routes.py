@@ -6,7 +6,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from flask import Blueprint, Response, jsonify, request, session
 
-from . import draw, images, schema, tickets as ticket_store
+from . import draw, images, schema, sheets, tickets as ticket_store
 from .auth import LoginThrottle, hash_password, verify_password
 from .settings import (
     MAX_PRIZE_IMAGES,
@@ -315,6 +315,23 @@ def post_password():
     return jsonify({"ok": True, "username": next_username})
 
 
+@api.post("/admin/tickets/sheet")
+@require_auth
+def fetch_sheet():
+    """Pull a Google Sheet down as CSV.
+
+    Nothing is committed here — the sheet goes through the same preview and
+    import the organiser gets from a file, so a linked sheet and an uploaded
+    file behave identically.
+    """
+    try:
+        result = sheets.fetch_sheet_csv(body().get("url"))
+    except sheets.SheetError as error:
+        return jsonify({"ok": False, "error": str(error)}), error.status
+
+    return jsonify({"ok": True, "format": "csv", "content": result["content"], "url": result["url"]})
+
+
 @api.post("/admin/tickets/preview")
 @require_auth
 def preview_tickets():
@@ -394,10 +411,20 @@ def post_tickets():
     merged, _merge_issues = ticket_store.normalize_records([*existing, *incoming], next_schema, policy)
     ticket_store.save_tickets(merged)
 
+    # A list pulled from a sheet remembers where from, so it can be pulled
+    # again without pasting the link twice. A file upload clears it: the list
+    # on screen no longer came from the sheet.
+    source_url = payload.get("sourceUrl") if isinstance(payload.get("sourceUrl"), str) else ""
+
     next_settings = normalize_app_settings(
         {
             **app_settings,
-            "data": {**next_schema, "duplicatePolicy": policy},
+            "data": {
+                **next_schema,
+                "duplicatePolicy": policy,
+                "sourceUrl": source_url,
+                "sourceSyncedAt": datetime.now(timezone.utc).isoformat() if source_url else "",
+            },
             # Display slots are rebuilt only when the columns actually changed.
             "display": {} if (adopt and payload.get("resetDisplay") is not False) else app_settings["display"],
         }

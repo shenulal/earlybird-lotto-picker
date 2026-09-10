@@ -63,8 +63,8 @@
       <div class="sidebar-foot">
         <p class="sidebar-heading">Open a screen</p>
         <a class="link" href="/" target="_blank" rel="noopener">Draw board ↗</a>
-        <a class="link" href="/welcome" target="_blank" rel="noopener">Welcome screen ↗</a>
-        <a class="link" href="/prizes" target="_blank" rel="noopener">Prize screen ↗</a>
+        <a class="link" href="/welcome" target="_blank" rel="noopener" data-screen="welcome">Welcome screen ↗</a>
+        <a class="link" href="/prizes" target="_blank" rel="noopener" data-screen="prizes">Prize screen ↗</a>
         <p class="signed-in">Signed in as <strong id="currentUser">admin</strong></p>
         <button type="button" class="btn btn-ghost btn-block" id="logoutBtn">Sign out</button>
       </div>
@@ -115,14 +115,39 @@
         <header class="panel-head">
           <div>
             <h1 id="participantsHeading">Participants</h1>
-            <p class="panel-lede">Upload the entry list as CSV or JSON. The columns in your file become the fields the board can display — nothing about the format is fixed.</p>
+            <p class="panel-lede">Upload the entry list as CSV or JSON, or link a Google Sheet. The columns in your file become the fields the board can display — nothing about the format is fixed.</p>
           </div>
         </header>
 
         <div class="card">
-          <h2 class="card-title">Upload entry data</h2>
+          <h2 class="card-title">Where the entries come from</h2>
+          <p class="field-hint">Either source lands in the same place: the first row names the columns, and you choose which one identifies an entry before importing.</p>
 
-          <div class="upload-drop" id="uploadDrop">
+          <div class="source-tabs" role="tablist" aria-label="Entry source">
+            <button type="button" class="source-tab" id="sourceTabFile" role="tab" aria-selected="true" aria-controls="uploadDrop">Upload a file</button>
+            <button type="button" class="source-tab" id="sourceTabSheet" role="tab" aria-selected="false" aria-controls="sourceSheet">Link a Google Sheet</button>
+          </div>
+
+          <div id="sourceSheet" role="tabpanel" aria-labelledby="sourceTabSheet" hidden>
+            <div class="field-group">
+              <label class="field-label" for="sheetUrl">Google Sheets link</label>
+              <div class="field-row">
+                <input type="url" id="sheetUrl" class="input" placeholder="https://docs.google.com/spreadsheets/d/…" autocomplete="off" spellcheck="false">
+                <button type="button" class="btn btn-ghost" id="sheetFetchBtn">Read sheet</button>
+              </div>
+              <p class="field-hint" id="sheetLinked" hidden></p>
+            </div>
+
+            <dl class="size-guide">
+              <dt>Sharing</dt><dd>In Google Sheets: <strong>Share → General access → Anyone with the link → Viewer</strong></dd>
+              <dt>First row</dt><dd>The column names. Every row below it is one entry</dd>
+              <dt>Tabs</dt><dd>Open the tab you want before copying the address — the link carries it</dd>
+              <dt>Maximum</dt><dd>8 MB</dd>
+              <dt>Offline</dt><dd>Needs a connection. On an offline machine, export the sheet as CSV and upload the file</dd>
+            </dl>
+          </div>
+
+          <div class="upload-drop" id="uploadDrop" role="tabpanel" aria-labelledby="sourceTabFile">
             <input type="file" id="fileInput" class="sr-only" accept=".csv,.json,text/csv,application/json">
             <p class="upload-headline">Drop a <strong>.csv</strong> or <strong>.json</strong> file here</p>
             <label class="btn btn-ghost" for="fileInput">Choose a file</label>

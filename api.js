@@ -52,6 +52,7 @@
     getOverview: () => request('/api/admin/overview'),
     saveSettings: (appSettings) => request('/api/admin/settings', { method: 'PUT', body: { appSettings } }),
     changePassword: (payload) => request('/api/admin/password', { method: 'POST', body: payload }),
+    fetchSheet: (url) => request('/api/admin/tickets/sheet', { method: 'POST', body: { url } }),
     previewTickets: (payload) => request('/api/admin/tickets/preview', { method: 'POST', body: payload }),
     uploadTickets: (payload) => request('/api/admin/tickets', { method: 'POST', body: payload }),
     clearTickets: (force) => request('/api/admin/tickets', { method: 'DELETE', body: { force: Boolean(force) } }),

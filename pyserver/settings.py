@@ -176,6 +176,18 @@ def _branding_asset(value: Any, fallback: str) -> str:
     return RETIRED_ASSETS.get(resolved, resolved)
 
 
+def _as_sheet_url(value: Any) -> str:
+    """A remembered Google Sheets export address.
+
+    Only ever set from the address sheets.py built, so what is stored can be
+    re-fetched without the organiser pasting the link again.
+    """
+    if not isinstance(value, str):
+        return ""
+    trimmed = value.strip()
+    return trimmed[:500] if trimmed.startswith("https://docs.google.com/spreadsheets/") else ""
+
+
 def _normalize_copy(raw: Any) -> Dict[str, str]:
     source = raw if isinstance(raw, dict) else {}
     return {key: _as_text(source.get(key), default, 160) for key, default in DEFAULT_COPY.items()}
@@ -344,6 +356,11 @@ def _normalize_data(raw: Any, legacy_display: Dict[str, Any]) -> Dict[str, Any]:
     """
     source = raw if isinstance(raw, dict) else {}
     policy = _as_choice(source.get("duplicatePolicy"), DUPLICATE_POLICIES, "skip")
+    # Where the list last came from, so a linked sheet can be pulled again.
+    provenance = {
+        "sourceUrl": _as_sheet_url(source.get("sourceUrl")),
+        "sourceSyncedAt": _as_text(source.get("sourceSyncedAt"), "", 40),
+    }
     fields = schema.normalize_fields(source.get("fields"))
 
     if fields:
@@ -351,6 +368,7 @@ def _normalize_data(raw: Any, legacy_display: Dict[str, Any]) -> Dict[str, Any]:
             "identifier": schema.pick_identifier(fields, source.get("identifier")),
             "fields": fields,
             "duplicatePolicy": policy,
+            **provenance,
         }
 
     inferred = ticket_store.infer_schema_from_file()
@@ -361,12 +379,18 @@ def _normalize_data(raw: Any, legacy_display: Dict[str, Any]) -> Dict[str, Any]:
             if legacy_display.get("showMobileInWinner") is True
             else inferred["fields"]
         )
-        return {"identifier": inferred["identifier"], "fields": adjusted, "duplicatePolicy": policy}
+        return {
+            "identifier": inferred["identifier"],
+            "fields": adjusted,
+            "duplicatePolicy": policy,
+            **provenance,
+        }
 
     return {
         "identifier": DEFAULT_FIELDS[0]["key"],
         "fields": schema.normalize_fields(DEFAULT_FIELDS),
         "duplicatePolicy": policy,
+        **provenance,
     }
 
 

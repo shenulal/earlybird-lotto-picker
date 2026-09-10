@@ -536,6 +536,7 @@ code {
 select,
 input[type='text'],
 input[type='password'],
+input[type='url'],
 input[type='number'] {
   width: 100%;
   padding: 10px 12px;
@@ -567,6 +568,71 @@ input:focus-visible,
   outline: none;
   border-color: var(--c-amber);
   box-shadow: 0 0 0 3px rgba(245, 181, 68, 0.22);
+}
+
+/* A screen the organiser has switched off is still reachable from here — the
+   console is where it gets switched back on — but it is marked, so it is clear
+   the draw board is not linking to it. */
+.sidebar-foot [data-screen][data-off='true'] {
+  opacity: 0.45;
+}
+
+.sidebar-foot [data-screen][data-off='true']::after {
+  content: ' (off)';
+  font-variant: small-caps;
+}
+
+/* Two ways in to the same import: a file, or a linked Google Sheet. Tabs
+   rather than two stacked cards, because only one of them is ever in use and
+   the preview below belongs to whichever was last read. */
+.source-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+  padding: 4px;
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius);
+  background: #0d1016;
+}
+
+.source-tab {
+  flex: 1;
+  padding: 9px 14px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--c-text-faint);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--duration), color var(--duration);
+}
+
+.source-tab:hover {
+  color: var(--c-text);
+}
+
+.source-tab[aria-selected='true'] {
+  background: var(--c-amber);
+  color: #14161c;
+}
+
+.source-tab:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(245, 181, 68, 0.22);
+}
+
+/* A field with its action beside it, wrapping to two lines when narrow. */
+.field-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.field-row .input {
+  flex: 1 1 260px;
+  min-width: 0;
 }
 
 .grid-2 {

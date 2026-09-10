@@ -6,6 +6,7 @@ const auth = require('./auth');
 const draw = require('./draw');
 const images = require('./images');
 const schema = require('./schema');
+const sheets = require('./sheets');
 const ticketStore = require('./tickets');
 const store = require('./store');
 const { StorageError } = store;
@@ -96,6 +97,13 @@ function createApiRouter() {
       ok: true,
       storage: store.driver.name,
       writable: null,
+      // What is actually running. On Vercel these come from the build, so this
+      // answers "did my last push deploy?" without guessing from the page.
+      version: {
+        commit: (process.env.VERCEL_GIT_COMMIT_SHA || '').slice(0, 7) || null,
+        branch: process.env.VERCEL_GIT_COMMIT_REF || null,
+        environment: process.env.VERCEL_ENV || 'self-hosted',
+      },
       configured: {
         KV_REST_API_URL: Boolean(process.env.KV_REST_API_URL),
         KV_REST_API_TOKEN: Boolean(process.env.KV_REST_API_TOKEN),
@@ -391,6 +399,21 @@ function createApiRouter() {
     }
   });
 
+  /* Pulls a Google Sheet down as CSV. Nothing is committed here — the sheet
+     goes through the same preview and import the organiser gets from a file,
+     so a linked sheet and an uploaded file behave identically. */
+  router.post('/admin/tickets/sheet', requireAuth, async (req, res) => {
+    try {
+      const { content, url } = await sheets.fetchSheetCsv(req.body && req.body.url);
+      return res.json({ ok: true, format: 'csv', content, url });
+    } catch (error) {
+      if (error instanceof sheets.SheetError) {
+        return res.status(error.status).json({ ok: false, error: error.message });
+      }
+      return sendError(res, error);
+    }
+  });
+
   /* Preview an upload without committing it, so the organiser can confirm the
      detected columns and identifier first. */
   router.post('/admin/tickets/preview', requireAuth, (req, res) => {
@@ -456,9 +479,19 @@ function createApiRouter() {
 
       ticketStore.saveTickets(merged);
 
+      // A list pulled from a sheet remembers where from, so it can be pulled
+      // again without pasting the link twice. A file upload clears it: the
+      // list on screen no longer came from the sheet.
+      const sourceUrl = typeof body.sourceUrl === 'string' ? body.sourceUrl : '';
+
       const nextSettings = normalizeAppSettings({
         ...appSettings,
-        data: { ...nextSchema, duplicatePolicy: appSettings.data.duplicatePolicy },
+        data: {
+          ...nextSchema,
+          duplicatePolicy: appSettings.data.duplicatePolicy,
+          sourceUrl,
+          sourceSyncedAt: sourceUrl ? new Date().toISOString() : '',
+        },
         // Display slots are rebuilt only when the columns actually changed.
         display: adopt && body.resetDisplay !== false ? {} : appSettings.display,
       });

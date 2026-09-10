@@ -38,6 +38,12 @@
 
     uploadDrop: document.getElementById('uploadDrop'),
     fileInput: document.getElementById('fileInput'),
+    sourceTabFile: document.getElementById('sourceTabFile'),
+    sourceTabSheet: document.getElementById('sourceTabSheet'),
+    sourceSheet: document.getElementById('sourceSheet'),
+    sheetUrl: document.getElementById('sheetUrl'),
+    sheetFetchBtn: document.getElementById('sheetFetchBtn'),
+    sheetLinked: document.getElementById('sheetLinked'),
     uploadBtn: document.getElementById('uploadBtn'),
     uploadSummary: document.getElementById('uploadSummary'),
     ticketCountPill: document.getElementById('ticketCountPill'),
@@ -57,7 +63,7 @@
     passwordError: document.getElementById('passwordError'),
   };
 
-  const state = { overview: null, pendingUpload: null, chosenIdentifier: null };
+  const state = { overview: null, pendingUpload: null, chosenIdentifier: null, sourceChosen: false };
   let configEditors = null;
 
   /* ------------------------------------------------------------- utilities */
@@ -272,6 +278,30 @@
     renderTable(elements.sampleBody, data.sample, columns, 'No entries uploaded yet.');
     elements.sampleFoot.textContent =
       data.sample.length > 0 ? `Showing the first ${data.sample.length} of ${data.ticketCount}.` : '';
+
+    renderSheetLink(appSettings.data);
+  }
+
+  /**
+   * Shows the sheet the current list came from, if it came from one.
+   *
+   * The link is remembered on import, so a list that has changed in the sheet
+   * can be pulled again without hunting down the address a second time.
+   */
+  function renderSheetLink(data) {
+    const linked = Boolean(data.sourceUrl);
+    elements.sheetLinked.hidden = !linked;
+    if (!linked) return;
+
+    const when = data.sourceSyncedAt ? new Date(data.sourceSyncedAt) : null;
+    elements.sheetLinked.textContent = when
+      ? `Linked to a Google Sheet, last read ${when.toLocaleString()}. Read it again to pick up changes.`
+      : 'Linked to a Google Sheet. Read it again to pick up changes.';
+
+    // Prefill so re-reading is one click. Only the first render opens the tab
+    // — after that the organiser's own choice of source stands.
+    if (!elements.sheetUrl.value) elements.sheetUrl.value = data.sourceUrl;
+    if (!state.sourceChosen) showSource('sheet');
   }
 
   /** The cap differs between a filesystem and a key-value deployment. */
@@ -283,7 +313,24 @@
     });
   }
 
+  /**
+   * Marks the sidebar links for screens that are switched off.
+   *
+   * Unlike the board, the console keeps them: this is where an organiser goes
+   * to switch one back on, so it has to be possible to look at it first.
+   */
+  function renderScreenLinks(appSettings) {
+    const offered = { welcome: appSettings.welcome.enabled, prizes: appSettings.prizes.enabled };
+    document.querySelectorAll('.sidebar-foot [data-screen]').forEach((link) => {
+      const isOn = offered[link.dataset.screen];
+      link.dataset.off = String(!isOn);
+      link.title = isOn ? '' : 'Switched off — it is not linked from the draw board';
+    });
+  }
+
   function renderAccount(account, appSettings) {
+    renderScreenLinks(appSettings);
+
     const isEnvManaged = account.credentialSource === 'environment';
 
     elements.brandEvent.textContent = appSettings.eventName;
@@ -384,22 +431,26 @@
     elements.uploadSchema.hidden = false;
   }
 
-  async function describeUpload(file, text) {
-    const format = /\.json$/i.test(file.name) ? 'json' : /\.csv$/i.test(file.name) ? 'csv' : undefined;
-    state.pendingUpload = { name: file.name, content: text, format };
+  /**
+   * Reads the columns out of whatever the organiser chose and offers it for
+   * import. A file and a linked sheet arrive here the same way, so there is
+   * one preview, one identifier choice and one Import button for both.
+   */
+  async function describeSource({ label, content, format, sizeBytes, sourceUrl = '' }) {
+    state.pendingUpload = { name: label, content, format, sourceUrl };
 
     elements.uploadSummary.hidden = false;
-    elements.uploadSummary.innerHTML = `<strong>${escapeHtml(file.name)}</strong> — reading columns…`;
+    elements.uploadSummary.innerHTML = `<strong>${escapeHtml(label)}</strong> — reading columns…`;
     elements.uploadBtn.disabled = true;
 
     try {
-      const preview = await api.previewTickets({ content: text, format });
+      const preview = await api.previewTickets({ content, format });
       const dropped = preview.issues.duplicates + preview.issues.missingIdentifier;
 
       elements.uploadSummary.innerHTML = `
-        <strong>${escapeHtml(file.name)}</strong> is ready to import.
+        <strong>${escapeHtml(label)}</strong> is ready to import.
         <dl>
-          <dt>Size</dt><dd>${(file.size / 1024).toFixed(1)} KB</dd>
+          <dt>Size</dt><dd>${(sizeBytes / 1024).toFixed(1)} KB</dd>
           <dt>Format</dt><dd>${escapeHtml(preview.format)}</dd>
           <dt>Columns</dt><dd>${preview.columns.length}</dd>
           <dt>Usable rows</dt><dd>${preview.count}</dd>
@@ -409,9 +460,43 @@
       renderSchemaPreview(preview);
       elements.uploadBtn.disabled = false;
     } catch (error) {
-      elements.uploadSummary.innerHTML = `<strong>${escapeHtml(file.name)}</strong> could not be read: ${escapeHtml(error.message)}`;
+      elements.uploadSummary.innerHTML = `<strong>${escapeHtml(label)}</strong> could not be read: ${escapeHtml(error.message)}`;
       elements.uploadSchema.hidden = true;
     }
+  }
+
+  /** Which of the two sources the organiser is working with. */
+  function showSource(kind) {
+    state.sourceChosen = true;
+    const isSheet = kind === 'sheet';
+    elements.sourceTabSheet.setAttribute('aria-selected', String(isSheet));
+    elements.sourceTabFile.setAttribute('aria-selected', String(!isSheet));
+    elements.sourceSheet.hidden = !isSheet;
+    elements.uploadDrop.hidden = isSheet;
+  }
+
+  /** Pulls the sheet down and hands it to the same preview a file gets. */
+  async function readSheet() {
+    const url = elements.sheetUrl.value.trim();
+    if (!url) {
+      toast('Paste the link to your Google Sheet first.', 'error');
+      return;
+    }
+
+    await withBusyButton(elements.sheetFetchBtn, async () => {
+      try {
+        const sheet = await api.fetchSheet(url);
+        await describeSource({
+          label: 'Google Sheet',
+          content: sheet.content,
+          format: sheet.format,
+          sizeBytes: new Blob([sheet.content]).size,
+          sourceUrl: sheet.url,
+        });
+      } catch (error) {
+        toast(error.message, 'error');
+      }
+    });
   }
 
   function readFile(file) {
@@ -422,7 +507,13 @@
     }
 
     const reader = new FileReader();
-    reader.onload = () => describeUpload(file, String(reader.result));
+    reader.onload = () =>
+      describeSource({
+        label: file.name,
+        content: String(reader.result),
+        format: /\.json$/i.test(file.name) ? 'json' : /\.csv$/i.test(file.name) ? 'csv' : undefined,
+        sizeBytes: file.size,
+      });
     reader.onerror = () => toast('The file could not be read.', 'error');
     reader.readAsText(file);
   }
@@ -441,6 +532,8 @@
           content: state.pendingUpload.content,
           format: state.pendingUpload.format,
           identifier: selectedIdentifier ? selectedIdentifier.value : undefined,
+          // Present only for a sheet, so importing a file clears the link.
+          sourceUrl: state.pendingUpload.sourceUrl || '',
           mode,
           force,
         });
@@ -453,6 +546,7 @@
 
         state.pendingUpload = null;
         elements.fileInput.value = '';
+        elements.sheetUrl.value = '';
         elements.uploadSummary.hidden = true;
         elements.uploadSchema.hidden = true;
         elements.uploadBtn.disabled = true;
@@ -491,6 +585,16 @@
   }
 
   function bindUpload() {
+    elements.sourceTabFile.addEventListener('click', () => showSource('file'));
+    elements.sourceTabSheet.addEventListener('click', () => showSource('sheet'));
+    elements.sheetFetchBtn.addEventListener('click', readSheet);
+    elements.sheetUrl.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        readSheet();
+      }
+    });
+
     elements.fileInput.addEventListener('change', (event) => readFile(event.target.files[0]));
     elements.uploadBtn.addEventListener('click', () => submitUpload(false));
     elements.clearEntriesBtn.addEventListener('click', () => clearEntries(false));

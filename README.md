@@ -43,7 +43,7 @@ Behind a sign-in.
 | Section | What it does |
 |---|---|
 | **Overview** | Live counters, data-health warnings, results table, CSV export, undo last draw, reset draw |
-| **Participants** | Download a template, upload the entry list with a column preview, export it, or delete it |
+| **Participants** | Upload the entry list or link a Google Sheet, with a column preview; download a template, export, or delete |
 | **Fields** | Rename columns, mark sensitive ones, choose the identifier and what appears in the export |
 | **Display** | Choose exactly which fields appear while spinning, on the announcement, on the winner card and in the winners list |
 | **Branding** | Upload the logo and backdrop, with size and resolution validated on the server |
@@ -248,7 +248,32 @@ JSON — an array, or an object with a `tickets` array:
 { "tickets": [ { "Badge ID": "GALA-001", "Guest Name": "Layla Hassan", "Company": "Emirates NBD" } ] }
 ```
 
-On upload the console shows the detected columns and proposes:
+### Linking a Google Sheet
+
+Under **Participants** the entry list can come from a file or straight from a
+Google Sheet — **Where the entries come from → Link a Google Sheet**. Paste the
+address from the browser while the sheet is open and press **Read sheet**. From
+there it is identical to a file: the same column preview, the same identifier
+choice, the same **Import entries** button.
+
+- The sheet must be readable by anyone with the link: in Google Sheets,
+  **Share → General access → Anyone with the link → Viewer**. A private sheet
+  answers with the sign-in page, which the console reports as such.
+- **The first row names the columns**, exactly as in a CSV. Every row below it
+  is one entry.
+- Open the tab you want before copying the address — the link carries it.
+- The link is remembered, so pressing **Read sheet** again later picks up
+  whatever has changed in the sheet. Importing a file instead clears it.
+- It needs a connection. On an offline machine, export the sheet as CSV from
+  Google and upload the file; everything downstream is the same.
+
+Only an address Pickora builds itself is ever fetched: what you paste is mined
+for the spreadsheet id and then discarded, so the import cannot be pointed at
+anything but Google's own CSV export.
+
+### What the console detects
+
+On import the console shows the detected columns and proposes:
 
 - **an identifier** — the column the draw is performed on, which must be unique.
   Columns named like a ticket, badge, booking or reference are preferred, and a
@@ -489,7 +514,7 @@ Public:
 
 | Method | Path | Purpose |
 |---|---|---|
-| `GET` | `/api/health` | Storage driver and whether it can be written to |
+| `GET` | `/api/health` | Storage driver, whether it can be written to, and the deployed commit |
 | `GET` | `/api/settings` | Board configuration (never credentials) |
 | `GET` | `/api/pool` | Remaining ticket numbers + counters |
 | `GET` | `/api/state` | Winners so far + counters |
@@ -516,6 +541,7 @@ Organiser (signed-in only):
 | `DELETE` | `/api/admin/tickets` |
 | `GET` | `/api/admin/export/tickets.csv` |
 | `GET` | `/api/admin/export/template.csv` |
+| `POST` | `/api/admin/tickets/sheet` |
 | `POST` | `/api/admin/assets/:kind` |
 | `DELETE` | `/api/admin/assets/:kind` |
 | `POST` | `/api/admin/welcome/images` |
