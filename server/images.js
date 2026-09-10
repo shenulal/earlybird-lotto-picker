@@ -1,12 +1,12 @@
 'use strict';
 
 const crypto = require('crypto');
-const fs = require('fs');
-const path = require('path');
 
-const { PATHS } = require('./paths');
+const store = require('./store');
 
-const MAX_BYTES = 8 * 1024 * 1024;
+// The ceiling depends on where the bytes end up: a filesystem takes 8 MB
+// comfortably, a key-value store carries them base64-encoded inside a request.
+const MAX_BYTES = store.maxBlobBytes;
 const MIN_DIMENSION = 16;
 const MAX_DIMENSION = 8000;
 
@@ -82,21 +82,18 @@ function decodeDataUrl(content) {
   return Buffer.from(match[2], 'base64');
 }
 
-function ensureAssetsDir() {
-  const directory = path.join(PATHS.root, 'assets');
-  fs.mkdirSync(directory, { recursive: true });
-  return directory;
-}
-
 /**
  * Validates and stores an uploaded image, returning the public path plus the
  * dimensions actually found in the file.
  */
-function saveImageAsset(kind, content, originalName) {
+async function saveImageAsset(kind, content, originalName) {
   const buffer = decodeDataUrl(content);
 
   if (buffer.length > MAX_BYTES) {
-    throw new Error(`That image is ${(buffer.length / 1048576).toFixed(1)} MB — the limit is 8 MB.`);
+    throw new Error(
+      `That image is ${(buffer.length / 1048576).toFixed(1)} MB — the limit is ` +
+        `${(MAX_BYTES / 1048576).toFixed(0)} MB on this deployment.`
+    );
   }
 
   const info = probeImage(buffer);
@@ -113,10 +110,9 @@ function saveImageAsset(kind, content, originalName) {
     }
   }
 
-  const directory = ensureAssetsDir();
   const digest = crypto.createHash('sha1').update(buffer).digest('hex').slice(0, 10);
   const fileName = `${kind}-${digest}${EXTENSIONS[info.format]}`;
-  fs.writeFileSync(path.join(directory, fileName), buffer);
+  await store.saveBlob(fileName, buffer);
 
   return {
     src: `assets/${fileName}`,
@@ -129,14 +125,9 @@ function saveImageAsset(kind, content, originalName) {
 }
 
 /** Removes a previously uploaded asset, ignoring anything outside assets/. */
-function removeImageAsset(src) {
+async function removeImageAsset(src) {
   if (typeof src !== 'string' || !src.startsWith('assets/') || src.includes('..')) return;
-  const target = path.join(PATHS.root, src);
-  try {
-    fs.unlinkSync(target);
-  } catch (_error) {
-    /* already gone, or never written */
-  }
+  await store.deleteBlob(src.slice('assets/'.length));
 }
 
 module.exports = { MAX_BYTES, MIN_DIMENSION, MAX_DIMENSION, probeImage, saveImageAsset, removeImageAsset };

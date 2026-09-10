@@ -1,0 +1,17 @@
+'use strict';
+
+/**
+ * Serverless entry point (Vercel).
+ *
+ * Every request reaches the same application the local server runs; there is
+ * no port to bind and no process to keep alive, so the handler is exported
+ * directly. State lives in the key-value store configured by
+ * KV_REST_API_URL / KV_REST_API_TOKEN, because the deployment filesystem is
+ * read-only.
+ */
+
+const { createApp } = require('../server/app');
+
+const app = createApp();
+
+module.exports = (req, res) => app.handle(req, res);

@@ -111,9 +111,48 @@ prefer the Node path — or `pip download` the wheels in advance and install wit
 
 Set `PORT` to change the port.
 
+## Hosting it on Vercel
+
+Vercel's filesystem is read-only and its functions are ephemeral, so the JSON
+files cannot be written there. Point Pickora at a key-value store instead and
+everything works unchanged:
+
+1. In the Vercel dashboard, add a **KV / Upstash Redis** store to the project
+   (Storage → Create). Vercel injects `KV_REST_API_URL` and `KV_REST_API_TOKEN`
+   automatically.
+2. Set `ADMIN_USERNAME` and `ADMIN_PASSWORD` as environment variables — on a
+   read-only host the in-console password change cannot write to the settings
+   file, so these are the only way to set your own credentials.
+3. Deploy. `vercel.json` routes every request to `api/index.js`, which mounts
+   the same application the local server runs.
+
+Storage is chosen at startup and reported in the log:
+
+```
+💾 Storage: filesystem        ← no KV variables set
+💾 Storage: key-value store   ← KV_REST_API_URL + KV_REST_API_TOKEN set
+```
+
+A fresh deployment starts from the `tickets.json` and `appsettings.json`
+committed to the repository, then keeps every later change in the store. The
+seed is read-only: once you save anything — including an empty entry list —
+the stored copy takes over.
+
+`UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` work too, so any Upstash
+instance is fine, on Vercel or anywhere else.
+
+**Uploads are capped at 2 MB on this path** (against 8 MB on a filesystem),
+because images travel base64-encoded inside the store request.
+
+Any host with a writable disk — Render, Railway, Fly.io, a VPS — needs none of
+this: leave the variables unset and it uses the filesystem.
+
+---
+
 ## Online and offline
 
-Pickora runs entirely on the event PC and never calls out to the internet:
+Run locally, Pickora works entirely on the event PC and never calls out to the
+internet:
 
 - **Fonts are bundled** (`fonts/`, ~230 KB, all SIL OFL) — nothing is fetched
   from a CDN, so the board looks identical with the network unplugged.
@@ -166,6 +205,7 @@ process and everyone is signed out on redeploy.
 | `tickets.json` | Entry list | Yes |
 | `appsettings.json` | Board settings + hashed credentials | Yes — see note below |
 | `winners.json` | Draw state, written as winners are picked | No (gitignored) |
+| key-value store | The same three documents plus uploads, when hosted | n/a |
 | `appsettings.sample.json` | Reference configuration | Yes |
 
 > **Note on `appsettings.json`:** it stays tracked so existing deployments keep
@@ -389,10 +429,12 @@ pickora/
 ├── confetti.js                           # confetti animation
 ├── welcome.js                            # guest welcome carousel
 ├── fonts/                                # bundled webfonts (no CDN)
-├── server.js                             # Node entry point (no dependencies)
-│   └── server/                           # micro (http shim), paths, store, auth,
-│                                         # schema, settings, tickets, draw,
-│                                         # images, routes
+├── server.js                             # local entry point (no dependencies)
+├── api/index.js                          # serverless entry point (Vercel)
+├── vercel.json                           # routes every request to the function
+│   └── server/                           # app, micro (http shim), paths, store,
+│                                         # auth, schema, settings, tickets,
+│                                         # draw, images, routes
 ├── app.py                                # Flask entry point
 │   └── pyserver/                         # the same modules in Python
 ├── tickets.json / appsettings.json       # data

@@ -7,7 +7,8 @@ const draw = require('./draw');
 const images = require('./images');
 const schema = require('./schema');
 const ticketStore = require('./tickets');
-const { StorageError } = require('./store');
+const store = require('./store');
+const { StorageError } = store;
 const {
   normalizeAppSettings,
   loadSettingsFile,
@@ -59,6 +60,17 @@ function exportColumns(appSettings) {
 function createApiRouter() {
   const router = express.Router();
   router.use(express.json({ limit: '25mb' }));
+
+  // One load per request; the handlers below then read and write in memory and
+  // persist with `flush()` before they respond.
+  router.use(async (_req, res, next) => {
+    try {
+      await store.hydrate();
+      next();
+    } catch (error) {
+      sendError(res, error);
+    }
+  });
 
   /* ---------------------------------------------------------------- public */
 
@@ -119,7 +131,7 @@ function createApiRouter() {
     }
   });
 
-  router.post('/draw', (req, res) => {
+  router.post('/draw', async (req, res) => {
     try {
       const { appSettings } = loadSettingsFile();
       const isAdmin = Boolean(currentSession(req));
@@ -134,6 +146,7 @@ function createApiRouter() {
       const result = draw.drawWinner(appSettings);
       if (!result.ok) return res.status(409).json(result);
 
+      await store.flush();
       return res.json({ ...result, winner: publicWinner(result.winner, schema.publicFieldKeys(appSettings.display)) });
     } catch (error) {
       return sendError(res, error);
@@ -142,9 +155,10 @@ function createApiRouter() {
 
   /* ------------------------------------------------------------------ auth */
 
-  router.get('/auth/session', (req, res) => {
+  router.get('/auth/session', async (req, res) => {
     const session = currentSession(req);
-    const { settingsFile } = ensureAdminCredentials();
+    const { settingsFile, created } = ensureAdminCredentials();
+    if (created) await store.flush();
 
     res.json({
       ok: true,
@@ -155,7 +169,7 @@ function createApiRouter() {
     });
   });
 
-  router.post('/auth/login', (req, res) => {
+  router.post('/auth/login', async (req, res) => {
     const clientKey = req.ip || 'unknown';
     if (auth.isLockedOut(clientKey)) {
       return res.status(429).json({ ok: false, error: 'Too many failed attempts. Try again in 15 minutes.' });
@@ -165,7 +179,8 @@ function createApiRouter() {
     const password = String((req.body && req.body.password) || '');
 
     try {
-      const { settingsFile } = ensureAdminCredentials();
+      const { settingsFile, created } = ensureAdminCredentials();
+      if (created) await store.flush();
       const credential = settingsFile.adminAuth;
       const usernameMatches = Boolean(credential) && username.toLowerCase() === String(credential.username).toLowerCase();
 
@@ -225,7 +240,7 @@ function createApiRouter() {
     }
   });
 
-  router.put('/admin/settings', requireAuth, (req, res) => {
+  router.put('/admin/settings', requireAuth, async (req, res) => {
     try {
       const settingsFile = loadSettingsFile();
       const incoming = (req.body && req.body.appSettings) || req.body || {};
@@ -233,13 +248,14 @@ function createApiRouter() {
       // the field schema or the display slots.
       const appSettings = normalizeAppSettings({ ...settingsFile.appSettings, ...incoming });
       saveSettingsFile({ ...settingsFile, appSettings });
+      await store.flush();
       res.json({ ok: true, appSettings });
     } catch (error) {
       sendError(res, error);
     }
   });
 
-  router.post('/admin/password', requireAuth, (req, res) => {
+  router.post('/admin/password', requireAuth, async (req, res) => {
     const currentPassword = String((req.body && req.body.currentPassword) || '');
     const newPassword = String((req.body && req.body.newPassword) || '');
     const username = String((req.body && req.body.username) || '').trim();
@@ -274,6 +290,8 @@ function createApiRouter() {
           updatedAt: new Date().toISOString(),
         },
       });
+
+      await store.flush();
 
       res.cookie(auth.SESSION_COOKIE, auth.createSessionToken(nextUsername), {
         httpOnly: true,
@@ -312,7 +330,7 @@ function createApiRouter() {
     }
   });
 
-  router.post('/admin/tickets', requireAuth, (req, res) => {
+  router.post('/admin/tickets', requireAuth, async (req, res) => {
     const body = req.body || {};
     const mode = body.mode === 'append' ? 'append' : 'replace';
     const state = draw.loadDrawState();
@@ -360,6 +378,7 @@ function createApiRouter() {
         display: adopt && body.resetDisplay !== false ? {} : appSettings.display,
       });
       saveSettingsFile({ ...settingsFile, appSettings: nextSettings });
+      await store.flush();
 
       return res.json({
         ok: true,
@@ -377,7 +396,7 @@ function createApiRouter() {
     }
   });
 
-  router.delete('/admin/tickets', requireAuth, (req, res) => {
+  router.delete('/admin/tickets', requireAuth, async (req, res) => {
     const state = draw.loadDrawState();
 
     if (state.winners.length > 0 && !(req.body && req.body.force)) {
@@ -390,6 +409,7 @@ function createApiRouter() {
 
     try {
       ticketStore.saveTickets([]);
+      await store.flush();
       const { appSettings } = loadSettingsFile();
       return res.json({ ok: true, ticketCount: 0, stats: draw.buildStats(appSettings, [], state.winners) });
     } catch (error) {
@@ -412,14 +432,14 @@ function createApiRouter() {
 
   /* ---------------------------------------------------------------- assets */
 
-  router.post('/admin/assets/:kind', requireAuth, (req, res) => {
+  router.post('/admin/assets/:kind', requireAuth, async (req, res) => {
     const kind = req.params.kind;
     if (!ASSET_KINDS.includes(kind)) {
       return res.status(400).json({ ok: false, error: 'Unknown asset.' });
     }
 
     try {
-      const asset = images.saveImageAsset(kind, (req.body || {}).content, (req.body || {}).name);
+      const asset = await images.saveImageAsset(kind, (req.body || {}).content, (req.body || {}).name);
       const settingsFile = loadSettingsFile();
       const previous = settingsFile.appSettings.branding[kind].src;
 
@@ -437,7 +457,8 @@ function createApiRouter() {
       });
 
       saveSettingsFile({ ...settingsFile, appSettings });
-      if (previous && previous !== asset.src) images.removeImageAsset(previous);
+      await store.flush();
+      if (previous && previous !== asset.src) await images.removeImageAsset(previous);
 
       return res.json({ ok: true, asset, appSettings });
     } catch (error) {
@@ -446,7 +467,7 @@ function createApiRouter() {
     }
   });
 
-  router.delete('/admin/assets/:kind', requireAuth, (req, res) => {
+  router.delete('/admin/assets/:kind', requireAuth, async (req, res) => {
     const kind = req.params.kind;
     if (!ASSET_KINDS.includes(kind)) return res.status(400).json({ ok: false, error: 'Unknown asset.' });
 
@@ -463,7 +484,8 @@ function createApiRouter() {
       });
 
       saveSettingsFile({ ...settingsFile, appSettings });
-      images.removeImageAsset(previous);
+      await store.flush();
+      await images.removeImageAsset(previous);
 
       return res.json({ ok: true, appSettings });
     } catch (error) {
@@ -473,7 +495,7 @@ function createApiRouter() {
 
   /* --------------------------------------------------- guest welcome images */
 
-  router.post('/admin/welcome/images', requireAuth, (req, res) => {
+  router.post('/admin/welcome/images', requireAuth, async (req, res) => {
     try {
       const settingsFile = loadSettingsFile();
       const welcome = settingsFile.appSettings.welcome;
@@ -482,7 +504,7 @@ function createApiRouter() {
         return res.status(409).json({ ok: false, error: `The carousel holds at most ${MAX_WELCOME_IMAGES} photos.` });
       }
 
-      const asset = images.saveImageAsset('guest', (req.body || {}).content, (req.body || {}).name);
+      const asset = await images.saveImageAsset('guest', (req.body || {}).content, (req.body || {}).name);
       const caption = String((req.body || {}).caption || '').trim();
 
       // Files are named by content hash, so the same photo uploaded twice
@@ -500,6 +522,7 @@ function createApiRouter() {
       });
 
       saveSettingsFile({ ...settingsFile, appSettings });
+      await store.flush();
       return res.json({ ok: true, asset, appSettings });
     } catch (error) {
       if (error instanceof StorageError) return sendError(res, error);
@@ -507,7 +530,7 @@ function createApiRouter() {
     }
   });
 
-  router.delete('/admin/welcome/images', requireAuth, (req, res) => {
+  router.delete('/admin/welcome/images', requireAuth, async (req, res) => {
     const src = String((req.body || {}).src || '');
 
     try {
@@ -521,9 +544,10 @@ function createApiRouter() {
 
       const appSettings = normalizeAppSettings({ ...settingsFile.appSettings, welcome: { ...welcome, images: remaining } });
       saveSettingsFile({ ...settingsFile, appSettings });
+      await store.flush();
 
       // Only delete the file once nothing else references it.
-      if (!remaining.some((image) => image.src === src)) images.removeImageAsset(src);
+      if (!remaining.some((image) => image.src === src)) await images.removeImageAsset(src);
 
       return res.json({ ok: true, appSettings });
     } catch (error) {
@@ -533,20 +557,23 @@ function createApiRouter() {
 
   /* ------------------------------------------------------------ draw admin */
 
-  router.post('/admin/draw/undo', requireAuth, (_req, res) => {
+  router.post('/admin/draw/undo', requireAuth, async (_req, res) => {
     try {
       const { appSettings } = loadSettingsFile();
       const result = draw.undoLastWinner(appSettings);
+      await store.flush();
       res.status(result.ok ? 200 : 409).json(result);
     } catch (error) {
       sendError(res, error);
     }
   });
 
-  router.post('/admin/draw/reset', requireAuth, (_req, res) => {
+  router.post('/admin/draw/reset', requireAuth, async (_req, res) => {
     try {
       const { appSettings } = loadSettingsFile();
-      res.json(draw.resetDraw(appSettings));
+      const result = draw.resetDraw(appSettings);
+      await store.flush();
+      res.json(result);
     } catch (error) {
       sendError(res, error);
     }

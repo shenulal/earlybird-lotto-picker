@@ -64,6 +64,7 @@
      inner clamp lets the frame grow on a large projector, where the display
      type scales up too; `100%` keeps it honest on small screens. */
   --stage-width: min(100%, clamp(860px, 58vw, 1500px));
+  --reel-height: clamp(122px, 20vh, 220px);
   --gutter: clamp(16px, 3vw, 44px);
 }
 
@@ -473,15 +474,47 @@ body[data-align='right'] .stats { justify-content: flex-end; }
   letter-spacing: 0.03em;
 }
 
-/* Each reel tick is a fresh element, so this plays once per swap and reads as
-   continuous motion at any configured speed. */
-.slot-rolling {
-  animation: reelTick 140ms var(--ease) both;
+/* ------------------------------------------------------------- the reel */
+
+/* The reel is a strip that travels, not text that is replaced. One transform
+   animation on the compositor stays smooth at any configured speed, where a
+   per-tick fade would restart faster than it can finish and read as a blink. */
+.reel-window {
+  position: relative;
+  width: 100%;
+  height: var(--reel-height);
+  overflow: hidden;
+  /* Entries arrive and leave through a soft edge, which sells the depth. */
+  mask-image: linear-gradient(180deg, transparent 0, #000 22%, #000 78%, transparent 100%);
 }
 
-@keyframes reelTick {
-  from { opacity: 0.15; transform: translate3d(0, 14%, 0) scaleY(1.06); }
-  to { opacity: 1; transform: none; }
+.reel-strip {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  will-change: transform;
+  animation: reelScroll var(--reel-duration, 900ms) linear infinite;
+}
+
+.reel-item {
+  flex: 0 0 var(--reel-height);
+  height: var(--reel-height);
+  display: grid;
+  place-items: center;
+  padding: 0 4px;
+}
+
+/* The list is rendered twice, so a half turn is one seamless cycle. */
+@keyframes reelScroll {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(0, -50%, 0); }
+}
+
+/* Reduced motion: the strip holds still and the value steps instead. */
+.reel-strip.is-static {
+  animation: none;
 }
 
 /* A slot may hold up to six lines; past three the display line steps down so
@@ -1252,11 +1285,15 @@ body[data-welcome='panel'] .welcome-card {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *,
+  *:not(.reel-strip),
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+
+  .reel-strip {
+    animation: none !important;
   }
 }

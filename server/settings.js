@@ -1,7 +1,7 @@
 'use strict';
 
 const { PATHS } = require('./paths');
-const { readJson, writeJson, fileExists } = require('./store');
+const { readJson, writeJson, readBundledJson } = require('./store');
 const { hashPassword } = require('./auth');
 const schema = require('./schema');
 const ticketStore = require('./tickets');
@@ -254,8 +254,9 @@ function normalizeAppSettings(input) {
 }
 
 function loadSettingsFile() {
-  const fallbackSource = fileExists(PATHS.settings) ? PATHS.settings : PATHS.settingsSample;
-  const raw = readJson(fallbackSource, { appSettings: {} }) || {};
+  // Nothing stored yet — a first run, or a fresh deployment — starts from the
+  // sample that ships with the application.
+  const raw = readJson(PATHS.settings, null) || readBundledJson(PATHS.settingsSample, { appSettings: {} });
   return { appSettings: normalizeAppSettings(raw.appSettings), adminAuth: raw.adminAuth || null };
 }
 

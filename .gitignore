@@ -62,3 +62,6 @@ windows/vendor/node/
 
 # Written by the Windows installer
 windows/port.txt
+
+# Vercel
+.vercel

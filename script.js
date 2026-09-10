@@ -17,6 +17,11 @@
   const STATUS = { IDLE: 'idle', ROLLING: 'rolling', REVEALING: 'revealing', COMPLETE: 'complete' };
   const REVEAL_ANIMATIONS = ['reveal-rise', 'reveal-flip', 'reveal-zoom', 'reveal-swing', 'reveal-drop'];
 
+  // Enough entries that the strip reads as a reel rather than a short loop.
+  const REEL_ITEMS = 12;
+
+  const prefersReducedMotion = global.matchMedia('(prefers-reduced-motion: reduce)');
+
   const elements = {
     stage: document.getElementById('stage'),
     reel: document.getElementById('reel'),
@@ -299,14 +304,50 @@
     state.stopRequested = false;
     state.rollStartedAt = Date.now();
     setStatus(STATUS.ROLLING);
+    startReel();
+  }
 
-    const tick = () => {
-      const record = state.pool[Math.floor(Math.random() * state.pool.length)];
-      elements.reel.innerHTML = renderSlot('reel', record, 'slot-rolling');
-    };
+  /** One strip item: a full slot render of a randomly chosen entry. */
+  function reelItem() {
+    const record = state.pool[Math.floor(Math.random() * state.pool.length)];
+    return `<li class="reel-item">${renderSlot('reel', record, 'slot-rolling')}</li>`;
+  }
 
-    tick();
-    state.reelTimerId = setInterval(tick, state.settings.animation.rollingSpeed);
+  /**
+   * Spins the reel as a continuously translating strip rather than swapping
+   * the text on a timer. Replacing the element on every tick restarts its
+   * transition, which reads as a blink; a single transform animation stays on
+   * the compositor and looks smooth at any configured speed.
+   */
+  function startReel() {
+    const speed = state.settings.animation.rollingSpeed;
+
+    // The list is rendered twice so translating by exactly half loops seamlessly.
+    const items = Array.from({ length: REEL_ITEMS }, reelItem).join('');
+    elements.reel.innerHTML = `
+      <div class="reel-window">
+        <ul class="reel-strip" style="--reel-duration:${REEL_ITEMS * speed}ms">${items}${items}</ul>
+      </div>`;
+
+    const strip = elements.reel.querySelector('.reel-strip');
+
+    if (prefersReducedMotion.matches) {
+      // No travel: step the values slowly instead, so the board still reads
+      // as live without any sustained motion.
+      strip.classList.add('is-static');
+      state.reelTimerId = setInterval(() => {
+        const first = strip.querySelector('.reel-item');
+        if (first) first.outerHTML = reelItem();
+      }, Math.max(speed * 8, 400));
+      return;
+    }
+
+    // Refresh the values each time the loop comes around, so a small pool
+    // does not visibly repeat. The swap happens at the seam, out of sight.
+    strip.addEventListener('animationiteration', () => {
+      const refreshed = Array.from({ length: REEL_ITEMS }, reelItem).join('');
+      strip.innerHTML = refreshed + refreshed;
+    });
   }
 
   async function stopSlot() {
