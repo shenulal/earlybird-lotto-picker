@@ -299,16 +299,6 @@ body[data-logo-position='bottom-center'] .board-footer {
   background: var(--accent-veil);
 }
 
-.tool-danger {
-  color: var(--negative);
-}
-
-.tool-danger:hover,
-.tool-danger:focus-visible {
-  color: var(--negative);
-  background: color-mix(in oklab, var(--negative) 18%, transparent);
-}
-
 .tool-quiet {
   color: var(--ink-ghost);
 }
@@ -728,6 +718,30 @@ body[data-align='right'] .stats { justify-content: flex-end; }
   box-shadow: 0 16px 38px rgba(239, 75, 60, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 
+.control-reset {
+  border-color: var(--hairline-bright);
+  background: var(--surface);
+  color: var(--ink-soft);
+  backdrop-filter: blur(10px);
+}
+
+.control-reset:hover:not(:disabled) {
+  border-color: var(--negative);
+  color: var(--negative);
+}
+
+/* Not permitted here: dimmed but still visible, so the option is discoverable
+   and a click can explain what is missing. */
+.control-reset[data-locked='true'] {
+  opacity: 0.5;
+}
+
+.control-reset[data-locked='true']:hover {
+  opacity: 0.85;
+  border-color: var(--hairline-bright);
+  color: var(--ink-soft);
+}
+
 .control:hover:not(:disabled),
 .control:focus-visible:not(:disabled) {
   transform: translateY(-2px);
@@ -953,7 +967,8 @@ body[data-align='right'] .stats { justify-content: flex-end; }
 
 .notice {
   position: fixed;
-  top: 20px;
+  /* Below the header, so a message never sits on top of the board controls. */
+  top: clamp(84px, 11vh, 116px);
   left: 50%;
   transform: translateX(-50%);
   z-index: 70;
@@ -1282,6 +1297,13 @@ body[data-welcome='panel'] .welcome-card {
 }
 
 @media (max-width: 640px) {
+  /* The header stacks here, so a top-anchored message would land on the
+     toolbar; it moves out of the way instead. */
+  .notice {
+    top: auto;
+    bottom: 84px;
+  }
+
   .board-header {
     flex-direction: column;
     align-items: stretch;
@@ -1303,6 +1325,10 @@ body[data-welcome='panel'] .welcome-card {
   .control {
     flex: 1 1 140px;
     min-width: 0;
+  }
+
+  .control-reset {
+    flex: 1 1 100%;
   }
 
   .control-key {

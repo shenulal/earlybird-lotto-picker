@@ -24,7 +24,9 @@ The screen the audience sees.
 - Winner reveal with confetti, cycling through five reveal animations
 - Optional winners panel and prize counters
 - A guest welcome with a photo carousel, for greeting a chief guest
-- **New draw** clears the results and starts over, without leaving the board
+- **New draw** sits beside Start and Stop: clears the results and starts over
+  without leaving the board. Offered to a signed-in organiser, or to anyone
+  once `draw.allowResetFromBoard` is on; otherwise it explains what is needed
 - Keyboard: `Space` / `Enter` start and stop, `W` winners panel, `G` guest
   welcome, `N` new draw, `F` fullscreen
 - Survives a refresh — the draw state lives on the server, not in the tab

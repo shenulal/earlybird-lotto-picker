@@ -183,7 +183,12 @@
 
     applyBranding(settings);
     applyCopy(settings);
-    elements.newDrawBtn.hidden = !state.canReset;
+    // Shown to everyone: hiding it made the option look absent. Permission
+    // decides what a click does, not whether the control exists.
+    elements.newDrawBtn.dataset.locked = String(!state.canReset);
+    elements.newDrawBtn.title = state.canReset
+      ? 'Clear the current draw and start over (N)'
+      : 'Sign in on the organiser console to start a new draw';
     setWinnersPanel(settings.ui.showWinnersPanel);
 
     confetti = global.createConfetti(elements.confettiCanvas, { palette: settings.animation.confettiPalette });
@@ -441,6 +446,14 @@
   async function startNewDraw() {
     if (state.status === STATUS.ROLLING || state.status === STATUS.REVEALING) return;
 
+    if (!state.canReset) {
+      showNotice(
+        'Sign in on the organiser console to start a new draw, or allow it from the board in Settings.',
+        'warn'
+      );
+      return;
+    }
+
     const drawn = state.stats ? state.stats.winnersCount : 0;
     const detail = drawn > 0 ? `\n\n${drawn} recorded winner(s) will be cleared. This cannot be undone.` : '';
     if (!global.confirm(`${copy('newDrawConfirm')}${detail}`)) return;
@@ -480,7 +493,7 @@
       if (key === 'w') setWinnersPanel(elements.winnersPanel.hidden);
       if (key === 'f') toggleFullscreen();
       if (key === 'g' && welcome) welcome.toggle();
-      if (key === 'n' && state.canReset) startNewDraw();
+      if (key === 'n') startNewDraw();
       if (event.key === 'Escape' && welcome && welcome.isOpen()) welcome.close();
     });
   }
