@@ -220,14 +220,39 @@ function staticMiddleware(root, options = {}) {
     fs.stat(target, (error, stats) => {
       if (error) return next();
 
+      // FIX: `index: false` was read as falsy and fell through to the default,
+      // so a caller that wanted to serve the directory index itself could not.
+      if (stats.isDirectory() && options.index === false) return next();
       const filePath = stats.isDirectory() ? path.join(target, options.index || 'index.html') : target;
       fs.stat(filePath, (indexError, fileStats) => {
         if (indexError || !fileStats.isFile()) return next();
 
         res.setHeader('Content-Type', contentTypeFor(filePath));
         res.setHeader('Content-Length', fileStats.size);
-        res.setHeader('Last-Modified', fileStats.mtime.toUTCString());
-        if (typeof options.setHeaders === 'function') options.setHeaders(res, filePath, fileStats);
+
+        /* FIX: this used to send Last-Modified from the file's mtime, and a
+           deployment platform may stamp every build with the same fixed date —
+           Vercel uses 2018-10-20 for all of them. A browser then revalidated
+           with that date, the edge compared it against an identical one and
+           answered 304, and the old file was kept for good. Nothing short of a
+           hard refresh could dislodge it.
+
+           An entity tag built from the running build says what is actually
+           meant: unchanged within a build, different across one. */
+        if (typeof options.etagFor === 'function') {
+          const etag = options.etagFor(filePath, fileStats);
+          if (etag) {
+            res.setHeader('ETag', etag);
+            if (req.headers['if-none-match'] === etag) {
+              res.statusCode = 304;
+              res.removeHeader('Content-Length');
+              res.end();
+              return undefined;
+            }
+          }
+        }
+
+        if (typeof options.setHeaders === 'function') options.setHeaders(res, filePath, fileStats, req);
 
         if (req.method === 'HEAD') {
           res.end();

@@ -8,9 +8,10 @@ deployed against the same data files.
 import os
 from datetime import timedelta
 
-from flask import Flask, abort, send_from_directory
+from flask import Flask, abort, request, send_from_directory
 
 from pyserver.auth import SESSION_TTL_SECONDS, session_secret
+from pyserver.build import BUILD, VERSION_PARAM, page
 from pyserver.paths import ROOT_DIR, is_protected_path
 from pyserver.routes import api
 from pyserver.settings import DEFAULT_ADMIN_PASSWORD, DEFAULT_ADMIN_USERNAME, ensure_admin_credentials
@@ -29,25 +30,48 @@ def apply_security_headers(response):
     return response
 
 
+def send_page(file_name: str):
+    """NEW: a page with its asset URLs carrying the current build.
+
+    The page itself must never be cached — it is what tells the browser which
+    build's assets to fetch — so it revalidates every time, cheaply, against an
+    entity tag that changes with the build.
+    """
+    try:
+        html = page(file_name)
+    except OSError:
+        abort(404)
+
+    etag = f'"{BUILD}-{file_name}"'
+    if request.headers.get("If-None-Match") == etag:
+        return "", 304, {"ETag": etag, "Cache-Control": "no-cache"}
+
+    return html, 200, {
+        "Content-Type": "text/html; charset=utf-8",
+        "ETag": etag,
+        "Cache-Control": "no-cache",
+    }
+
+
 @app.get("/")
 def index():
-    return send_from_directory(ROOT_DIR, "index.html")
+    return send_page("index.html")
 
 
 @app.get("/admin")
 def admin():
-    return send_from_directory(ROOT_DIR, "admin.html")
+    return send_page("admin.html")
 
 
 # Extensionless routes for the screens an organiser links to or projects.
 @app.get("/welcome")
 def welcome_page():
-    return send_from_directory(ROOT_DIR, "welcome.html")
+    return send_page("welcome.html")
 
 
 @app.get("/prizes")
 def prizes_page():
-    return send_from_directory(ROOT_DIR, "prizes.html")
+    return send_page("prizes.html")
 
 
 @app.get("/<path:filename>")
@@ -59,12 +83,21 @@ def serve_static(filename: str):
 
     target = (ROOT_DIR / filename).resolve()
     if not target.is_file() or ROOT_DIR not in target.parents:
-        return send_from_directory(ROOT_DIR, "index.html")
+        return send_page("index.html")
 
-    # Markup, styles and scripts are revalidated every time; a stale one after a
-    # fix reaches the event PC is far worse than the request. Fonts and images
-    # are stable, so they are cached — Flask sends no-cache for everything by
-    # default, which would re-fetch the whole font set on every page.
+    # Pages go through the stamper, so their markup points at this build.
+    if filename.lower().endswith(".html"):
+        return send_page(filename)
+
+    # CHANGED: a request carrying this build's version may be kept for as long
+    # as the browser likes — a new build asks for a different URL, so the old
+    # entry can never be served in its place. Anything asked for without one is
+    # revalidated, because there is no telling which build the asker meant.
+    if request.args.get(VERSION_PARAM) == BUILD:
+        response = send_from_directory(ROOT_DIR, filename)
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        return response
+
     lowered = filename.lower()
     if lowered.endswith((".woff2", ".woff", ".ttf", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico")):
         return send_from_directory(ROOT_DIR, filename, max_age=604800)

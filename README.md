@@ -504,6 +504,47 @@ well formed and scanned as nothing at all.
 
 ---
 
+## Getting new code to people
+
+Nobody should have to hard-refresh, clear a cache or clear their history to
+pick up a fix. Three things see to that.
+
+**Asset URLs carry the build.** Every script, stylesheet and icon a page pulls
+in is requested as `script.js?v=<build>`. A new deployment asks for different
+URLs, so no cache anywhere — the browser's, a proxy's, a CDN edge's — can serve
+the previous build's file in their place, whatever it believes about freshness.
+Because the URL is unique to the build, those files are then cached hard
+(`immutable`), which is both faster and safer than revalidating.
+
+**The page itself is never cached.** It is what says which build's assets to
+fetch, so it revalidates on every visit against an entity tag that changes with
+the build. That costs one small conditional request.
+
+**A page left open notices.** A board projected in a hall may be open for
+hours, and will never ask for new code by itself however correct the caching
+is. Each page states its build, and checks `/api/build` on a quarter-hour and
+whenever someone returns to the tab. If it has been superseded it reloads —
+but never mid-spin: losing a draw because a deployment landed would be far
+worse than showing yesterday's code for another minute.
+
+### The bug this replaced
+
+The static handler used to send `Last-Modified` from the file's modification
+time. Vercel stamps every build's files with the same fixed date, so a browser
+revalidated with that date, the edge compared it against an identical one and
+answered `304 Not Modified`, and the old file was kept — permanently. Nothing
+short of a hard refresh could dislodge it:
+
+```
+If-Modified-Since: Sat, 20 Oct 2018 01:46:40 GMT  →  304   (before)
+                                                  →  200   (after)
+```
+
+Modification times are not trusted anywhere now. The build is the deployment's
+commit where there is one, and otherwise a hash of the served files themselves.
+
+---
+
 ## Settings reference
 
 | Setting | Effect |
@@ -565,7 +606,8 @@ Public:
 
 | Method | Path | Purpose |
 |---|---|---|
-| `GET` | `/api/health` | Storage driver, whether it can be written to, and the deployed commit |
+| `GET` | `/api/health` | Storage driver, whether it can be written to, and the deployed build |
+| `GET` | `/api/build` | The running build, for a page checking whether it is current |
 | `GET` | `/api/settings` | Board configuration (never credentials) |
 | `GET` | `/api/pool` | Remaining ticket numbers + counters |
 | `GET` | `/api/state` | Winners so far + counters |

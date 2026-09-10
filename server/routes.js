@@ -7,6 +7,7 @@ const draw = require('./draw');
 const images = require('./images');
 const schema = require('./schema');
 const sheets = require('./sheets');
+const { BUILD } = require('./build');
 const ticketStore = require('./tickets');
 const store = require('./store');
 const { StorageError } = store;
@@ -91,6 +92,13 @@ function createApiRouter() {
 
   /* Registered before the hydrate step below, so it can still answer when
      storage is the thing that is broken — which is exactly when it is needed. */
+  /* NEW: the smallest possible answer to "is what I am running current?".
+     Polled by pages that stay open for hours, so it touches no storage. */
+  router.get('/build', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ ok: true, build: BUILD });
+  });
+
   router.get('/health', async (_req, res) => {
     const usingKv = !store.driver.servesBlobsAsFiles;
     const health = {
@@ -100,6 +108,7 @@ function createApiRouter() {
       // What is actually running. On Vercel these come from the build, so this
       // answers "did my last push deploy?" without guessing from the page.
       version: {
+        build: BUILD,
         commit: (process.env.VERCEL_GIT_COMMIT_SHA || '').slice(0, 7) || null,
         branch: process.env.VERCEL_GIT_COMMIT_REF || null,
         environment: process.env.VERCEL_ENV || 'self-hosted',

@@ -198,6 +198,62 @@
 
   bindConsoleLinks();
 
+  /* --------------------------------------------- NEW: keeping a page current */
+
+  // Long enough that it costs nothing, short enough that a screen left running
+  // through an event picks up a fix without anyone touching it.
+  const BUILD_CHECK_MS = 15 * 60 * 1000;
+
+  /**
+   * Reloads a page that has been superseded by a new deployment.
+   *
+   * A board projected in a hall may be open for hours: it will never ask for
+   * the new code by itself, however correct the caching is. So it asks whether
+   * the build it was served is still the one being served, and reloads when it
+   * is not — but never mid-draw. Losing a spin because a deployment landed
+   * would be far worse than showing yesterday's code for another minute.
+   */
+  function watchForNewBuild() {
+    const meta = document.querySelector('meta[name="pickora-build"]');
+    const mine = meta && meta.content;
+    if (!mine) return;
+
+    let reloading = false;
+
+    const safeToReload = () => {
+      const stage = document.getElementById('stage');
+      if (!stage) return true; // The welcome and prize screens hold no state.
+      // A spin in progress, or a winner being revealed, is the one moment this
+      // must not happen. Everything else is drawn from what the server already
+      // holds and comes back identical, announcements included — and a board
+      // can sit on an announcement for a long time waiting for the host.
+      return stage.dataset.status !== 'rolling' && stage.dataset.status !== 'revealing';
+    };
+
+    const check = async () => {
+      if (reloading || document.hidden || !safeToReload()) return;
+      try {
+        const response = await fetch('/api/build', { cache: 'no-store' });
+        if (!response.ok) return;
+        const { build } = await response.json();
+        if (build && build !== mine) {
+          reloading = true;
+          global.location.reload();
+        }
+      } catch (_error) {
+        // Offline, which is a supported way to run: nothing to do.
+      }
+    };
+
+    global.setInterval(check, BUILD_CHECK_MS);
+    // Coming back to a tab is the moment someone is about to use it.
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) check();
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', watchForNewBuild);
+
   /* ------------------------------------------------------- NEW: the drawer */
 
   const DRAWER_KEY = 'pickora.drawer';

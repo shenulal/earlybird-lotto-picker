@@ -7,6 +7,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 from flask import Blueprint, Response, jsonify, request, session
 
 from . import draw, images, schema, sheets, tickets as ticket_store
+from .build import BUILD
 from .auth import LoginThrottle, hash_password, verify_password
 from .settings import (
     MAX_PRIZE_IMAGES,
@@ -313,6 +314,15 @@ def post_password():
     session[SESSION_KEY] = next_username
 
     return jsonify({"ok": True, "username": next_username})
+
+
+@api.get("/build")
+def build_id():
+    """NEW: the smallest possible answer to "is what I am running current?".
+
+    Polled by pages that stay open for hours, so it touches no storage.
+    """
+    return jsonify({"ok": True, "build": BUILD}), 200, {"Cache-Control": "no-store"}
 
 
 @api.post("/admin/tickets/sheet")
