@@ -570,6 +570,15 @@ input:focus-visible,
   box-shadow: 0 0 0 3px rgba(245, 181, 68, 0.22);
 }
 
+/* FIX: uploads had no visible loading state. The control that started one is
+   dimmed and marked busy until it finishes, so a slow upload cannot be
+   mistaken for nothing happening. */
+[data-busy='true'] {
+  opacity: 0.6;
+  pointer-events: none;
+  cursor: progress;
+}
+
 /* A screen the organiser has switched off is still reachable from here — the
    console is where it gets switched back on — but it is marked, so it is clear
    the draw board is not linking to it. */

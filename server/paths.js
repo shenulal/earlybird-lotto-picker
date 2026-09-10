@@ -14,10 +14,16 @@ const PATHS = Object.freeze({
 
 // Files that must never be reachable through the static file middleware.
 // appsettings.json carries the hashed admin credentials; winners.json carries
-// participant contact details of everyone already drawn.
+// participant contact details of everyone already drawn, and tickets.json those
+// of everyone entered.
 const PROTECTED_FILES = Object.freeze([
   'appsettings.json',
   'winners.json',
+  // FIX: tickets.json was served as a static file, so the whole entry list —
+  // names, companies and the columns marked sensitive, such as phone numbers —
+  // could be downloaded by anyone who guessed the URL. The board never needs
+  // it: it reads entries through /api/pool, which strips non-display fields.
+  'tickets.json',
   'package.json',
   'package-lock.json',
   'requirements.txt',

@@ -791,6 +791,10 @@
   function createEditorContext() {
     return {
       getSettings: () => state.overview.appSettings,
+      // FIX: image uploads had no client-side size check, so an oversized file
+      // was read, base64-encoded and posted only to be refused. The editors
+      // need the deployment's real limit to fail fast instead.
+      getLimits: () => (state.overview && state.overview.limits) || {},
       applySettings(appSettings) {
         state.overview = { ...state.overview, appSettings };
         if (configEditors) configEditors.render();

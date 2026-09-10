@@ -9,6 +9,12 @@
 
   const api = global.lotteryApi;
 
+  // FIX: no upload in the console checked the file before reading it, so a
+  // wrong-format or oversized file was base64-encoded and posted only to be
+  // refused by the server. These mirror what the server accepts.
+  const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml'];
+  const FALLBACK_MAX_BYTES = 8 * 1024 * 1024;
+
   const SLOT_META = [
     { key: 'reel', title: 'While spinning', hint: 'Cycles through the remaining entries. Every field here is sent to the board for all entries, not just the winner.' },
     { key: 'call', title: 'Winner announcement', hint: 'The first reveal, held for the announcement delay before the full card.' },
@@ -54,6 +60,53 @@
    * Creates the editors. `context` supplies the shared console plumbing:
    * `getSettings()`, `applySettings(next)`, `toast()` and `reload()`.
    */
+  /**
+   * Checks a file before it is read.
+   *
+   * Returns null when the file is fine, or the reason it is not. The limit is
+   * the deployment's own — a key-value deployment accepts far less than a
+   * filesystem one, and finding that out after a slow upload is no help.
+   */
+  function rejectFile(file, maxBytes) {
+    if (!file) return 'No file was chosen.';
+    if (file.type && !IMAGE_TYPES.includes(file.type)) {
+      return `${file.name} is a ${file.type.replace('image/', '') || 'unsupported'} file. Use PNG, JPEG, GIF or WebP.`;
+    }
+    if (maxBytes && file.size > maxBytes) {
+      return `${file.name} is ${(file.size / 1048576).toFixed(1)} MB — the limit is ${(maxBytes / 1048576).toFixed(0)} MB on this deployment.`;
+    }
+    return null;
+  }
+
+  function readAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(new Error(`${file.name} could not be read.`));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  /**
+   * FIX: uploads gave no sign they were running. A large photo over a slow
+   * connection looked like nothing had happened, so organisers clicked again.
+   * The control that started it is disabled and labelled until it finishes.
+   */
+  async function withUploadState(element, busyText, action) {
+    if (!element) return action();
+    const original = element.textContent;
+    element.textContent = busyText;
+    element.setAttribute('aria-busy', 'true');
+    element.dataset.busy = 'true';
+    try {
+      return await action();
+    } finally {
+      element.textContent = original;
+      element.removeAttribute('aria-busy');
+      delete element.dataset.busy;
+    }
+  }
+
   function createConfigEditors(context) {
     const elements = {
       fieldsBody: document.getElementById('fieldsBody'),
@@ -307,7 +360,9 @@
             ? `<img src="${escapeHtml(asset.src)}?v=${Date.now()}" alt="${kind} preview">`
             : `<span class="asset-empty">No ${kind}</span>`;
 
-          if (asset.src) meta.textContent = describeAsset(asset);
+          // FIX: only written when there was a source, so removing an image
+          // left the previous file's name and dimensions on screen.
+          meta.textContent = describeAsset(asset);
         }
       );
 
@@ -336,27 +391,40 @@
       };
     }
 
-    async function uploadAsset(kind, file) {
+    /**
+     * FIX: no size or type check before reading; the reply replaced the whole
+     * draft, so an unsaved logo position, height, fit or overlay was reverted
+     * by uploading a file; and there was no loading state on a backdrop that
+     * can be several megabytes.
+     */
+    async function uploadAsset(kind, file, control) {
       if (!file) return;
 
-      const reader = new FileReader();
-      reader.onerror = () => context.toast('That file could not be read.', 'error');
-      reader.onload = async () => {
+      const rejection = rejectFile(file, context.getLimits().maxUploadBytes || FALLBACK_MAX_BYTES);
+      if (rejection) {
+        context.toast(rejection, 'error');
+        return;
+      }
+
+      await withUploadState(control, 'Uploading…', async () => {
         try {
-          const result = await api.uploadAsset(kind, { content: String(reader.result), name: file.name });
+          await context.save(collectBranding(), 'Branding saved.', { quiet: true });
+          const content = await readAsDataUrl(file);
+          const result = await api.uploadAsset(kind, { content, name: file.name });
           context.applySettings(result.appSettings);
           const { width, height } = result.asset;
           context.toast(`${kind === 'logo' ? 'Logo' : 'Background'} uploaded${width ? ` — ${width}×${height}px` : ''}.`);
         } catch (error) {
           context.toast(error.message, 'error');
         }
-      };
-      reader.readAsDataURL(file);
+      });
     }
 
+    /* FIX: reverted unsaved branding choices, as the upload did. */
     async function removeAsset(kind) {
       if (!global.confirm(`Remove the ${kind}?`)) return;
       try {
+        await context.save(collectBranding(), 'Branding saved.', { quiet: true });
         context.applySettings((await api.deleteAsset(kind)).appSettings);
         context.toast(`${kind === 'logo' ? 'Logo' : 'Background'} removed.`);
       } catch (error) {
@@ -432,33 +500,56 @@
     }
 
     /** Uploads run one after another so the server appends in a stable order. */
-    async function uploadGuestPhotos(files) {
+    /**
+     * FIX: three problems here. Nothing validated the file before reading it;
+     * the reply replaced the whole draft, discarding an unsaved title or
+     * message; and one bad file abandoned the rest of the selection with no
+     * loading state at any point.
+     */
+    async function uploadGuestPhotos(files, control) {
       const list = Array.from(files || []);
       if (list.length === 0) return;
 
-      for (const file of list) {
-        try {
-          const content = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(String(reader.result));
-            reader.onerror = () => reject(new Error(`${file.name} could not be read.`));
-            reader.readAsDataURL(file);
-          });
-
-          const result = await api.addWelcomeImage({ content, name: file.name });
-          context.applySettings(result.appSettings);
-        } catch (error) {
-          context.toast(`${file.name}: ${error.message}`, 'error');
-          return;
-        }
+      const maxBytes = context.getLimits().maxUploadBytes || FALLBACK_MAX_BYTES;
+      const rejected = list.map((file) => rejectFile(file, maxBytes)).filter(Boolean);
+      if (rejected.length > 0) {
+        context.toast(rejected[0], 'error');
+        return;
       }
 
-      context.toast(`Added ${list.length} photo${list.length === 1 ? '' : 's'}.`);
+      await withUploadState(control, 'Uploading…', async () => {
+        // Photos land on the stored welcome block, so pending text is
+        // committed first rather than being overwritten by the reply.
+        try {
+          await context.save(collectWelcome(), 'Guest welcome saved.', { quiet: true });
+        } catch (error) {
+          context.toast(`Photos not added — the welcome could not be saved. ${error.message}`, 'error');
+          return;
+        }
+
+        const failed = [];
+        let added = 0;
+        for (const file of list) {
+          try {
+            const content = await readAsDataUrl(file);
+            const result = await api.addWelcomeImage({ content, name: file.name });
+            context.applySettings(result.appSettings);
+            added += 1;
+          } catch (error) {
+            failed.push(`${file.name}: ${error.message}`);
+          }
+        }
+
+        if (added > 0) context.toast(`Added ${added} photo${added === 1 ? '' : 's'}.`);
+        if (failed.length > 0) context.toast(failed[0], 'error');
+      });
     }
 
+    /* FIX: discarded an unsaved title or message, as the upload did. */
     async function removeGuestPhoto(src) {
       if (!global.confirm('Remove this photo from the carousel?')) return;
       try {
+        await context.save(collectWelcome(), 'Guest welcome saved.', { quiet: true });
         context.applySettings((await api.removeWelcomeImage(src)).appSettings);
         context.toast('Photo removed.');
       } catch (error) {
@@ -671,37 +762,102 @@
       context.applySettings({ ...draft, prizes: { ...draft.prizes, items } });
     }
 
-    /* Photos attach to a saved prize, so unsaved edits are committed first. */
-    async function uploadPrizePhotos(id, files) {
-      const list = Array.from(files || []);
-      if (list.length === 0) return;
-
-      const pending = collectPrizes();
-      if (!pending.prizes.items.some((prize) => prize.id === id)) return;
-      await context.save(pending, 'Prizes saved.', { quiet: true });
-
-      for (const file of list) {
-        try {
-          const content = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(String(reader.result));
-            reader.onerror = () => reject(new Error(`${file.name} could not be read.`));
-            reader.readAsDataURL(file);
-          });
-          const result = await api.addPrizeImage(id, { content, name: file.name });
-          context.applySettings(result.appSettings);
-        } catch (error) {
-          context.toast(`${file.name}: ${error.message}`, 'error');
-          return;
-        }
-      }
-
-      context.toast(`Added ${list.length} photo${list.length === 1 ? '' : 's'}.`);
+    /**
+     * The prize rows that cannot be saved as they stand.
+     *
+     * A prize with no name is dropped by the server when the list is saved.
+     * That is right for a saved list but disastrous mid-edit, so callers check
+     * first and say what is wrong instead of letting the row be deleted.
+     */
+    function unnamedPrizeRows() {
+      return Array.from(elements.prizeEditor.querySelectorAll('.prize-row')).filter(
+        (row) => !row.querySelector('.prize-name').value.trim()
+      );
     }
 
+    /**
+     * FIX: a prize with an empty name was silently deleted by any action that
+     * saved the list — including adding a photo, which saves first so the
+     * photo has something to attach to. Adding a prize and reaching for a
+     * photo before typing the name destroyed the row and answered "That prize
+     * no longer exists". Now the organiser is told what is missing and taken
+     * to the field, and nothing is sent to the server.
+     */
+    function blockedByUnnamedPrize(action) {
+      const rows = unnamedPrizeRows();
+      if (rows.length === 0) return false;
+
+      const [first] = rows;
+      const rank = Array.from(elements.prizeEditor.querySelectorAll('.prize-row')).indexOf(first) + 1;
+      context.toast(`Give prize ${rank} a name before ${action}.`, 'error');
+      const nameField = first.querySelector('.prize-name');
+      nameField.focus();
+      nameField.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      return true;
+    }
+
+    /* Photos attach to a saved prize, so unsaved edits are committed first. */
+    async function uploadPrizePhotos(id, files, control) {
+      const list = Array.from(files || []);
+      if (list.length === 0) return;
+      if (blockedByUnnamedPrize('adding photos')) return;
+
+      const pending = collectPrizes();
+      if (!pending.prizes.items.some((prize) => prize.id === id)) {
+        context.toast('That prize is no longer in the list. Reload the console and try again.', 'error');
+        return;
+      }
+
+      const maxBytes = context.getLimits().maxUploadBytes || FALLBACK_MAX_BYTES;
+      const rejected = list.map((file) => rejectFile(file, maxBytes)).filter(Boolean);
+      if (rejected.length > 0) {
+        context.toast(rejected[0], 'error');
+        return;
+      }
+
+      await withUploadState(control, 'Uploading…', async () => {
+        // FIX: this save could throw and nothing caught it, so a failed
+        // commit became an unhandled rejection and the upload stopped with no
+        // explanation beyond a settings error.
+        try {
+          await context.save(pending, 'Prizes saved.', { quiet: true });
+        } catch (error) {
+          context.toast(`Photos not added — the prize list could not be saved. ${error.message}`, 'error');
+          return;
+        }
+
+        // FIX: one bad file used to abandon the whole selection. Every file is
+        // attempted and the failures are reported together.
+        const failed = [];
+        let added = 0;
+        for (const file of list) {
+          try {
+            const content = await readAsDataUrl(file);
+            const result = await api.addPrizeImage(id, { content, name: file.name });
+            context.applySettings(result.appSettings);
+            added += 1;
+          } catch (error) {
+            failed.push(`${file.name}: ${error.message}`);
+          }
+        }
+
+        if (added > 0) context.toast(`Added ${added} photo${added === 1 ? '' : 's'}.`);
+        if (failed.length > 0) context.toast(failed[0], 'error');
+      });
+    }
+
+    /**
+     * FIX: this replaced the entire draft with the server's copy, so any name,
+     * label, description or caption typed since the last save was thrown away
+     * by removing one photo. Pending edits are committed first, exactly as
+     * adding a photo does.
+     */
     async function removePrizePhoto(id, src) {
       if (!global.confirm('Remove this photo?')) return;
+      if (blockedByUnnamedPrize('removing a photo')) return;
+
       try {
+        await context.save(collectPrizes(), 'Prizes saved.', { quiet: true });
         context.applySettings((await api.removePrizeImage(id, src)).appSettings);
         context.toast('Photo removed.');
       } catch (error) {
@@ -725,7 +881,11 @@
 
       elements.saveWelcomeBtn.addEventListener('click', () => context.save(collectWelcome(), 'Guest welcome saved.'));
 
-      elements.savePrizesBtn.addEventListener('click', () => context.save(collectPrizes(), 'Prizes saved.'));
+      // FIX: saving with a nameless prize dropped that row without a word.
+      elements.savePrizesBtn.addEventListener('click', () => {
+        if (blockedByUnnamedPrize('saving')) return;
+        context.save(collectPrizes(), 'Prizes saved.');
+      });
       elements.revertPrizesBtn.addEventListener('click', renderPrizes);
       elements.addPrizeBtn.addEventListener('click', addPrize);
 
@@ -751,12 +911,17 @@
         const input = event.target.closest('.prize-photo-input');
         if (!input) return;
         const row = input.closest('.prize-row');
-        uploadPrizePhotos(row.dataset.id, input.files);
+        // FIX: the promise was dropped on the floor, so any rejection inside
+        // became an unhandled rejection with nothing shown to the organiser.
+        uploadPrizePhotos(row.dataset.id, input.files, row.querySelector(`label[for="${input.id}"]`)).catch(
+          (error) => context.toast(error.message, 'error')
+        );
         input.value = '';
       });
       elements.revertWelcomeBtn.addEventListener('click', renderWelcome);
       elements.guestInput.addEventListener('change', (event) => {
-        uploadGuestPhotos(event.target.files);
+        const label = document.querySelector(`label[for="${event.target.id}"]`);
+        uploadGuestPhotos(event.target.files, label).catch((error) => context.toast(error.message, 'error'));
         event.target.value = '';
       });
 
@@ -772,7 +937,9 @@
           elements.guestDrop.classList.remove('is-dragging');
         })
       );
-      elements.guestDrop.addEventListener('drop', (event) => uploadGuestPhotos(event.dataTransfer.files));
+      elements.guestDrop.addEventListener('drop', (event) =>
+        uploadGuestPhotos(event.dataTransfer.files).catch((error) => context.toast(error.message, 'error'))
+      );
 
       elements.guestGrid.addEventListener('click', (event) => {
         const item = event.target.closest('.guest-item');
@@ -825,8 +992,16 @@
 
       elements.slotEditors.addEventListener('change', renderSensitiveWarning);
 
-      document.getElementById('logoInput').addEventListener('change', (event) => uploadAsset('logo', event.target.files[0]));
-      document.getElementById('backgroundInput').addEventListener('change', (event) => uploadAsset('background', event.target.files[0]));
+      ['logo', 'background'].forEach((kind) => {
+        const input = document.getElementById(`${kind}Input`);
+        input.addEventListener('change', (event) => {
+          const label = document.querySelector(`label[for="${input.id}"]`);
+          uploadAsset(kind, event.target.files[0], label).catch((error) => context.toast(error.message, 'error'));
+          // FIX: the input kept the last filename, so choosing the same file
+          // again fired no change event and the upload appeared to do nothing.
+          event.target.value = '';
+        });
+      });
       document.getElementById('logoRemoveBtn').addEventListener('click', () => removeAsset('logo'));
       document.getElementById('backgroundRemoveBtn').addEventListener('click', () => removeAsset('background'));
     }

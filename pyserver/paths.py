@@ -9,12 +9,17 @@ SETTINGS_SAMPLE_PATH = ROOT_DIR / "appsettings.sample.json"
 TICKETS_PATH = ROOT_DIR / "tickets.json"
 DRAW_STATE_PATH = ROOT_DIR / "winners.json"
 
-# appsettings.json holds the hashed admin credentials and winners.json holds
-# the contact details of everyone drawn so far; neither may be served as a
-# static asset.
+# appsettings.json holds the hashed admin credentials, winners.json the contact
+# details of everyone drawn so far and tickets.json those of everyone entered;
+# none of them may be served as a static asset.
 PROTECTED_FILES = (
     "appsettings.json",
     "winners.json",
+    # FIX: tickets.json was served as a static file, so the whole entry list —
+    # names, companies and the columns marked sensitive, such as phone numbers —
+    # could be downloaded by anyone who guessed the URL. The board never needs
+    # it: it reads entries through /api/pool, which strips non-display fields.
+    "tickets.json",
     "package.json",
     "package-lock.json",
     "requirements.txt",
