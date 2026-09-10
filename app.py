@@ -61,11 +61,16 @@ def serve_static(filename: str):
     if not target.is_file() or ROOT_DIR not in target.parents:
         return send_from_directory(ROOT_DIR, "index.html")
 
+    # Markup, styles and scripts are revalidated every time; a stale one after a
+    # fix reaches the event PC is far worse than the request. Fonts and images
+    # are stable, so they are cached — Flask sends no-cache for everything by
+    # default, which would re-fetch the whole font set on every page.
+    lowered = filename.lower()
+    if lowered.endswith((".woff2", ".woff", ".ttf", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico")):
+        return send_from_directory(ROOT_DIR, filename, max_age=604800)
+
     response = send_from_directory(ROOT_DIR, filename)
-    # Markup, styles and scripts are revalidated every time; a stale one after
-    # a fix reaches the event PC is far worse than the request.
-    if filename.lower().endswith((".html", ".json", ".css", ".js")):
-        response.headers["Cache-Control"] = "no-cache"
+    response.headers["Cache-Control"] = "no-cache"
     return response
 
 
