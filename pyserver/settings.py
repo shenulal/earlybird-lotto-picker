@@ -8,7 +8,8 @@ import os
 import re
 import secrets
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
+from urllib.parse import urlparse
 
 from . import schema, tickets as ticket_store
 from .auth import hash_password
@@ -45,6 +46,47 @@ RETIRED_ASSETS = {
     "Background.png": DEFAULT_BACKGROUND,
     "logo.jpg": DEFAULT_LOGO,
 }
+
+# NEW: how the winner reveal celebrates. "classic" is what the board has always
+# done, so an event saved before this existed keeps its behaviour.
+CELEBRATION_TYPES = (
+    "classic",
+    "streamers",
+    "stars",
+    "balloons",
+    "snow",
+    "money",
+    "mix",
+    "none",
+)
+
+# NEW: the social channels an organiser can publish, and how their QR codes are
+# drawn and placed. "custom" carries its own label.
+CHANNEL_TYPES = (
+    "instagram",
+    "facebook",
+    "x",
+    "youtube",
+    "tiktok",
+    "linkedin",
+    "whatsapp",
+    "telegram",
+    "discord",
+    "website",
+    "custom",
+)
+QR_STYLES = ("standard", "colored", "logo", "rounded")
+QR_POSITIONS = (
+    "bottom-left",
+    "bottom-right",
+    "bottom-center",
+    "top-right",
+    "sidebar",
+    "footer",
+)
+QR_SIZES = ("small", "medium", "large", "xl")
+QR_DISPLAY_MODES = ("icons", "qr", "both")
+MAX_CHANNELS = 24
 
 # Which end of the prize list the evening starts from.
 PRIZE_DRAW_ORDERS = ("highest-first", "lowest-first")
@@ -317,6 +359,82 @@ def _normalize_welcome(raw: Any) -> Dict[str, Any]:
     }
 
 
+CHANNEL_ID = re.compile(r"^[a-z0-9-]{1,40}$")
+URL_SCHEME = re.compile(r"^[a-z][a-z0-9+.-]*:", re.IGNORECASE)
+
+
+def _as_link_url(value: Any) -> str:
+    """NEW: a link an organiser wants the room to be able to reach.
+
+    Only http(s) is allowed through: a QR code is scanned without being read,
+    so anything that could hand the scanner a ``javascript:`` or ``data:`` URL
+    has no business here.
+    """
+    if not isinstance(value, str):
+        return ""
+    trimmed = value.strip()
+    if not trimmed:
+        return ""
+
+    candidate = trimmed if URL_SCHEME.match(trimmed) else f"https://{trimmed}"
+    parsed = urlparse(candidate)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        return ""
+    return candidate[:500]
+
+
+def _normalize_channels(raw: Any) -> List[Dict[str, Any]]:
+    """NEW: the organiser's social channels, in the order they arranged them."""
+    entries = raw if isinstance(raw, list) else []
+    channels: List[Dict[str, Any]] = []
+    seen = set()
+
+    for index, entry in enumerate(entries):
+        item = entry if isinstance(entry, dict) else {}
+        url = _as_link_url(item.get("url"))
+        if not url:
+            continue
+
+        raw_id = item.get("id")
+        identifier = raw_id if isinstance(raw_id, str) and CHANNEL_ID.match(raw_id) else f"channel-{index + 1}"
+        if identifier in seen:
+            continue
+        seen.add(identifier)
+
+        channels.append(
+            {
+                "id": identifier,
+                "type": _as_choice(item.get("type"), CHANNEL_TYPES, "website"),
+                "url": url,
+                # A custom channel needs its own name; the rest fall back to
+                # the channel's own, which the page supplies.
+                "label": _as_text(item.get("label"), "", 40),
+            }
+        )
+
+    return channels[:MAX_CHANNELS]
+
+
+def _normalize_social(raw: Any) -> Dict[str, Any]:
+    """NEW: how the channel block is drawn, and where it sits on every page."""
+    source = raw if isinstance(raw, dict) else {}
+    qr = source.get("qr") if isinstance(source.get("qr"), dict) else {}
+
+    return {
+        "heading": _as_text(source.get("heading"), "Follow the event", 60),
+        "channels": _normalize_channels(source.get("channels")),
+        "qr": {
+            "style": _as_choice(qr.get("style"), QR_STYLES, "standard"),
+            "position": _as_choice(qr.get("position"), QR_POSITIONS, "bottom-right"),
+            "size": _as_choice(qr.get("size"), QR_SIZES, "medium"),
+            "display": _as_choice(qr.get("display"), QR_DISPLAY_MODES, "both"),
+            # Used by the "colored" style when the organiser wants one colour
+            # rather than each channel's own.
+            "color": _as_text(qr.get("color"), "", 40),
+        },
+    }
+
+
 def _normalize_branding(raw: Any) -> Dict[str, Any]:
     source = raw if isinstance(raw, dict) else {}
     logo = source.get("logo") or {}
@@ -420,6 +538,9 @@ def normalize_app_settings(raw: Any) -> Dict[str, Any]:
             "confettiPalette": _normalize_palette(animation.get("confettiPalette")),
             "winnerAnnouncementDelay": _clamp("winnerAnnouncementDelay", animation.get("winnerAnnouncementDelay"), 2500),
             "confettiStartDelay": _clamp("confettiStartDelay", animation.get("confettiStartDelay"), 500),
+            # NEW: which celebration the reveal fires. Absent on an event saved
+            # before this existed, which is exactly what "classic" means.
+            "celebration": _as_choice(animation.get("celebration"), CELEBRATION_TYPES, "classic"),
         },
         "draw": {
             "publicDrawEnabled": _as_bool(draw.get("publicDrawEnabled"), True),
@@ -428,6 +549,7 @@ def normalize_app_settings(raw: Any) -> Dict[str, Any]:
             "minimumRollMs": _clamp("minimumRollMs", draw.get("minimumRollMs"), 1200),
         },
         "branding": _normalize_branding(source.get("branding")),
+        "social": _normalize_social(source.get("social")),
         "welcome": _normalize_welcome(source.get("welcome")),
         "prizes": _normalize_prizes(source.get("prizes")),
         "copy": _normalize_copy(source.get("copy")),
@@ -436,6 +558,9 @@ def normalize_app_settings(raw: Any) -> Dict[str, Any]:
             "backgroundColor": _as_text(
                 ui.get("backgroundColor"), "radial-gradient(circle at top, #1d2671, #c33764)", 400
             ),
+            # NEW: on by default, so a board configured before this existed
+            # keeps showing the event name exactly as it did.
+            "showEventName": _as_bool(ui.get("showEventName"), True),
             "showOrganizationName": _as_bool(ui.get("showOrganizationName"), True),
             "showWinnersPanel": _as_bool(ui.get("showWinnersPanel"), False),
             "showStats": _as_bool(ui.get("showStats"), False),

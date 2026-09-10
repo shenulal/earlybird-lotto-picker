@@ -718,6 +718,303 @@ body[data-align='right'] .stats { justify-content: flex-end; }
   }
 }
 
+/* ------------------------------------------------------ NEW: menu drawer */
+
+/* The menu used to sit across the top of every screen, over the artwork and
+   the prize photos. It is a drawer now: nothing but the toggle is left on the
+   screen until someone asks for it. */
+.board-menu {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-left: auto;
+}
+
+.menu-toggle {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: color var(--fast), border-color var(--fast), background var(--fast);
+}
+
+.menu-toggle:hover,
+.menu-toggle:focus-visible {
+  color: var(--accent);
+  border-color: color-mix(in oklab, var(--accent) 55%, transparent);
+}
+
+/* Three bars that become a cross when the drawer is open. */
+.menu-bars,
+.menu-bars::before,
+.menu-bars::after {
+  width: 18px;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+  transition: transform var(--fast), opacity var(--fast);
+}
+
+.menu-bars {
+  position: relative;
+  display: block;
+}
+
+.menu-bars::before,
+.menu-bars::after {
+  position: absolute;
+  left: 0;
+  content: '';
+}
+
+.menu-bars::before { transform: translateY(-6px); }
+.menu-bars::after { transform: translateY(6px); }
+
+.menu-toggle[aria-expanded='true'] .menu-bars { background: transparent; }
+.menu-toggle[aria-expanded='true'] .menu-bars::before { transform: rotate(45deg); }
+.menu-toggle[aria-expanded='true'] .menu-bars::after { transform: rotate(-45deg); }
+
+.board-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: min(320px, 86vw);
+  height: 100%;
+  padding: 82px 22px 26px;
+  overflow-y: auto;
+  border-left: 1px solid var(--hairline);
+  background: var(--surface-solid);
+  box-shadow: -30px 0 80px rgba(0, 0, 0, 0.5);
+  /* Off to the side until asked for; transform only, so it stays on the
+     compositor and cannot judder over a running draw. */
+  transform: translateX(100%);
+  transition: transform var(--normal) var(--ease);
+}
+
+/* [hidden] is honoured globally, so the panel is out of the tab order while
+   closed; the open class is what animates it in. */
+.board-drawer.is-open {
+  transform: translateX(0);
+}
+
+.board-drawer .screen-nav,
+.board-drawer .board-tools {
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  padding: 6px;
+  border-radius: var(--radius-md);
+}
+
+.board-drawer .screen-link,
+.board-drawer .tool {
+  justify-content: flex-start;
+  width: 100%;
+  text-align: left;
+}
+
+.drawer-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(4, 6, 16, 0.55);
+  opacity: 0;
+  transition: opacity var(--normal) var(--ease);
+}
+
+.drawer-scrim.is-open {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .board-drawer,
+  .drawer-scrim {
+    transition: none;
+  }
+}
+
+/* ------------------------------------------------- NEW: social channels */
+
+/* The organiser's channels, floated over whichever screen is showing. Fixed
+   rather than in the flow so the position setting means the same thing on the
+   board, the welcome screen and the prize screen, none of which share a
+   layout. */
+.social-block {
+  --qr-size: 80px;
+
+  position: fixed;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: min(92vw, 620px);
+  padding: 12px 14px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  background: var(--surface-solid);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+}
+
+.social-heading {
+  margin: 0;
+  color: var(--ink-soft);
+  font-family: var(--font-display);
+  font-size: var(--text-eyebrow);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.social-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.social-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-soft);
+  text-decoration: none;
+  transition: color var(--fast), transform var(--fast);
+}
+
+.social-item:hover,
+.social-item:focus-visible {
+  color: var(--channel-color, var(--accent));
+  transform: translateY(-2px);
+}
+
+.social-qr {
+  display: block;
+  width: var(--qr-size);
+  height: var(--qr-size);
+  overflow: hidden;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.social-qr svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.social-face {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: max(var(--qr-size), 96px);
+}
+
+.social-icon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  color: var(--channel-color, currentColor);
+}
+
+.social-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.social-name {
+  overflow: hidden;
+  font-size: var(--text-eyebrow);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Icons on their own are a row of buttons, not a grid of cards. */
+.social-block[data-display='icons'] .social-items {
+  gap: 6px;
+}
+
+.social-block[data-display='icons'] .social-item {
+  flex-direction: row;
+  padding: 6px 10px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+}
+
+/* --- where the block sits ------------------------------------------- */
+
+.social-block[data-position='bottom-right'] { right: 18px; bottom: 18px; }
+.social-block[data-position='bottom-left'] { left: 18px; bottom: 18px; }
+.social-block[data-position='top-right'] { top: 76px; right: 18px; }
+
+.social-block[data-position='bottom-center'] {
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* A column against the right edge, which suits a tall screen. */
+.social-block[data-position='sidebar'] {
+  top: 50%;
+  right: 18px;
+  transform: translateY(-50%);
+}
+
+.social-block[data-position='sidebar'] .social-items {
+  flex-direction: column;
+}
+
+/* A strip across the foot of the screen. */
+.social-block[data-position='footer'] {
+  right: 0;
+  bottom: 0;
+  left: 0;
+  align-items: center;
+  max-width: none;
+  border-width: 1px 0 0;
+  border-radius: 0;
+}
+
+.social-block[data-position='footer'] .social-items {
+  justify-content: center;
+}
+
+@media (max-width: 720px) {
+  /* On a phone every position becomes the same strip: the corners would sit
+     on top of the board itself. */
+  .social-block {
+    right: 0;
+    bottom: 0;
+    left: 0;
+    top: auto;
+    align-items: center;
+    max-width: none;
+    border-width: 1px 0 0;
+    border-radius: 0;
+    transform: none;
+  }
+
+  .social-block .social-items {
+    justify-content: center;
+  }
+
+  .social-block[data-display='both'] {
+    --qr-size: 56px;
+  }
+}
+
 /* ------------------------------------------------------------- the reel */
 
 /* A tape of entries that travels, driven frame by frame from reel.js so it can

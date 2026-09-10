@@ -627,6 +627,8 @@
     'direction',
     'ui.backgroundColor',
     'ui.boardAlignment',
+    // NEW: the celebration the winner reveal fires.
+    'animation.celebration',
   ];
   const SETTINGS_NUMBER_FIELDS = [
     'totalPrizes',
@@ -639,6 +641,7 @@
   ];
   const SETTINGS_BOOLEAN_FIELDS = [
     'display.autoStopWhenPrizesExhausted',
+    'ui.showEventName',   // NEW
     'ui.showOrganizationName',
     'ui.showWinnersPanel',
     'ui.showStats',

@@ -28,9 +28,21 @@
       <p class="organization-name" id="organizationName" hidden></p>
     </div>
 
-    <nav class="screen-nav" id="screenNav" aria-label="Screens"></nav>
+    <!-- NEW: the menu is a drawer now. The toggle is the only part left over
+         the screen, so a projected board or a photo is not covered by it. The
+         way back to the draw stays outside the drawer: it is the one control
+         that must never be a click away. -->
+    <div class="board-menu">
+      <button type="button" class="menu-toggle" id="menuToggle" aria-controls="boardDrawer"
+              aria-expanded="false" aria-label="Menu" title="Menu (M)">
+        <span class="menu-bars" aria-hidden="true"></span>
+      </button>
+    </div>
 
-    <nav class="board-tools" aria-label="Board controls">
+    <div class="board-drawer" id="boardDrawer" hidden>
+      <nav class="screen-nav" id="screenNav" aria-label="Screens"></nav>
+
+      <nav class="board-tools" aria-label="Board controls">
       <button type="button" class="tool" id="winnersToggle" aria-controls="winnersPanel" aria-expanded="false">
         <span class="tool-label" id="winnersToggleLabel">Winners</span>
         <span class="tool-badge" id="winnersBadge">0</span>
@@ -44,8 +56,11 @@
            absent: it forces a fresh context every time, which would defeat
            that, and the console is our own same-origin page. -->
       <a class="tool tool-quiet" id="organiserLink" href="/admin" target="pickora-console" data-console-link>Organiser</a>
-    </nav>
+      </nav>
+    </div>
   </header>
+
+  <div class="drawer-scrim" id="drawerScrim" hidden></div>
 
   <main class="board" aria-labelledby="eventName">
     <section class="stage" id="stage" data-status="idle" aria-live="polite" aria-atomic="true">
@@ -92,11 +107,17 @@
     <ol class="winners-list" id="winnersList"></ol>
   </aside>
 
+  <!-- NEW: filled in by social.js; stays hidden with nothing configured. -->
+  <aside class="social-block" id="socialBlock" aria-label="Event channels" hidden></aside>
+
   <footer class="board-footer">
     <p id="boardFooter"></p>
   </footer>
 
   <script src="api.js" defer></script>
+  <!-- NEW: the QR encoder and the channel block, shared by every public page. -->
+  <script src="qr.js" defer></script>
+  <script src="social.js" defer></script>
   <script src="theme.js" defer></script>
   <script src="confetti.js" defer></script>
   <script src="reel.js" defer></script>

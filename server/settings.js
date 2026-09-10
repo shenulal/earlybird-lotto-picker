@@ -37,6 +37,47 @@ const RETIRED_ASSETS = new Map([
   ['logo.jpg', DEFAULT_LOGO],
 ]);
 
+// NEW: how the winner reveal celebrates. 'classic' is what the board has
+// always done, so an event saved before this existed keeps its behaviour.
+const CELEBRATION_TYPES = Object.freeze([
+  'classic',
+  'streamers',
+  'stars',
+  'balloons',
+  'snow',
+  'money',
+  'mix',
+  'none',
+]);
+
+// NEW: the social channels an organiser can publish, and how their QR codes
+// are drawn and placed. 'custom' carries its own label.
+const CHANNEL_TYPES = Object.freeze([
+  'instagram',
+  'facebook',
+  'x',
+  'youtube',
+  'tiktok',
+  'linkedin',
+  'whatsapp',
+  'telegram',
+  'discord',
+  'website',
+  'custom',
+]);
+const QR_STYLES = Object.freeze(['standard', 'colored', 'logo', 'rounded']);
+const QR_POSITIONS = Object.freeze([
+  'bottom-left',
+  'bottom-right',
+  'bottom-center',
+  'top-right',
+  'sidebar',
+  'footer',
+]);
+const QR_SIZES = Object.freeze(['small', 'medium', 'large', 'xl']);
+const QR_DISPLAY_MODES = Object.freeze(['icons', 'qr', 'both']);
+const MAX_CHANNELS = 24;
+
 // Which end of the prize list the evening starts from.
 const PRIZE_DRAW_ORDERS = Object.freeze(['highest-first', 'lowest-first']);
 
@@ -287,6 +328,85 @@ function normalizeWelcome(input) {
   };
 }
 
+/**
+ * NEW: a link an organiser wants the room to be able to reach.
+ *
+ * Only http(s) is allowed through: a QR code is scanned without being read,
+ * so anything that could hand the scanner a javascript: or data: URL has no
+ * business here.
+ */
+function asLinkUrl(value) {
+  if (typeof value !== 'string') return '';
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+
+  const candidate = /^[a-z][a-z0-9+.-]*:/i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  try {
+    const parsed = new URL(candidate);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return '';
+    if (!parsed.host) return '';
+    // What the organiser typed, not the parser's rewrite of it: URL adds a
+    // trailing slash to a bare origin, which the Python side does not, and a
+    // settings file must not churn depending on which backend saved it.
+    return candidate.slice(0, 500);
+  } catch (_error) {
+    return '';
+  }
+}
+
+/** NEW: the organiser's social channels, in the order they arranged them. */
+function normalizeChannels(input) {
+  const raw = Array.isArray(input) ? input : [];
+  const seen = new Set();
+
+  return raw
+    .map((entry, index) => {
+      const item = entry && typeof entry === 'object' ? entry : {};
+      const url = asLinkUrl(item.url);
+      if (!url) return null;
+
+      const type = asChoice(item.type, CHANNEL_TYPES, 'website');
+      const id =
+        typeof item.id === 'string' && /^[a-z0-9-]{1,40}$/.test(item.id) ? item.id : `channel-${index + 1}`;
+
+      return {
+        id,
+        type,
+        url,
+        // A custom channel needs its own name; the rest fall back to the
+        // channel's own, which the page supplies.
+        label: asText(item.label, '', 40),
+      };
+    })
+    .filter(Boolean)
+    .filter((item) => {
+      if (seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    })
+    .slice(0, MAX_CHANNELS);
+}
+
+/** NEW: how the channel block is drawn, and where it sits on every page. */
+function normalizeSocial(input) {
+  const source = input && typeof input === 'object' ? input : {};
+  const qr = source.qr && typeof source.qr === 'object' ? source.qr : {};
+
+  return {
+    heading: asText(source.heading, 'Follow the event', 60),
+    channels: normalizeChannels(source.channels),
+    qr: {
+      style: asChoice(qr.style, QR_STYLES, 'standard'),
+      position: asChoice(qr.position, QR_POSITIONS, 'bottom-right'),
+      size: asChoice(qr.size, QR_SIZES, 'medium'),
+      display: asChoice(qr.display, QR_DISPLAY_MODES, 'both'),
+      // Used by the 'colored' style when the organiser wants one colour rather
+      // than each channel's own.
+      color: asText(qr.color, '', 40),
+    },
+  };
+}
+
 function normalizeBranding(input) {
   const source = input && typeof input === 'object' ? input : {};
   const logo = source.logo || {};
@@ -378,6 +498,9 @@ function normalizeAppSettings(input) {
       confettiPalette: normalizePalette(animation.confettiPalette),
       winnerAnnouncementDelay: clamp('winnerAnnouncementDelay', animation.winnerAnnouncementDelay, 2500),
       confettiStartDelay: clamp('confettiStartDelay', animation.confettiStartDelay, 500),
+      // NEW: which celebration the reveal fires. Absent on an event saved
+      // before this existed, which is exactly what 'classic' means.
+      celebration: asChoice(animation.celebration, CELEBRATION_TYPES, 'classic'),
     },
 
     draw: {
@@ -388,6 +511,7 @@ function normalizeAppSettings(input) {
     },
 
     branding: normalizeBranding(source.branding),
+    social: normalizeSocial(source.social),
     welcome: normalizeWelcome(source.welcome),
     prizes: normalizePrizes(source.prizes),
     copy: normalizeCopy(source.copy),
@@ -395,6 +519,9 @@ function normalizeAppSettings(input) {
     ui: {
       primaryColor: asText(ui.primaryColor, '#ffeb3b', 40),
       backgroundColor: asText(ui.backgroundColor, 'radial-gradient(circle at top, #1d2671, #c33764)', 400),
+      // NEW: on by default, so a board configured before this existed keeps
+      // showing the event name exactly as it did.
+      showEventName: asBoolean(ui.showEventName, true),
       showOrganizationName: asBoolean(ui.showOrganizationName, true),
       showWinnersPanel: asBoolean(ui.showWinnersPanel, false),
       showStats: asBoolean(ui.showStats, false),
@@ -458,6 +585,13 @@ module.exports = {
   BOARD_ALIGNMENTS,
   DIRECTIONS,
   LOGO_POSITIONS,
+  CELEBRATION_TYPES,
+  CHANNEL_TYPES,
+  QR_STYLES,
+  QR_POSITIONS,
+  QR_SIZES,
+  QR_DISPLAY_MODES,
+  MAX_CHANNELS,
   BACKGROUND_FITS,
   DUPLICATE_POLICIES,
   WELCOME_PLACEMENTS,

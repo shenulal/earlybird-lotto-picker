@@ -154,6 +154,21 @@
       prizesIntroInput: document.getElementById('prizesIntroInput'),
       prizesInterval: document.getElementById('prizesInterval'),
       prizeCountPill: document.getElementById('prizeCountPill'),
+
+      // NEW: social channels and QR settings.
+      channelEditor: document.getElementById('channelEditor'),
+      channelCountPill: document.getElementById('channelCountPill'),
+      addChannelBtn: document.getElementById('addChannelBtn'),
+      saveChannelsBtn: document.getElementById('saveChannelsBtn'),
+      revertChannelsBtn: document.getElementById('revertChannelsBtn'),
+      qrStyle: document.getElementById('qrStyle'),
+      qrPosition: document.getElementById('qrPosition'),
+      qrSize: document.getElementById('qrSize'),
+      qrDisplay: document.getElementById('qrDisplay'),
+      qrColor: document.getElementById('qrColor'),
+      qrColorText: document.getElementById('qrColorText'),
+      socialHeading: document.getElementById('socialHeading'),
+      qrPreview: document.getElementById('qrPreview'),
       prizeEditor: document.getElementById('prizeEditor'),
       addPrizeBtn: document.getElementById('addPrizeBtn'),
       savePrizesBtn: document.getElementById('savePrizesBtn'),
@@ -867,6 +882,161 @@
       }
     }
 
+    /* ---------------------------------------------------- NEW: channels */
+
+    const CHANNEL_ORDER = [
+      'instagram', 'facebook', 'x', 'youtube', 'tiktok', 'linkedin',
+      'whatsapp', 'telegram', 'discord', 'website', 'custom',
+    ];
+
+    function channelName(type) {
+      const social = global.pickoraSocial;
+      return social ? social.channelInfo(type).name : type;
+    }
+
+    function renderChannels() {
+      const { social } = context.getSettings();
+      const channels = social.channels;
+
+      elements.channelCountPill.textContent = `${channels.length} channel${channels.length === 1 ? '' : 's'}`;
+      elements.qrStyle.value = social.qr.style;
+      elements.qrPosition.value = social.qr.position;
+      elements.qrSize.value = social.qr.size;
+      elements.qrDisplay.value = social.qr.display;
+      elements.socialHeading.value = social.heading;
+      elements.qrColorText.value = social.qr.color;
+      if (/^#[0-9a-f]{6}$/i.test(social.qr.color)) elements.qrColor.value = social.qr.color;
+
+      if (channels.length === 0) {
+        elements.channelEditor.innerHTML =
+          '<p class="slot-empty">No channels yet. Add the first one above — the block stays off the public pages until there is one.</p>';
+        renderQrPreview();
+        return;
+      }
+
+      elements.channelEditor.innerHTML = channels
+        .map(
+          (channel, index) => `
+          <div class="channel-row" data-id="${escapeHtml(channel.id)}">
+            <span class="channel-rank">${index + 1}</span>
+            <label class="field">
+              <span class="field-label">Channel</span>
+              <select class="channel-type">
+                ${CHANNEL_ORDER.map(
+                  (type) =>
+                    `<option value="${type}"${type === channel.type ? ' selected' : ''}>${escapeHtml(channelName(type))}</option>`
+                ).join('')}
+              </select>
+            </label>
+            <label class="field channel-url-field">
+              <span class="field-label">Link</span>
+              <input type="url" class="channel-url" value="${escapeHtml(channel.url)}" placeholder="https://instagram.com/your-event" spellcheck="false">
+            </label>
+            <label class="field">
+              <span class="field-label">Display name</span>
+              <input type="text" class="channel-label" value="${escapeHtml(channel.label)}" maxlength="40" placeholder="${escapeHtml(channelName(channel.type))}">
+            </label>
+            <div class="channel-actions">
+              <button type="button" class="btn btn-ghost channel-move" data-direction="-1" ${index === 0 ? 'disabled' : ''} aria-label="Move up">↑</button>
+              <button type="button" class="btn btn-ghost channel-move" data-direction="1" ${index === channels.length - 1 ? 'disabled' : ''} aria-label="Move down">↓</button>
+              <button type="button" class="btn btn-danger channel-remove">Remove</button>
+            </div>
+          </div>`
+        )
+        .join('');
+
+      renderQrPreview();
+    }
+
+    function collectChannels() {
+      const settings = context.getSettings();
+      const channels = Array.from(elements.channelEditor.querySelectorAll('.channel-row')).map((row) => ({
+        id: row.dataset.id,
+        type: row.querySelector('.channel-type').value,
+        url: row.querySelector('.channel-url').value.trim(),
+        label: row.querySelector('.channel-label').value.trim(),
+      }));
+
+      return {
+        ...settings,
+        social: {
+          heading: elements.socialHeading.value.trim(),
+          channels,
+          qr: {
+            style: elements.qrStyle.value,
+            position: elements.qrPosition.value,
+            size: elements.qrSize.value,
+            display: elements.qrDisplay.value,
+            color: elements.qrColorText.value.trim(),
+          },
+        },
+      };
+    }
+
+    /**
+     * NEW: the block as the room will see it, redrawn on every change.
+     *
+     * Rendered by the same module the public pages use, so what is previewed
+     * here is not an approximation of the result — it is the result.
+     */
+    function renderQrPreview() {
+      if (!global.pickoraSocial) return;
+      const draft = collectChannels();
+
+      // Only channels with a usable link can be drawn; the rest are still
+      // being typed.
+      const ready = draft.social.channels.filter((channel) => /^https?:\/\/.+/i.test(channel.url) || /\./.test(channel.url));
+      const preview = {
+        ...draft,
+        social: {
+          ...draft.social,
+          channels: ready.map((channel) => ({
+            ...channel,
+            url: /^https?:\/\//i.test(channel.url) ? channel.url : `https://${channel.url}`,
+          })),
+        },
+      };
+
+      elements.qrPreview.dataset.position = draft.social.qr.position;
+      elements.qrPreview.innerHTML = '<div class="qr-preview-stage"><div class="social-block" id="qrPreviewBlock"></div></div>';
+      global.pickoraSocial.render(elements.qrPreview.querySelector('#qrPreviewBlock'), preview);
+    }
+
+    function addChannel() {
+      const draft = collectChannels();
+      const next = draft.social.channels.length + 1;
+      context.applySettings({
+        ...draft,
+        social: {
+          ...draft.social,
+          channels: [
+            ...draft.social.channels,
+            { id: `channel-${next}-${Math.random().toString(36).slice(2, 7)}`, type: 'instagram', url: '', label: '' },
+          ],
+        },
+      });
+    }
+
+    function removeChannel(id) {
+      if (!global.confirm('Remove this channel?')) return;
+      const draft = collectChannels();
+      context.applySettings({
+        ...draft,
+        social: { ...draft.social, channels: draft.social.channels.filter((channel) => channel.id !== id) },
+      });
+    }
+
+    function moveChannel(id, direction) {
+      const draft = collectChannels();
+      const channels = [...draft.social.channels];
+      const from = channels.findIndex((channel) => channel.id === id);
+      const to = from + direction;
+      if (from < 0 || to < 0 || to >= channels.length) return;
+
+      [channels[from], channels[to]] = [channels[to], channels[from]];
+      context.applySettings({ ...draft, social: { ...draft.social, channels } });
+    }
+
     /* ------------------------------------------------------------ wiring */
 
     function bind() {
@@ -920,6 +1090,41 @@
         );
         input.value = '';
       });
+      // NEW: channels. An unsaved link is worth keeping while it is typed, so
+      // edits stay local and only the preview follows them live.
+      elements.addChannelBtn.addEventListener('click', addChannel);
+      elements.saveChannelsBtn.addEventListener('click', () => context.save(collectChannels(), 'Channels saved.'));
+      elements.revertChannelsBtn.addEventListener('click', renderChannels);
+
+      elements.channelEditor.addEventListener('click', (event) => {
+        const row = event.target.closest('.channel-row');
+        if (!row) return;
+        if (event.target.closest('.channel-remove')) return removeChannel(row.dataset.id);
+        const move = event.target.closest('.channel-move');
+        if (move) moveChannel(row.dataset.id, Number(move.dataset.direction));
+        return undefined;
+      });
+
+      // Typing a link redraws the preview; changing the channel updates the
+      // placeholder name alongside it.
+      elements.channelEditor.addEventListener('input', renderQrPreview);
+      elements.channelEditor.addEventListener('change', renderQrPreview);
+
+      [elements.qrStyle, elements.qrPosition, elements.qrSize, elements.qrDisplay].forEach((control) =>
+        control.addEventListener('change', renderQrPreview)
+      );
+      elements.socialHeading.addEventListener('input', renderQrPreview);
+      elements.qrColorText.addEventListener('input', () => {
+        if (/^#[0-9a-f]{6}$/i.test(elements.qrColorText.value.trim())) {
+          elements.qrColor.value = elements.qrColorText.value.trim();
+        }
+        renderQrPreview();
+      });
+      elements.qrColor.addEventListener('input', () => {
+        elements.qrColorText.value = elements.qrColor.value;
+        renderQrPreview();
+      });
+
       elements.revertWelcomeBtn.addEventListener('click', renderWelcome);
       elements.guestInput.addEventListener('change', (event) => {
         const label = document.querySelector(`label[for="${event.target.id}"]`);
@@ -1017,6 +1222,7 @@
         renderBranding();
         renderWelcome();
         renderPrizes();
+        renderChannels(); // NEW
       },
     };
   }

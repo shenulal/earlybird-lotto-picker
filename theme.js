@@ -47,20 +47,35 @@
       }
     }
 
+    // CHANGED: the event name is now optional. Hiding it has to take its
+    // space with it, or the header keeps a gap where it used to be.
     const eventName = elements.eventName || document.getElementById('eventName');
-    if (eventName) eventName.textContent = settings.eventName;
+    const showEventName = ui.showEventName !== false && Boolean(settings.eventName);
+    if (eventName) {
+      eventName.textContent = settings.eventName;
+      eventName.hidden = !showEventName;
+    }
 
     const organizationName = elements.organizationName || document.getElementById('organizationName');
+    const showOrganization = Boolean(ui.showOrganizationName && settings.organizationName);
     if (organizationName) {
       organizationName.textContent = settings.organizationName || '';
-      organizationName.hidden = !(ui.showOrganizationName && settings.organizationName);
+      organizationName.hidden = !showOrganization;
     }
+
+    // With neither line left there is nothing to lay out, so the block goes
+    // rather than sitting there as an empty column.
+    const identity = document.querySelector('.board-identity');
+    if (identity) identity.hidden = !showEventName && !showOrganization;
 
     // FIX: copy.prizesBack ("Back to the draw") was defined in every settings
     // file and rendered nowhere. The welcome and prize screens now carry a
     // back control, and this is its label.
     const backLink = document.getElementById('backToBoard');
     if (backLink) backLink.textContent = settings.copy.prizesBack;
+
+    // NEW: the organiser's channels, on whichever screen this is.
+    if (global.pickoraSocial) global.pickoraSocial.render('socialBlock', settings);
 
     const footer = elements.footer || document.getElementById('boardFooter');
     if (footer) {
@@ -182,6 +197,92 @@
   }
 
   bindConsoleLinks();
+
+  /* ------------------------------------------------------- NEW: the drawer */
+
+  const DRAWER_KEY = 'pickora.drawer';
+
+  /**
+   * The screen menu, behind a toggle.
+   *
+   * Closed by default, because the whole point is that a projected board or a
+   * prize photo is not covered by navigation nobody is using. The preference
+   * is remembered per browser, so an operator who wants it open all evening
+   * only says so once.
+   */
+  function bindDrawer() {
+    const toggle = document.getElementById('menuToggle');
+    const drawer = document.getElementById('boardDrawer');
+    const scrim = document.getElementById('drawerScrim');
+    if (!toggle || !drawer) return;
+
+    const setOpen = (open, remember = true) => {
+      // Unhide first so the panel has a box to animate from, and hide only
+      // after it has left, so it never traps focus while off-screen.
+      if (open) drawer.hidden = false;
+      if (scrim && open) scrim.hidden = false;
+
+      global.requestAnimationFrame(() => {
+        drawer.classList.toggle('is-open', open);
+        if (scrim) scrim.classList.toggle('is-open', open);
+      });
+
+      toggle.setAttribute('aria-expanded', String(open));
+
+      if (!open) {
+        const settle = () => {
+          if (!drawer.classList.contains('is-open')) {
+            drawer.hidden = true;
+            if (scrim) scrim.hidden = true;
+          }
+        };
+        drawer.addEventListener('transitionend', settle, { once: true });
+        // A browser that skips the transition still needs the panel put away.
+        global.setTimeout(settle, 400);
+      }
+
+      if (remember) {
+        try {
+          global.localStorage.setItem(DRAWER_KEY, open ? 'open' : 'closed');
+        } catch (_error) {
+          // Private browsing refuses storage; the drawer still works.
+        }
+      }
+    };
+
+    const isOpen = () => drawer.classList.contains('is-open');
+
+    toggle.addEventListener('click', () => setOpen(!isOpen()));
+    if (scrim) scrim.addEventListener('click', () => setOpen(false));
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && isOpen()) {
+        setOpen(false);
+        toggle.focus();
+        return;
+      }
+      // A shortcut of its own, kept clear of the board's existing keys.
+      if (event.key && event.key.toLowerCase() === 'm' && !event.metaKey && !event.ctrlKey && !event.altKey) {
+        if (/^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName)) return;
+        setOpen(!isOpen());
+      }
+    });
+
+    // Following a link out of the drawer should not leave it open behind you.
+    drawer.addEventListener('click', (event) => {
+      if (event.target.closest('a')) setOpen(false);
+    });
+
+    let remembered = null;
+    try {
+      remembered = global.localStorage.getItem(DRAWER_KEY);
+    } catch (_error) {
+      remembered = null;
+    }
+    if (remembered === 'open') setOpen(true, false);
+  }
+
+  document.addEventListener('DOMContentLoaded', bindDrawer);
 
   global.applyPickoraTheme = applyTheme;
   global.renderPickoraNav = renderScreenNav;

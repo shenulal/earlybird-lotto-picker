@@ -55,6 +55,8 @@
         <button type="button" class="nav-item" data-panel="branding">Branding</button>
         <button type="button" class="nav-item" data-panel="welcome">Welcome</button>
         <button type="button" class="nav-item" data-panel="prizes">Prizes</button>
+        <!-- NEW -->
+        <button type="button" class="nav-item" data-panel="channels">Channels</button>
         <button type="button" class="nav-item" data-panel="settings">Settings</button>
         <button type="button" class="nav-item" data-panel="wording">Wording</button>
         <button type="button" class="nav-item" data-panel="account">Account</button>
@@ -554,6 +556,96 @@
         </div>
       </section>
 
+
+      <!-- ---------------------------------------------------- channels -->
+      <!-- NEW: the organiser's social channels and how their QR codes are
+           drawn and placed on the public screens. -->
+      <section class="panel" id="panel-channels" aria-labelledby="channelsHeading" hidden>
+        <header class="panel-head">
+          <div>
+            <h1 id="channelsHeading">Social channels</h1>
+            <p class="panel-lede">Links the room can follow or scan. They appear on the draw board, the welcome screen and the prize screen, in the position you choose below.</p>
+          </div>
+        </header>
+
+        <div class="card">
+          <div class="card-head">
+            <h2 class="card-title">Channels</h2>
+            <div class="card-actions">
+              <span class="pill" id="channelCountPill">0 channels</span>
+              <button type="button" class="btn btn-ghost" id="addChannelBtn">Add channel</button>
+            </div>
+          </div>
+          <div class="channel-editor" id="channelEditor"></div>
+        </div>
+
+        <div class="card">
+          <h2 class="card-title">QR codes</h2>
+          <div class="grid-2">
+            <label class="field">
+              <span class="field-label">Style</span>
+              <select id="qrStyle">
+                <option value="standard">Standard — black on white</option>
+                <option value="colored">Coloured — the channel's own colour</option>
+                <option value="logo">With icon — the channel mark in the centre</option>
+                <option value="rounded">Rounded dots</option>
+              </select>
+              <span class="field-hint">Every code is built at error-correction level H, which is what keeps the icon style scannable.</span>
+            </label>
+            <label class="field">
+              <span class="field-label">Position on the public pages</span>
+              <select id="qrPosition">
+                <option value="bottom-right">Bottom right</option>
+                <option value="bottom-left">Bottom left</option>
+                <option value="bottom-center">Bottom centre</option>
+                <option value="top-right">Top right</option>
+                <option value="sidebar">Sidebar — right edge</option>
+                <option value="footer">Footer bar — full width</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="field-label">Size</span>
+              <select id="qrSize">
+                <option value="small">Small — 48px</option>
+                <option value="medium">Medium — 80px</option>
+                <option value="large">Large — 128px</option>
+                <option value="xl">Extra large — 180px</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="field-label">Show</span>
+              <select id="qrDisplay">
+                <option value="both">Icons and QR codes</option>
+                <option value="icons">Icons only</option>
+                <option value="qr">QR codes only</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="field-label">Heading above the block</span>
+              <input type="text" id="socialHeading" maxlength="60" placeholder="Follow the event">
+            </label>
+            <label class="field">
+              <span class="field-label">One colour for every code</span>
+              <span class="color-field">
+                <input type="color" id="qrColor" value="#000000">
+                <input type="text" id="qrColorText" maxlength="40" placeholder="Leave empty for each channel's own colour" spellcheck="false">
+              </span>
+              <span class="field-hint">Only used by the coloured style.</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 class="card-title">Preview</h2>
+          <p class="field-hint">How the block will sit on a public page, at the size and style chosen above.</p>
+          <div class="qr-preview" id="qrPreview"></div>
+        </div>
+
+        <div class="panel-foot">
+          <button type="button" class="btn btn-ghost" id="revertChannelsBtn">Revert</button>
+          <button type="button" class="btn btn-primary" id="saveChannelsBtn">Save channels</button>
+        </div>
+      </section>
       <!-- ---------------------------------------------------- settings -->
       <section class="panel" id="panel-settings" aria-labelledby="settingsHeading" hidden>
         <header class="panel-head">
@@ -667,6 +759,21 @@
                 <span class="field-label">Confetti pieces</span>
                 <input type="number" name="animation.confettiCount" min="0" max="600">
               </label>
+              <!-- NEW: which celebration the winner reveal fires. -->
+              <label class="field">
+                <span class="field-label">Celebration</span>
+                <select name="animation.celebration">
+                  <option value="classic">🎉 Classic confetti</option>
+                  <option value="streamers">🎊 Paper &amp; streamer burst</option>
+                  <option value="stars">⭐ Stars and sparkles</option>
+                  <option value="balloons">🎈 Balloons floating up</option>
+                  <option value="snow">❄️ Snowfall</option>
+                  <option value="money">🧧 Money rain</option>
+                  <option value="mix">🎲 Mix — a little of everything</option>
+                  <option value="none">🚫 None</option>
+                </select>
+                <span class="field-hint">Fires when a winner is revealed. Count, duration and colours above apply to whichever you pick.</span>
+              </label>
               <label class="field">
                 <span class="field-label">Confetti colours</span>
                 <input type="text" name="animation.confettiPalette" spellcheck="false" placeholder="#ffd54f, #ff8a65, #4dd0e1">
@@ -674,6 +781,11 @@
               </label>
             </div>
             <div class="switches">
+              <!-- NEW: on by default; hiding it takes its space with it. -->
+              <label class="switch">
+                <input type="checkbox" name="ui.showEventName">
+                <span><strong>Display the event name on the drawboard</strong><small>Off gives the draw the whole width of the header.</small></span>
+              </label>
               <label class="switch">
                 <input type="checkbox" name="ui.showOrganizationName">
                 <span><strong>Show the organisation name on the board</strong></span>
@@ -759,6 +871,10 @@
   </div>
 
   <script src="api.js" defer></script>
+  <!-- NEW: the console previews the channel block with the same code the
+       public pages use, so the preview cannot drift from the result. -->
+  <script src="qr.js" defer></script>
+  <script src="social.js" defer></script>
   <script src="admin-config.js" defer></script>
   <script src="admin.js" defer></script>
 </body>

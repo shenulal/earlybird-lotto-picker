@@ -448,7 +448,12 @@
       setTimeout(() => {
         renderWinnerCard(winner, revealAnimation);
         setTimeout(() => {
-          confetti.start({ count: animation.confettiCount, duration: animation.confettiDuration });
+          // CHANGED: the reveal fires whichever celebration the organiser chose.
+      confetti.start({
+        count: animation.confettiCount,
+        duration: animation.confettiDuration,
+        type: animation.celebration,
+      });
         }, animation.confettiStartDelay);
         resolve();
       }, animation.winnerAnnouncementDelay);

@@ -18,19 +18,31 @@
       <h1 class="event-name" id="eventName">Pickora</h1>
       <p class="organization-name" id="organizationName" hidden></p>
     </div>
-    <nav class="screen-nav" id="screenNav" aria-label="Screens"></nav>
-
-    <nav class="board-tools" aria-label="Page controls">
-      <!-- FIX: the only way back to the board was the JS-rendered screen nav,
-           so a failed settings request left this page with no way out at all.
-           This link is in the markup and works whatever the API does. -->
+    <!-- NEW: the menu is a drawer now. The toggle is the only part left over
+         the screen, so a projected board or a photo is not covered by it. The
+         way back to the draw stays outside the drawer: it is the one control
+         that must never be a click away. -->
+    <div class="board-menu">
       <a class="tool tool-back" id="backToBoard" href="/">Back to the draw</a>
+      <button type="button" class="menu-toggle" id="menuToggle" aria-controls="boardDrawer"
+              aria-expanded="false" aria-label="Menu" title="Menu (M)">
+        <span class="menu-bars" aria-hidden="true"></span>
+      </button>
+    </div>
+
+    <div class="board-drawer" id="boardDrawer" hidden>
+      <nav class="screen-nav" id="screenNav" aria-label="Screens"></nav>
+
+      <nav class="board-tools" aria-label="Page controls">
       <!-- Its own tab, so the projected screen is never navigated away from,
            and a named one, so a second click returns to the console already
            open rather than stacking up another. -->
       <a class="tool tool-quiet" href="/admin" target="pickora-console" data-console-link>Organiser</a>
-    </nav>
+      </nav>
+    </div>
   </header>
+
+  <div class="drawer-scrim" id="drawerScrim" hidden></div>
 
   <main class="feature" aria-labelledby="featureHeading">
     <header class="feature-intro">
@@ -41,10 +53,16 @@
     <p class="feature-empty" id="prizesEmpty" hidden>No prizes have been added yet.</p>
   </main>
 
+  <!-- NEW: filled in by social.js; stays hidden with nothing configured. -->
+  <aside class="social-block" id="socialBlock" aria-label="Event channels" hidden></aside>
+
   <footer class="board-footer"><p id="boardFooter"></p></footer>
 
   <script>window.PICKORA_PAGE = 'prizes';</script>
   <script src="api.js" defer></script>
+  <!-- NEW: the QR encoder and the channel block, shared by every public page. -->
+  <script src="qr.js" defer></script>
+  <script src="social.js" defer></script>
   <script src="theme.js" defer></script>
   <script src="carousel.js" defer></script>
   <script src="feature-page.js" defer></script>

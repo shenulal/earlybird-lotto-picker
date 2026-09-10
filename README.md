@@ -21,8 +21,11 @@ The screen the audience sees.
 
 - Large-format reel animation over the event backdrop
 - **Start** / **Stop** — Stop asks the server to draw, so the result is recorded once
-- Winner reveal with a full celebration — twisting streamers, tumbling stars,
-  flipping foil and drifting dots — cycling through five reveal animations
+- Winner reveal with a choice of celebration — classic confetti, streamers,
+  stars, balloons, snowfall, money rain, or a mix of all of them — cycling
+  through five reveal animations
+- Social channels with QR codes on every public screen, placed where you want
+  them
 - Optional winners panel and prize counters
 - Links to the welcome screen and the prize screen, which are pages of their own
 - Prizes announced ahead of each draw, in the order the organiser chose
@@ -45,6 +48,7 @@ Behind a sign-in.
 |---|---|
 | **Overview** | Live counters, data-health warnings, results table, CSV export, undo last draw, reset draw |
 | **Participants** | Upload the entry list or link a Google Sheet, with a column preview; download a template, export, or delete |
+| **Channels** | Social links and their QR codes: style, position, size, display mode, with a live preview |
 | **Fields** | Rename columns, mark sensitive ones, choose the identifier and what appears in the export |
 | **Display** | Choose exactly which fields appear while spinning, on the announcement, on the winner card and in the winners list |
 | **Branding** | Upload the logo and backdrop, with size and resolution validated on the server |
@@ -462,6 +466,42 @@ window steps on a slow timer instead.
 
 ---
 
+## Social channels and QR codes
+
+Under **Channels** in the console, add as many links as the event needs —
+Instagram, Facebook, X, YouTube, TikTok, LinkedIn, WhatsApp, Telegram, Discord,
+a website, or anything else under *Custom*. Each one takes a link and, if the
+channel's own name is not what you want under it, a display name. Rows reorder,
+edit and delete; the order is the order they appear in.
+
+One set of QR settings applies to all of them: the **style** (standard,
+coloured to each channel, the channel mark in the centre, or rounded dots), the
+**position** on the public pages, the **size**, and whether to show **icons, QR
+codes or both**. A live preview beside the settings shows the block as the room
+will see it — drawn by the same code the public pages use, so it is the result
+rather than an impression of it.
+
+The block appears on the draw board, the welcome screen and the prize screen.
+Icons open in a new tab; each code scans straight to its link. With no channels
+configured it leaves no trace at all.
+
+### Why the QR codes are built here
+
+They are encoded in [`qr.js`](qr.js) rather than fetched from a service or
+pulled from a package: the board has to work with no network, and the project
+carries no runtime dependencies. Every code is byte mode at error-correction
+level H, which is what allows the centre mark of the icon style without
+costing scannability — the mark covers about 5% of the code where H tolerates
+roughly 30%.
+
+`tools/verify-qr.py` checks the encoder against a reference implementation,
+module for module. It is worth keeping: two of the three bugs found while
+writing it — the format bits placed in reverse, and the wrong generator
+polynomial for the version information — produced codes that looked perfectly
+well formed and scanned as nothing at all.
+
+---
+
 ## Settings reference
 
 | Setting | Effect |
@@ -482,6 +522,13 @@ window steps on a slow timer instead.
 | `animation.winnerAnnouncementDelay` | Pause between the announcement and the winner card |
 | `animation.confettiStartDelay`, `confettiDuration`, `confettiCount` | Confetti timing and density. Two cannons fire from the bottom corners, a softer fall keeps coming from above, and emission stops early so the last pieces drift out of frame rather than being cut off |
 | `animation.confettiPalette` | Up to 12 hex colours for the confetti |
+| `animation.celebration` | Which celebration fires: `classic`, `streamers`, `stars`, `balloons`, `snow`, `money`, `mix` or `none` |
+| `ui.showEventName` | Show the event name on the board. Off gives the header back to the draw |
+| `social.channels[]` | The links, in order: `{ id, type, url, label }` |
+| `social.qr.style` | `standard`, `colored`, `logo` or `rounded` |
+| `social.qr.position` | `bottom-left`, `bottom-right`, `bottom-center`, `top-right`, `sidebar` or `footer` |
+| `social.qr.size` | `small` 48px, `medium` 80px, `large` 128px, `xl` 180px |
+| `social.qr.display` | `icons`, `qr` or `both` |
 | `branding.logo` | Uploaded file, corner position, on-screen height |
 | `branding.background` | Uploaded file, fit mode, darkening overlay |
 | `welcome.enabled`, `showOnLoad`, `placement` | Whether the guest welcome shows, when, and where |
@@ -582,7 +629,9 @@ pickora/
 │   ├── admin.js                          # console shell, data, draw supervision
 │   └── admin-config.js                   # fields, display slots, branding, wording
 ├── api.js                                # shared API client
-├── confetti.js                           # streamers, stars, foil and dots
+├── confetti.js                           # the celebrations, all seven of them
+├── qr.js                                 # QR encoder, level H, no dependency
+├── social.js                             # the channel block on public pages
 ├── welcome.html / prizes.html            # the two feature screens
 ├── feature-page.js                       # their shared controller
 ├── carousel.js                           # the shared image slider
@@ -600,6 +649,7 @@ pickora/
 ├── assets/                               # uploaded logo, backdrop, guest photos
 ├── windows/                              # one-click installer and shortcuts
 ├── tools/make-default-artwork.py         # regenerates the placeholder artwork
+├── tools/verify-qr.py                    # checks qr.js against a reference
 ├── archive/                              # the event artwork this replaced
 └── pickora-logo.png / -background.jpg    # bundled placeholder identity
 ```
