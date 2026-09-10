@@ -38,11 +38,22 @@
         <span class="menu-bars" aria-hidden="true"></span>
       </button>
     </div>
+  </header>
 
-    <div class="board-drawer" id="boardDrawer" hidden>
-      <nav class="screen-nav" id="screenNav" aria-label="Screens"></nav>
+  <!-- FIX: the drawer lives beside the scrim rather than inside the
+       header. As a child of the header its z-index was resolved inside
+       the header's own stacking context, so the scrim painted over the
+       whole drawer and swallowed every click meant for a menu item. -->
+  <div class="drawer-scrim" id="drawerScrim" hidden></div>
+  <div class="board-drawer" id="boardDrawer" hidden>
+    <!-- FIX: the open drawer covers the hamburger, so it carries its own
+         close control, sitting exactly where the toggle is behind it. -->
+    <button type="button" class="drawer-close" id="drawerClose" aria-label="Close menu" title="Close (Esc)">
+      <span class="menu-bars" aria-hidden="true"></span>
+    </button>
+    <nav class="screen-nav" id="screenNav" aria-label="Screens"></nav>
 
-      <nav class="board-tools" aria-label="Board controls">
+    <nav class="board-tools" aria-label="Board controls">
       <button type="button" class="tool" id="winnersToggle" aria-controls="winnersPanel" aria-expanded="false">
         <span class="tool-label" id="winnersToggleLabel">Winners</span>
         <span class="tool-badge" id="winnersBadge">0</span>
@@ -56,11 +67,8 @@
            absent: it forces a fresh context every time, which would defeat
            that, and the console is our own same-origin page. -->
       <a class="tool tool-quiet" id="organiserLink" href="/admin" target="pickora-console" data-console-link>Organiser</a>
-      </nav>
-    </div>
-  </header>
-
-  <div class="drawer-scrim" id="drawerScrim" hidden></div>
+    </nav>
+  </div>
 
   <main class="board" aria-labelledby="eventName">
     <section class="stage" id="stage" data-status="idle" aria-live="polite" aria-atomic="true">

@@ -255,6 +255,17 @@
     toggle.addEventListener('click', () => setOpen(!isOpen()));
     if (scrim) scrim.addEventListener('click', () => setOpen(false));
 
+    // FIX: the open drawer covers the toggle, so closing needs a control of
+    // its own rather than only Esc or a click on the dimmed area.
+    const close = document.getElementById('drawerClose');
+    if (close) {
+      close.addEventListener('click', (event) => {
+        event.stopPropagation();
+        setOpen(false);
+        toggle.focus();
+      });
+    }
+
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape' && isOpen()) {
         setOpen(false);
@@ -268,9 +279,11 @@
       }
     });
 
-    // Following a link out of the drawer should not leave it open behind you.
+    // FIX: every control in here acts on the page behind the drawer, so using
+    // one closes it — a button as much as a link. Nothing is prevented, so the
+    // menu items behave exactly as they did before the drawer existed.
     drawer.addEventListener('click', (event) => {
-      if (event.target.closest('a')) setOpen(false);
+      if (event.target.closest('a, button')) setOpen(false);
     });
 
     let remembered = null;

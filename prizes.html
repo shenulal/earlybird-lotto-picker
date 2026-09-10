@@ -29,20 +29,28 @@
         <span class="menu-bars" aria-hidden="true"></span>
       </button>
     </div>
+  </header>
 
-    <div class="board-drawer" id="boardDrawer" hidden>
-      <nav class="screen-nav" id="screenNav" aria-label="Screens"></nav>
+  <!-- FIX: the drawer lives beside the scrim rather than inside the
+       header. As a child of the header its z-index was resolved inside
+       the header's own stacking context, so the scrim painted over the
+       whole drawer and swallowed every click meant for a menu item. -->
+  <div class="drawer-scrim" id="drawerScrim" hidden></div>
+  <div class="board-drawer" id="boardDrawer" hidden>
+    <!-- FIX: the open drawer covers the hamburger, so it carries its own
+         close control, sitting exactly where the toggle is behind it. -->
+    <button type="button" class="drawer-close" id="drawerClose" aria-label="Close menu" title="Close (Esc)">
+      <span class="menu-bars" aria-hidden="true"></span>
+    </button>
+    <nav class="screen-nav" id="screenNav" aria-label="Screens"></nav>
 
-      <nav class="board-tools" aria-label="Page controls">
+    <nav class="board-tools" aria-label="Page controls">
       <!-- Its own tab, so the projected screen is never navigated away from,
            and a named one, so a second click returns to the console already
            open rather than stacking up another. -->
       <a class="tool tool-quiet" href="/admin" target="pickora-console" data-console-link>Organiser</a>
-      </nav>
-    </div>
-  </header>
-
-  <div class="drawer-scrim" id="drawerScrim" hidden></div>
+    </nav>
+  </div>
 
   <main class="feature" aria-labelledby="featureHeading">
     <header class="feature-intro">

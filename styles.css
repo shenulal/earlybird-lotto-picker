@@ -823,6 +823,35 @@ body[data-align='right'] .stats { justify-content: flex-end; }
   text-align: left;
 }
 
+/* Sits where the hamburger is behind it, so the two read as one control that
+   turned into a cross. */
+.drawer-close {
+  position: absolute;
+  top: 20px;
+  right: 22px;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: color var(--fast), border-color var(--fast);
+}
+
+.drawer-close:hover,
+.drawer-close:focus-visible {
+  color: var(--accent);
+  border-color: color-mix(in oklab, var(--accent) 55%, transparent);
+}
+
+.drawer-close .menu-bars { background: transparent; }
+.drawer-close .menu-bars::before { transform: rotate(45deg); }
+.drawer-close .menu-bars::after { transform: rotate(-45deg); }
+
 .drawer-scrim {
   position: fixed;
   inset: 0;
