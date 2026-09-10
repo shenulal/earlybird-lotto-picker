@@ -71,9 +71,12 @@ function createApp() {
     express.static(PATHS.root, {
       index: 'index.html',
       setHeaders: (res, filePath) => {
-        if (/\.(html|json)$/i.test(filePath)) {
+        // Markup, styles and scripts are revalidated every time. They are
+        // small, and a stale one after a fix reaches the event PC is far worse
+        // than the request. Fonts and images are stable, so they may be kept.
+        if (/\.(html|json|css|js)$/i.test(filePath)) {
           res.setHeader('Cache-Control', 'no-cache');
-        } else if (/\.(woff2?|png|jpe?g|gif|webp|svg)$/i.test(filePath)) {
+        } else if (/\.(woff2?|png|jpe?g|gif|webp|svg|ico)$/i.test(filePath)) {
           res.setHeader('Cache-Control', 'public, max-age=604800');
         }
       },

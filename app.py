@@ -61,7 +61,12 @@ def serve_static(filename: str):
     if not target.is_file() or ROOT_DIR not in target.parents:
         return send_from_directory(ROOT_DIR, "index.html")
 
-    return send_from_directory(ROOT_DIR, filename)
+    response = send_from_directory(ROOT_DIR, filename)
+    # Markup, styles and scripts are revalidated every time; a stale one after
+    # a fix reaches the event PC is far worse than the request.
+    if filename.lower().endswith((".html", ".json", ".css", ".js")):
+        response.headers["Cache-Control"] = "no-cache"
+    return response
 
 
 def configure_session_key() -> None:

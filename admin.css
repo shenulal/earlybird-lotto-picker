@@ -156,19 +156,23 @@ code {
 .sidebar {
   display: flex;
   flex-direction: column;
-  gap: 26px;
+  gap: 20px;
   padding: 22px 18px;
   border-right: 1px solid var(--c-line);
   background: #0b0e14;
   position: sticky;
   top: 0;
   height: 100vh;
+  /* Last resort on a very short window; normally the nav scrolls instead and
+     the brand and the sign-out stay put. */
+  overflow-y: auto;
 }
 
 .brand {
   display: flex;
   align-items: center;
   gap: 11px;
+  flex-shrink: 0;
 }
 
 .brand-mark {
@@ -203,9 +207,28 @@ code {
   letter-spacing: 0.06em;
 }
 
+/* The section list is the only part that scrolls, so the account controls
+   below it stay reachable however short the window is. */
 .nav {
   display: grid;
   gap: 2px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--c-line-strong) transparent;
+  /* Room for the scrollbar so it never sits on top of a label. */
+  margin-inline-end: -6px;
+  padding-inline-end: 6px;
+}
+
+.nav::-webkit-scrollbar {
+  width: 5px;
+}
+
+.nav::-webkit-scrollbar-thumb {
+  border-radius: 3px;
+  background: var(--c-line-strong);
 }
 
 .nav-item {
@@ -233,9 +256,10 @@ code {
 
 .sidebar-foot {
   margin-top: auto;
+  flex-shrink: 0;
   display: grid;
-  gap: 10px;
-  padding-top: 18px;
+  gap: 8px;
+  padding-top: 16px;
   border-top: 1px solid var(--c-line);
 }
 
@@ -790,6 +814,7 @@ input:focus-visible,
   .sidebar {
     position: static;
     height: auto;
+    overflow-y: visible;
     border-right: none;
     border-bottom: 1px solid var(--c-line);
   }
@@ -798,6 +823,11 @@ input:focus-visible,
     grid-auto-flow: column;
     grid-auto-columns: max-content;
     overflow-x: auto;
+    overflow-y: visible;
+    min-height: 0;
+    flex: 0 0 auto;
+    margin-inline-end: 0;
+    padding-inline-end: 0;
   }
 
   .sidebar-foot {
