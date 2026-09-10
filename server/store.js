@@ -286,6 +286,27 @@ function readBundledJson(filePath, fallback = null) {
   }
 }
 
+/**
+ * Confirms the configured storage can actually accept a write, without
+ * disturbing any real document. Used by the health check so a misconfigured
+ * deployment reports the problem before the first draw rather than during it.
+ */
+async function probeWritable() {
+  if (driver === fsDriver) {
+    const probe = path.join(PATHS.root, '.pickora-write-probe');
+    try {
+      fs.writeFileSync(probe, 'ok');
+      fs.unlinkSync(probe);
+    } catch (error) {
+      throw describeWriteFailure('winners.json', error);
+    }
+    return;
+  }
+
+  await driver.saveBlob('.write-probe', Buffer.from('ok'));
+  await driver.deleteBlob('.write-probe');
+}
+
 /* Legacy file-named helpers, so callers keep reading like a file store. */
 function readJson(filePath, fallback = null) {
   const key = DOCUMENT_BY_FILE[path.basename(String(filePath))];
@@ -310,6 +331,7 @@ module.exports = {
   driver,
   hydrate,
   flush,
+  probeWritable,
   readJson,
   writeJson,
   fileExists,

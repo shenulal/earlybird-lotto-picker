@@ -11,7 +11,12 @@
  */
 
 const { createApp } = require('../server/app');
+const store = require('../server/store');
 
 const app = createApp();
+
+// One line per cold start, so the Vercel function log shows which storage the
+// deployment actually picked up.
+console.log(`Pickora storage: ${store.driver.name}`);
 
 module.exports = (req, res) => app.handle(req, res);

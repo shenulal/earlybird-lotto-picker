@@ -61,6 +61,42 @@ function createApiRouter() {
   const router = express.Router();
   router.use(express.json({ limit: '25mb' }));
 
+  /* Registered before the hydrate step below, so it can still answer when
+     storage is the thing that is broken — which is exactly when it is needed. */
+  router.get('/health', async (_req, res) => {
+    const usingKv = !store.driver.servesBlobsAsFiles;
+    const health = {
+      ok: true,
+      storage: store.driver.name,
+      writable: null,
+      configured: {
+        KV_REST_API_URL: Boolean(process.env.KV_REST_API_URL),
+        KV_REST_API_TOKEN: Boolean(process.env.KV_REST_API_TOKEN),
+        UPSTASH_REDIS_REST_URL: Boolean(process.env.UPSTASH_REDIS_REST_URL),
+        UPSTASH_REDIS_REST_TOKEN: Boolean(process.env.UPSTASH_REDIS_REST_TOKEN),
+        ADMIN_USERNAME: Boolean(process.env.ADMIN_USERNAME),
+        ADMIN_PASSWORD: Boolean(process.env.ADMIN_PASSWORD),
+      },
+    };
+
+    try {
+      await store.hydrate();
+      await store.probeWritable();
+      health.writable = true;
+    } catch (error) {
+      health.ok = false;
+      health.writable = false;
+      health.error = error.message;
+      if (!usingKv) {
+        health.hint =
+          'This host cannot write files. Add a KV / Upstash Redis store and set ' +
+          'KV_REST_API_URL and KV_REST_API_TOKEN, then redeploy.';
+      }
+    }
+
+    return res.status(health.ok ? 200 : 503).json(health);
+  });
+
   // One load per request; the handlers below then read and write in memory and
   // persist with `flush()` before they respond.
   router.use(async (_req, res, next) => {

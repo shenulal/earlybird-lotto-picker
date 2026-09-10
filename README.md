@@ -126,6 +126,18 @@ everything works unchanged:
 3. Deploy. `vercel.json` routes every request to `api/index.js`, which mounts
    the same application the local server runs.
 
+### Checking it worked
+
+Open `https://your-app.vercel.app/api/health`:
+
+```json
+{ "ok": true, "storage": "key-value store", "writable": true }
+```
+
+`"storage": "filesystem"` or `"writable": false` means the variables did not
+reach the running deployment — redeploy after adding them. The response also
+lists which variables it can see, without revealing their values.
+
 Storage is chosen at startup and reported in the log:
 
 ```
@@ -371,6 +383,7 @@ Public:
 
 | Method | Path | Purpose |
 |---|---|---|
+| `GET` | `/api/health` | Storage driver and whether it can be written to |
 | `GET` | `/api/settings` | Board configuration (never credentials) |
 | `GET` | `/api/pool` | Remaining ticket numbers + counters |
 | `GET` | `/api/state` | Winners so far + counters |
