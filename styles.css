@@ -17,6 +17,10 @@
   --backdrop-repeat: no-repeat;
   --backdrop-overlay: 0.45;
   --logo-max-height: 96px;
+  /* Where the floating menu sits, and how tall it is. Anything that must keep
+     clear of it measures from here rather than guessing. */
+  --menu-top: 20px;
+  --menu-height: 42px;
   /* How much horizontal room the logo actually takes at that height. Set from
      the uploaded file's aspect ratio in theme.js; a square is assumed until
      then, which is what a logo with no recorded dimensions gets. */
@@ -723,11 +727,24 @@ body[data-align='right'] .stats { justify-content: flex-end; }
 /* The menu used to sit across the top of every screen, over the artwork and
    the prize photos. It is a drawer now: nothing but the toggle is left on the
    screen until someone asks for it. */
+/* FIX: the menu floats over the page instead of riding in the header. In the
+   header its z-index was resolved inside the header's own stacking context, so
+   the winners panel painted over it; and a top-centre logo adds 126px of
+   header padding, which pushed the toggle down into that panel. Nothing may
+   cover this — it is the only way into the menu. */
 .board-menu {
+  position: fixed;
+  top: var(--menu-top);
+  inset-inline-end: 22px;
+  z-index: 55;
   display: flex;
   gap: 8px;
   align-items: center;
-  margin-left: auto;
+}
+
+/* A logo in the same corner would sit on top of it, so the menu steps below. */
+body[data-logo-position='top-right'] {
+  --menu-top: calc(var(--logo-max-height) + 30px);
 }
 
 .menu-toggle {
@@ -986,7 +1003,11 @@ body[data-align='right'] .stats { justify-content: flex-end; }
 
 .social-block[data-position='bottom-right'] { right: 18px; bottom: 18px; }
 .social-block[data-position='bottom-left'] { left: 18px; bottom: 18px; }
-.social-block[data-position='top-right'] { top: 76px; right: 18px; }
+/* Clears the floating menu, wherever the logo has pushed it to. */
+.social-block[data-position='top-right'] {
+  top: calc(var(--menu-top) + var(--menu-height) + 16px);
+  right: 18px;
+}
 
 .social-block[data-position='bottom-center'] {
   bottom: 18px;
@@ -1425,7 +1446,8 @@ body[data-align='right'] .stats { justify-content: flex-end; }
 
 .winners-panel {
   position: fixed;
-  top: 92px;
+  /* FIX: clears the floating menu, wherever the logo has pushed it to. */
+  top: max(92px, calc(var(--menu-top) + var(--menu-height) + 14px));
   inset-inline-end: var(--gutter);
   bottom: 58px;
   width: var(--panel-width);

@@ -28,17 +28,19 @@
       <p class="organization-name" id="organizationName" hidden></p>
     </div>
 
-    <!-- NEW: the menu is a drawer now. The toggle is the only part left over
-         the screen, so a projected board or a photo is not covered by it. The
-         way back to the draw stays outside the drawer: it is the one control
-         that must never be a click away. -->
-    <div class="board-menu">
-      <button type="button" class="menu-toggle" id="menuToggle" aria-controls="boardDrawer"
-              aria-expanded="false" aria-label="Menu" title="Menu (M)">
-        <span class="menu-bars" aria-hidden="true"></span>
-      </button>
-    </div>
   </header>
+
+  <!-- FIX: the menu floats over the page rather than sitting in the header.
+       Inside it, its z-index was resolved in the header's own stacking
+       context, so the winners panel covered it — and a top-centre logo
+       pushes the header down far enough to put the two on top of each
+       other. Nothing may cover the toggle: it is the only way in. -->
+  <div class="board-menu">
+    <button type="button" class="menu-toggle" id="menuToggle" aria-controls="boardDrawer"
+            aria-expanded="false" aria-label="Menu" title="Menu (M)">
+      <span class="menu-bars" aria-hidden="true"></span>
+    </button>
+  </div>
 
   <!-- FIX: the drawer lives beside the scrim rather than inside the
        header. As a child of the header its z-index was resolved inside
