@@ -368,6 +368,26 @@ body[data-logo-position='bottom-center'] .board-footer {
   background: var(--accent-veil);
 }
 
+/* The way back off a projected screen. Brighter than the other tools and
+   marked with an arrow, so it is unmistakably the exit. */
+.tool-back {
+  color: var(--ink);
+  border-color: var(--hairline-bright);
+  background: var(--surface);
+}
+
+.tool-back::before {
+  content: '←';
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.tool-back:hover,
+.tool-back:focus-visible {
+  color: var(--accent);
+  border-color: color-mix(in oklab, var(--accent) 55%, transparent);
+}
+
 .tool-quiet {
   color: var(--ink-ghost);
 }

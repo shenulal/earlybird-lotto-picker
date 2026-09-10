@@ -21,7 +21,13 @@
     <nav class="screen-nav" id="screenNav" aria-label="Screens"></nav>
 
     <nav class="board-tools" aria-label="Page controls">
-      <a class="tool tool-quiet" href="/admin">Organiser</a>
+      <!-- FIX: the only way back to the board was the JS-rendered screen nav,
+           so a failed settings request left this page with no way out at all.
+           This link is in the markup and works whatever the API does. -->
+      <a class="tool tool-back" id="backToBoard" href="/">Back to the draw</a>
+      <!-- FIX: the console now opens in its own tab, so the projected screen
+           is never navigated away from. -->
+      <a class="tool tool-quiet" href="/admin" target="_blank" rel="noopener">Organiser</a>
     </nav>
   </header>
 

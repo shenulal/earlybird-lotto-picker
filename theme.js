@@ -56,6 +56,12 @@
       organizationName.hidden = !(ui.showOrganizationName && settings.organizationName);
     }
 
+    // FIX: copy.prizesBack ("Back to the draw") was defined in every settings
+    // file and rendered nowhere. The welcome and prize screens now carry a
+    // back control, and this is its label.
+    const backLink = document.getElementById('backToBoard');
+    if (backLink) backLink.textContent = settings.copy.prizesBack;
+
     const footer = elements.footer || document.getElementById('boardFooter');
     if (footer) {
       footer.textContent = settings.copy.footer;

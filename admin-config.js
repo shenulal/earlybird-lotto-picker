@@ -36,6 +36,8 @@
     readyDetail: 'Idle sub-heading',
     winnerEyebrow: 'Winner label',
     prizeLabel: 'Prize word',
+    // FIX: this string is rendered now, so it belongs in the Wording panel.
+    prizesBack: 'Back-to-board link',
     lastWinnerEyebrow: 'Previous winner label',
     completeTitle: 'All prizes awarded',
     startButton: 'Start button',
