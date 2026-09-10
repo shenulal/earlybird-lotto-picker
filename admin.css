@@ -1228,3 +1228,16 @@ kbd {
 .prize-photo-grid .guest-item img {
   aspect-ratio: 4 / 3;
 }
+
+.sidebar-heading {
+  margin: 0 0 2px;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--c-text-faint);
+}
+
+.sidebar-foot .link {
+  line-height: 1.7;
+}

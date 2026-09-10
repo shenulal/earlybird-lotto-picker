@@ -55,6 +55,7 @@ const DEFAULT_COPY = Object.freeze({
   fullscreenButton: 'Fullscreen',
   organiserLink: 'Organiser',
   welcomeToggle: 'Welcome',
+  boardToggle: 'Draw board',
   prizesToggle: 'Prizes',
   prizesBack: 'Back to the draw',
   newDrawButton: 'New draw',

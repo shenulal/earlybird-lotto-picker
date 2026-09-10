@@ -97,29 +97,11 @@
     });
   }
 
-  /** Each screen links to the other only when there is something to see. */
-  function renderCrossLinks(settings) {
-    const welcomeLink = document.getElementById('welcomeLink');
-    const prizesLink = document.getElementById('prizesLink');
-    const back = document.getElementById('backLabel');
-
-    if (back) back.textContent = settings.copy.prizesBack;
-
-    if (welcomeLink) {
-      welcomeLink.hidden = !(settings.welcome.enabled && (settings.welcome.images.length > 0 || settings.welcome.message));
-      welcomeLink.querySelector('.tool-label').textContent = settings.copy.welcomeToggle;
-    }
-    if (prizesLink) {
-      prizesLink.hidden = !(settings.prizes.enabled && settings.prizes.items.length > 0);
-      prizesLink.querySelector('.tool-label').textContent = settings.copy.prizesToggle;
-    }
-  }
-
   async function init() {
     try {
       const { appSettings } = await api.getSettings();
       global.applyPickoraTheme(appSettings);
-      renderCrossLinks(appSettings);
+      global.renderPickoraNav(page, appSettings);
 
       if (page === 'welcome') renderWelcome(appSettings);
       else renderPrizes(appSettings);

@@ -55,5 +55,53 @@
     }
   }
 
+  const SCREENS = [
+    { key: 'board', href: '/', copyKey: 'boardToggle' },
+    { key: 'welcome', href: '/welcome', copyKey: 'welcomeToggle' },
+    { key: 'prizes', href: '/prizes', copyKey: 'prizesToggle' },
+  ];
+
+  function escapeHtml(value) {
+    return String(value === null || value === undefined ? '' : value).replace(
+      /[&<>"']/g,
+      (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]
+    );
+  }
+
+  /** True when a screen has something to show; drives the dimmed state. */
+  function hasContent(key, settings) {
+    if (key === 'welcome') {
+      return settings.welcome.enabled && (settings.welcome.images.length > 0 || Boolean(settings.welcome.message));
+    }
+    if (key === 'prizes') {
+      return settings.prizes.enabled && settings.prizes.items.length > 0;
+    }
+    return true;
+  }
+
+  /**
+   * The same three screens on every page, with the current one marked.
+   *
+   * A screen that is not set up yet is dimmed rather than hidden: hiding it
+   * makes the feature look absent, and the operator still needs a way in to
+   * see that there is nothing there.
+   */
+  function renderScreenNav(current, settings) {
+    const mount = document.getElementById('screenNav');
+    if (!mount) return;
+
+    mount.innerHTML = SCREENS.map((screen) => {
+      const label = settings.copy[screen.copyKey];
+      const isCurrent = screen.key === current;
+      const empty = !hasContent(screen.key, settings);
+
+      return `<a class="screen-link" href="${screen.href}"
+        ${isCurrent ? 'aria-current="page"' : ''}
+        ${empty ? 'data-empty="true" title="Nothing set up for this screen yet"' : ''}
+      >${escapeHtml(label)}</a>`;
+    }).join('');
+  }
+
   global.applyPickoraTheme = applyTheme;
+  global.renderPickoraNav = renderScreenNav;
 })(window, document);

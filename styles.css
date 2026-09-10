@@ -194,11 +194,29 @@ body[data-logo-position='bottom-center'] .board-footer {
 .board-header {
   position: relative;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 14px 20px;
   padding: clamp(16px, 2.2vw, 30px) var(--gutter) 0;
+}
+
+.board-identity {
+  flex: 1 1 auto;
+}
+
+.board-header .screen-nav {
+  order: 0;
+}
+
+@media (max-width: 1080px) {
+  /* Below this the three groups no longer fit on one line; the nav takes its
+     own row so it never squeezes the event name. */
+  .board-header .screen-nav {
+    order: 1;
+    flex: 1 0 100%;
+    justify-content: center;
+  }
 }
 
 /* The backdrop is whatever artwork the organiser uploaded, and it may be
@@ -251,6 +269,53 @@ body[data-logo-position='bottom-center'] .board-footer {
   text-transform: uppercase;
   color: var(--ink-soft);
   text-shadow: 0 1px 10px rgba(0, 0, 0, 0.8);
+}
+
+/* The three screens, in the same place on every page, with the current one
+   marked. A screen with nothing configured is dimmed but still reachable. */
+.screen-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: var(--surface);
+  backdrop-filter: blur(10px);
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.screen-link {
+  padding: 7px 16px;
+  border-radius: 999px;
+  color: var(--ink-soft);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color var(--fast), background var(--fast);
+}
+
+.screen-link:hover,
+.screen-link:focus-visible {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.screen-link[aria-current='page'] {
+  background: var(--accent);
+  color: #14110a;
+}
+
+.screen-link[data-empty='true']:not([aria-current='page']) {
+  opacity: 0.45;
+}
+
+.screen-link[data-empty='true']:hover {
+  opacity: 0.85;
 }
 
 /* Tools read as one segmented cluster rather than scattered buttons. */
@@ -1420,6 +1485,15 @@ body[data-align='right'] .stats { justify-content: flex-end; }
     flex-direction: column;
     align-items: stretch;
     gap: 14px;
+    /* Wrapping a column container makes a second column, which would push the
+       nav off-screen sideways; the basis below is a main-axis size too. */
+    flex-wrap: nowrap;
+  }
+
+  .board-header .screen-nav {
+    flex: 0 0 auto;
+    width: 100%;
+    justify-content: center;
   }
 
   .event-name::after {

@@ -345,9 +345,11 @@ projected on a second screen, linked to, or left open on a foyer display:
 | Guest welcome | `/welcome` |
 | Prizes | `/prizes` |
 
-The board links to whichever ones have something to show, and each page links
-back and across. On the board, <kbd>G</kbd> opens the welcome and <kbd>P</kbd>
-the prizes.
+All three carry the same navigation in the same place, with the current screen
+marked. A screen with nothing set up yet is dimmed but still reachable — so it
+never looks as though the feature is missing. On the board, <kbd>G</kbd> opens
+the welcome and <kbd>P</kbd> the prizes; the console sidebar opens any of them
+in a new tab.
 
 ### Guest welcome
 

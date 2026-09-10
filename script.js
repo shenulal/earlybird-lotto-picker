@@ -35,10 +35,6 @@
     winnersList: document.getElementById('winnersList'),
     winnersBadge: document.getElementById('winnersBadge'),
     organiserLink: document.getElementById('organiserLink'),
-    welcomeLink: document.getElementById('welcomeLink'),
-    welcomeLinkLabel: document.getElementById('welcomeLinkLabel'),
-    prizesLink: document.getElementById('prizesLink'),
-    prizesLinkLabel: document.getElementById('prizesLinkLabel'),
     newDrawBtn: document.getElementById('newDrawBtn'),
     newDrawLabel: document.getElementById('newDrawLabel'),
     stats: document.getElementById('stats'),
@@ -122,8 +118,6 @@
     elements.winnersHeading.textContent = settings.copy.winnersHeading;
     elements.fullscreenBtn.querySelector('.tool-label').textContent = settings.copy.fullscreenButton;
     elements.organiserLink.textContent = settings.copy.organiserLink;
-    elements.welcomeLinkLabel.textContent = settings.copy.welcomeToggle;
-    elements.prizesLinkLabel.textContent = settings.copy.prizesToggle;
     elements.newDrawLabel.textContent = settings.copy.newDrawButton;
     elements.loadingText.textContent = settings.copy.loading;
     elements.footer.textContent = settings.copy.footer;
@@ -148,12 +142,7 @@
       footer: elements.footer,
     });
     applyCopy(settings);
-
-    // Each screen is linked only when it has something to show.
-    const hasWelcome = settings.welcome.enabled && (settings.welcome.images.length > 0 || settings.welcome.message);
-    const hasPrizes = settings.prizes.enabled && settings.prizes.items.length > 0;
-    elements.welcomeLink.hidden = !hasWelcome;
-    elements.prizesLink.hidden = !hasPrizes;
+    global.renderPickoraNav('board', settings);
     // Shown to everyone: hiding it made the option look absent. Permission
     // decides what a click does, not whether the control exists.
     elements.newDrawBtn.dataset.locked = String(!state.canReset);
@@ -455,8 +444,8 @@
       const key = event.key.toLowerCase();
       if (key === 'w') setWinnersPanel(elements.winnersPanel.hidden);
       if (key === 'f') toggleFullscreen();
-      if (key === 'g' && !elements.welcomeLink.hidden) global.location.assign('/welcome');
-      if (key === 'p' && !elements.prizesLink.hidden) global.location.assign('/prizes');
+      if (key === 'g') global.location.assign('/welcome');
+      if (key === 'p') global.location.assign('/prizes');
       if (key === 'n') startNewDraw();
     });
   }
