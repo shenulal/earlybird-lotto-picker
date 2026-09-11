@@ -43,7 +43,8 @@ const fsDriver = {
   name: 'filesystem',
   // Blobs are ordinary files under assets/, so the static handler serves them.
   servesBlobsAsFiles: true,
-  maxBlobBytes: 8 * 1024 * 1024,
+  // A backdrop chosen from a camera roll is the largest thing here.
+  maxBlobBytes: 10 * 1024 * 1024,
 
   async loadDocuments() {
     return Object.fromEntries(

@@ -348,10 +348,18 @@ Under **Branding** you can upload a **logo** and a **background**.
   |---|---|---|
   | Logo | 600 × 300 px, transparent PNG | 200 × 100 px |
   | Background | 1920 × 1080 px (2560 × 1440 or 3840 × 2160 for large screens) | 1280 × 720 px |
-  | Guest photo | 800 × 1000 px portrait (4:5) | 400 × 500 px |
+  | Guest photo | 1000 × 1000 px square, shown in a circle | 600 × 600 px |
 
 - Accepted: PNG, JPEG, GIF, WebP, SVG. Between 16px and 8000px a side, and up
-  to 8 MB on a filesystem or 2 MB on a key-value deployment.
+  to 10 MB on a filesystem or 2 MB on a key-value deployment.
+- **A backdrop may be 10 MB anywhere**, including a serverless deployment that
+  would otherwise refuse it. Anything over about 1.5 MB is redrawn at 2560px and
+  re-encoded before it leaves the browser, which is no loss — the board never
+  draws a backdrop larger than the screen, and darkens it besides. The bytes
+  saved are the difference between an upload that works and one the platform
+  rejects: images travel base64 inside a JSON request, and a serverless function
+  will not accept a body over 4.5 MB, so ~3.3 MB of image is the most that can
+  reach the server untouched.
 - Dimensions are read from the file header on the server and shown back to you,
   so you can check them against the screen you are projecting onto. For a 1080p
   projector, 1920×1080 or larger is recommended for the backdrop.

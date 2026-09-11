@@ -13,9 +13,21 @@ from typing import Any, Dict, Optional
 
 from .paths import ROOT_DIR
 
-MAX_BYTES = 8 * 1024 * 1024
+MAX_BYTES = 10 * 1024 * 1024
+
+# CHANGED: a backdrop is allowed to be much larger than anything else, because
+# it is the one image chosen straight out of a camera roll. The console shrinks
+# one that big to the size a screen can actually show before sending it, so what
+# arrives here is small whatever the organiser picked. This is the safety net
+# behind that, for anything posted another way.
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+
 MIN_DIMENSION = 16
 MAX_DIMENSION = 8000
+
+
+def max_bytes_for(kind: str) -> int:
+    return max(MAX_BYTES, MAX_UPLOAD_BYTES) if kind == "background" else MAX_BYTES
 
 EXTENSIONS = {"png": ".png", "jpeg": ".jpg", "gif": ".gif", "webp": ".webp", "svg": ".svg"}
 
@@ -90,8 +102,11 @@ def save_image_asset(kind: str, content: Any, original_name: Any = "") -> Dict[s
     """Validates and stores an uploaded image, returning its public path."""
     buffer = _decode_data_url(content)
 
-    if len(buffer) > MAX_BYTES:
-        raise ValueError(f"That image is {len(buffer) / 1048576:.1f} MB — the limit is 8 MB.")
+    ceiling = max_bytes_for(kind)
+    if len(buffer) > ceiling:
+        raise ValueError(
+            f"That image is {len(buffer) / 1048576:.1f} MB — the limit is {ceiling / 1048576:.0f} MB."
+        )
 
     info = probe_image(buffer)
     if not info:

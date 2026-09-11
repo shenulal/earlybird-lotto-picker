@@ -15,6 +15,17 @@
   const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml'];
   const FALLBACK_MAX_BYTES = 8 * 1024 * 1024;
 
+  /* NEW: a backdrop may be picked straight out of a camera roll, so it gets a
+     ceiling of its own — and is shrunk to what a screen can actually show
+     before it is sent. A 10 MB photograph is 6000px across; the board draws it
+     at 2560 at most, and the bytes saved are the difference between an upload
+     that works on a serverless host and one the platform refuses outright. */
+  const BACKGROUND_MAX_BYTES = 10 * 1024 * 1024;
+  const BACKGROUND_MAX_EDGE = 2560;
+  // Comfortably inside the 4.5 MB body a serverless request may carry, once
+  // base64 has added its third.
+  const SHRINK_ABOVE_BYTES = 1.5 * 1024 * 1024;
+
   const SLOT_META = [
     { key: 'reel', title: 'While spinning', hint: 'Cycles through the remaining entries. Every field here is sent to the board for all entries, not just the winner.' },
     { key: 'call', title: 'Winner announcement', hint: 'The first reveal, held for the announcement delay before the full card.' },
@@ -78,6 +89,51 @@
       return `${file.name} is ${(file.size / 1048576).toFixed(1)} MB — the limit is ${(maxBytes / 1048576).toFixed(0)} MB on this deployment.`;
     }
     return null;
+  }
+
+  /**
+   * NEW: redraws an oversized backdrop at a size a screen can show.
+   *
+   * Returns the original untouched when it is already small enough, or when
+   * anything about the redraw fails — a backdrop that uploads at full size is
+   * better than one that does not upload at all.
+   */
+  async function shrinkBackground(file, dataUrl) {
+    if (file.size <= SHRINK_ABOVE_BYTES) return { content: dataUrl, resized: false };
+    if (file.type === 'image/svg+xml' || file.type === 'image/gif') return { content: dataUrl, resized: false };
+
+    try {
+      const image = await new Promise((resolve, reject) => {
+        const element = new global.Image();
+        element.onload = () => resolve(element);
+        element.onerror = () => reject(new Error('unreadable'));
+        element.src = dataUrl;
+      });
+
+      const scale = Math.min(1, BACKGROUND_MAX_EDGE / Math.max(image.naturalWidth, image.naturalHeight));
+      const width = Math.round(image.naturalWidth * scale);
+      const height = Math.round(image.naturalHeight * scale);
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext('2d');
+      context.drawImage(image, 0, 0, width, height);
+
+      // A backdrop sits behind everything and is darkened by the overlay, so
+      // JPEG at this quality is indistinguishable and a fraction of the size.
+      const content = canvas.toDataURL('image/jpeg', 0.86);
+      if (!content || content.length >= dataUrl.length) return { content: dataUrl, resized: false };
+
+      return {
+        content,
+        resized: true,
+        from: `${image.naturalWidth}×${image.naturalHeight}`,
+        to: `${width}×${height}`,
+      };
+    } catch (_error) {
+      return { content: dataUrl, resized: false };
+    }
   }
 
   function readAsDataUrl(file) {
@@ -417,7 +473,14 @@
     async function uploadAsset(kind, file, control) {
       if (!file) return;
 
-      const rejection = rejectFile(file, context.getLimits().maxUploadBytes || FALLBACK_MAX_BYTES);
+      // CHANGED: a backdrop has a ceiling of its own, well above what the
+      // store would otherwise allow, because it is shrunk before it is sent.
+      const ceiling =
+        kind === 'background'
+          ? BACKGROUND_MAX_BYTES
+          : context.getLimits().maxUploadBytes || FALLBACK_MAX_BYTES;
+
+      const rejection = rejectFile(file, ceiling);
       if (rejection) {
         context.toast(rejection, 'error');
         return;
@@ -426,11 +489,18 @@
       await withUploadState(control, 'Uploading…', async () => {
         try {
           await context.save(collectBranding(), 'Branding saved.', { quiet: true });
-          const content = await readAsDataUrl(file);
-          const result = await api.uploadAsset(kind, { content, name: file.name });
+
+          const raw = await readAsDataUrl(file);
+          const prepared =
+            kind === 'background' ? await shrinkBackground(file, raw) : { content: raw, resized: false };
+
+          const result = await api.uploadAsset(kind, { content: prepared.content, name: file.name });
           context.applySettings(result.appSettings);
+
           const { width, height } = result.asset;
-          context.toast(`${kind === 'logo' ? 'Logo' : 'Background'} uploaded${width ? ` — ${width}×${height}px` : ''}.`);
+          const size = width ? ` — ${width}×${height}px` : '';
+          const shrunk = prepared.resized ? ` Resized from ${prepared.from} to fit.` : '';
+          context.toast(`${kind === 'logo' ? 'Logo' : 'Background'} uploaded${size}.${shrunk}`);
         } catch (error) {
           context.toast(error.message, 'error');
         }

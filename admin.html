@@ -353,7 +353,10 @@
                 <dt>Minimum</dt><dd>1280 × 720 px</dd>
                 <dt>Aspect</dt><dd>16:9 — anything else is cropped by the fit mode</dd>
                 <dt>Formats</dt><dd>PNG, JPEG, GIF, WebP</dd>
-                <dt>Maximum</dt><dd><span data-upload-limit>8 MB</span>, 8000 px per side</dd>
+                <!-- CHANGED: a backdrop has its own, far higher ceiling,
+                     because anything large is resized before it is sent. -->
+                <dt>Maximum</dt><dd>10 MB, 8000 px per side</dd>
+                <dt>Large files</dt><dd>Anything over about 1.5 MB is resized to 2560 px before uploading — a backdrop is never drawn larger than the screen</dd>
               </dl>
               <div class="grid-2">
                 <label class="field">

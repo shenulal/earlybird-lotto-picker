@@ -4,9 +4,20 @@ const crypto = require('crypto');
 
 const store = require('./store');
 
-// The ceiling depends on where the bytes end up: a filesystem takes 8 MB
+// The ceiling depends on where the bytes end up: a filesystem takes 10 MB
 // comfortably, a key-value store carries them base64-encoded inside a request.
 const MAX_BYTES = store.maxBlobBytes;
+
+/* CHANGED: a backdrop is allowed to be much larger than anything else, because
+   it is the one image chosen straight out of a camera roll. The console shrinks
+   one that big to the size a screen can actually show before sending it, so
+   what arrives here is small whatever the organiser picked. This ceiling is
+   the safety net behind that, for anything posted another way. */
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+
+function maxBytesFor(kind) {
+  return kind === 'background' ? Math.max(MAX_BYTES, MAX_UPLOAD_BYTES) : MAX_BYTES;
+}
 const MIN_DIMENSION = 16;
 const MAX_DIMENSION = 8000;
 
@@ -89,10 +100,10 @@ function decodeDataUrl(content) {
 async function saveImageAsset(kind, content, originalName) {
   const buffer = decodeDataUrl(content);
 
-  if (buffer.length > MAX_BYTES) {
+  if (buffer.length > maxBytesFor(kind)) {
     throw new Error(
       `That image is ${(buffer.length / 1048576).toFixed(1)} MB — the limit is ` +
-        `${(MAX_BYTES / 1048576).toFixed(0)} MB on this deployment.`
+        `${(maxBytesFor(kind) / 1048576).toFixed(0)} MB on this deployment.`
     );
   }
 
@@ -130,4 +141,13 @@ async function removeImageAsset(src) {
   await store.deleteBlob(src.slice('assets/'.length));
 }
 
-module.exports = { MAX_BYTES, MIN_DIMENSION, MAX_DIMENSION, probeImage, saveImageAsset, removeImageAsset };
+module.exports = {
+  MAX_BYTES,
+  MAX_UPLOAD_BYTES,
+  maxBytesFor,
+  MIN_DIMENSION,
+  MAX_DIMENSION,
+  probeImage,
+  saveImageAsset,
+  removeImageAsset,
+};
