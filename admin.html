@@ -56,6 +56,8 @@
         <button type="button" class="nav-item" data-panel="welcome">Welcome</button>
         <button type="button" class="nav-item" data-panel="prizes">Prizes</button>
         <!-- NEW -->
+        <!-- NEW -->
+        <button type="button" class="nav-item" data-panel="layout">Board layout</button>
         <button type="button" class="nav-item" data-panel="channels">Channels</button>
         <button type="button" class="nav-item" data-panel="settings">Settings</button>
         <button type="button" class="nav-item" data-panel="wording">Wording</button>
@@ -368,11 +370,12 @@
                     <option value="tile">Tile — repeat the image</option>
                   </select>
                 </label>
-                <label class="field">
-                  <span class="field-label">Darkening overlay (%)</span>
-                  <input type="number" id="overlayOpacity" min="0" max="100">
-                  <span class="field-hint">Keeps large text readable over busy artwork.</span>
-                </label>
+                <p class="field-hint">
+                  <!-- CHANGED: the overlay has one home now, beside a preview
+                       that shows what it actually does. -->
+                  Darkening is set under <strong>Board layout</strong>, where you can see it
+                  against the reel and the buttons as you move it.
+                </p>
               </div>
             </div>
           </div>
@@ -562,6 +565,132 @@
       </section>
 
 
+
+      <!-- ------------------------------------------------ board layout -->
+      <!-- NEW: how big the reel and the buttons are, and how far the backdrop
+           is darkened behind them — all judged against a live preview, because
+           none of them mean much as a number on their own. -->
+      <section class="panel" id="panel-layout" aria-labelledby="layoutHeading" hidden>
+        <header class="panel-head">
+          <div>
+            <h1 id="layoutHeading">Board layout</h1>
+            <p class="panel-lede">The size of the draw reel and the buttons beneath it, and how far the background is darkened behind them. The preview shows the board as the room will see it.</p>
+          </div>
+        </header>
+
+        <div class="layout-grid">
+          <div class="layout-controls">
+            <div class="card">
+              <h2 class="card-title">Background darkening</h2>
+              <label class="field">
+                <span class="field-label">Darkening overlay <output class="field-value" id="overlayValue">45%</output></span>
+                <input type="range" id="overlayOpacity" min="0" max="100" step="1">
+              </label>
+              <p class="field-hint">
+                <strong>Raise it to darken the background</strong>, so the ticket numbers and the
+                winner's name stay readable over a busy photograph.
+                <strong>Lower it to show more of the image</strong> — at 0% the photograph is
+                left exactly as uploaded.
+              </p>
+              <button type="button" class="btn btn-ghost btn-small" data-reset="overlay">Reset to 45%</button>
+            </div>
+
+            <div class="card">
+              <div class="card-head">
+                <h2 class="card-title">Draw reel</h2>
+                <div class="card-actions">
+                  <button type="button" class="btn btn-ghost btn-small" data-preset="reel" data-size="small">Small</button>
+                  <button type="button" class="btn btn-ghost btn-small" data-preset="reel" data-size="medium">Medium</button>
+                  <button type="button" class="btn btn-ghost btn-small" data-preset="reel" data-size="large">Large</button>
+                </div>
+              </div>
+              <p class="field-hint">Leave a slider at <strong>Auto</strong> to let the board size that dimension to the screen, as it does now.</p>
+
+              <label class="field">
+                <span class="field-label">Width <output class="field-value" id="reelWidthValue">Auto</output></span>
+                <input type="range" id="reelWidth" min="0" max="2400" step="20">
+              </label>
+              <label class="field">
+                <span class="field-label">Height <output class="field-value" id="reelHeightValue">Auto</output></span>
+                <input type="range" id="reelHeight" min="0" max="420" step="4">
+              </label>
+              <label class="field">
+                <span class="field-label">Ticket text size <output class="field-value" id="reelFontSizeValue">Auto</output></span>
+                <input type="range" id="reelFontSize" min="0" max="220" step="2">
+              </label>
+            </div>
+
+            <div class="card">
+              <div class="card-head">
+                <h2 class="card-title">Buttons</h2>
+                <div class="card-actions">
+                  <button type="button" class="btn btn-ghost btn-small" data-preset="controls" data-size="small">Small</button>
+                  <button type="button" class="btn btn-ghost btn-small" data-preset="controls" data-size="medium">Medium</button>
+                  <button type="button" class="btn btn-ghost btn-small" data-preset="controls" data-size="large">Large</button>
+                </div>
+              </div>
+
+              <label class="field">
+                <span class="field-label">Width <output class="field-value" id="controlMinWidthValue">Auto</output></span>
+                <input type="range" id="controlMinWidth" min="0" max="420" step="5">
+              </label>
+              <label class="field">
+                <span class="field-label">Height <output class="field-value" id="controlHeightValue">Auto</output></span>
+                <input type="range" id="controlHeight" min="0" max="120" step="2">
+              </label>
+              <label class="field">
+                <span class="field-label">Label size <output class="field-value" id="controlFontSizeValue">Auto</output></span>
+                <input type="range" id="controlFontSize" min="0" max="48" step="1">
+              </label>
+              <label class="field">
+                <span class="field-label">Side padding <output class="field-value" id="controlPaddingXValue">Auto</output></span>
+                <input type="range" id="controlPaddingX" min="0" max="90" step="2">
+              </label>
+              <label class="field">
+                <span class="field-label">Corner radius <output class="field-value" id="controlRadiusValue">999px</output></span>
+                <input type="range" id="controlRadius" min="0" max="999" step="1">
+                <span class="field-hint">0 is a square corner; the far end is a full pill.</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="layout-preview-column">
+            <div class="card layout-preview-card">
+              <div class="card-head">
+                <h2 class="card-title">Preview</h2>
+                <div class="card-actions" role="group" aria-label="Preview width">
+                  <button type="button" class="btn btn-ghost btn-small is-active" data-preview="desktop" aria-pressed="true">Desktop</button>
+                  <button type="button" class="btn btn-ghost btn-small" data-preview="mobile" aria-pressed="false">Mobile</button>
+                </div>
+              </div>
+              <p class="field-hint">The real backdrop, at the darkening you have chosen, with everything to scale for the width selected.</p>
+
+              <div class="board-preview" id="boardPreview" data-width="desktop">
+                <div class="board-preview-frame" id="boardPreviewFrame">
+                  <div class="board-preview-backdrop" id="boardPreviewBackdrop"></div>
+                  <div class="board-preview-overlay" id="boardPreviewOverlay"></div>
+                  <div class="board-preview-content">
+                    <div class="board-preview-stage" id="boardPreviewStage">
+                      <p class="board-preview-ticket" id="boardPreviewTicket">TCKT-001</p>
+                    </div>
+                    <div class="board-preview-controls" id="boardPreviewControls">
+                      <span class="board-preview-button is-start">Start</span>
+                      <span class="board-preview-button">Stop</span>
+                      <span class="board-preview-button">New draw</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-foot">
+          <button type="button" class="btn btn-ghost" id="resetLayoutBtn">Reset to defaults</button>
+          <button type="button" class="btn btn-ghost" id="revertLayoutBtn">Revert</button>
+          <button type="button" class="btn btn-primary" id="saveLayoutBtn">Save configuration</button>
+        </div>
+      </section>
       <!-- ---------------------------------------------------- channels -->
       <!-- NEW: the organiser's social channels and how their QR codes are
            drawn and placed on the public screens. -->

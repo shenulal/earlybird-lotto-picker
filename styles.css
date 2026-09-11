@@ -73,6 +73,15 @@
      type scales up too; `100%` keeps it honest on small screens. */
   --stage-width: min(100%, clamp(860px, 58vw, 1500px));
   --reel-height: clamp(122px, 20vh, 220px);
+
+  /* NEW: the controls' measurements, so the organiser can set them. Each is
+     the value the board has always used, and theme.js only replaces the ones
+     actually chosen — everything else stays responsive. */
+  --control-min-width: clamp(146px, 17vw, 208px);
+  --control-height: auto;
+  --control-font: clamp(1.05rem, 0.78rem + 0.82vw, 1.6rem);
+  --control-padding-x: 30px;
+  --control-radius: 999px;
   --gutter: clamp(16px, 3vw, 44px);
 }
 
@@ -1312,12 +1321,13 @@ body[data-logo-position='top-right'] {
   align-items: center;
   justify-content: center;
   gap: 12px;
-  min-width: clamp(146px, 17vw, 208px);
-  padding: 15px 30px;
+  min-width: var(--control-min-width);
+  height: var(--control-height);
+  padding: 15px var(--control-padding-x);
   border: 1px solid transparent;
-  border-radius: 999px;
+  border-radius: var(--control-radius);
   font-family: var(--font-display);
-  font-size: clamp(1.05rem, 0.78rem + 0.82vw, 1.6rem);
+  font-size: var(--control-font);
   letter-spacing: 0.17em;
   text-transform: uppercase;
   cursor: pointer;

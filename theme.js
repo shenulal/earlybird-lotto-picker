@@ -18,6 +18,29 @@
     root.style.setProperty('--backdrop-fit', branding.background.fit === 'tile' ? 'auto' : branding.background.fit);
     root.style.setProperty('--backdrop-repeat', branding.background.fit === 'tile' ? 'repeat' : 'no-repeat');
     root.style.setProperty('--backdrop-overlay', String(branding.background.overlayOpacity / 100));
+    /* NEW: the organiser's own measurements for the reel and the controls.
+       Only the ones actually set are applied; a zero leaves the stylesheet's
+       responsive value in place, which is what an unconfigured board has. */
+    const sized = (name, value, unit = 'px') => {
+      if (value) root.style.setProperty(name, `${value}${unit}`);
+      else root.style.removeProperty(name);
+    };
+
+    const reel = ui.reel || {};
+    const controls = ui.controls || {};
+    sized('--stage-width', reel.width);
+    sized('--reel-height', reel.height);
+    sized('--text-reel', reel.fontSize);
+    sized('--control-min-width', controls.minWidth);
+    sized('--control-height', controls.height);
+    sized('--control-font', controls.fontSize);
+    sized('--control-padding-x', controls.paddingX);
+    // A radius of zero is a square corner, which is a real choice, so it is
+    // applied whenever the organiser has touched it at all.
+    if (controls.radius !== undefined && controls.radius !== null) {
+      root.style.setProperty('--control-radius', `${controls.radius}px`);
+    }
+
     root.style.setProperty('--logo-max-height', `${branding.logo.maxHeight}px`);
     /* A wide logo needs more room beside the event name than a square one, so
        the header reserves its rendered width — bounded by the same cap the

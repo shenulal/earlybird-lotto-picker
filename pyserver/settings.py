@@ -154,6 +154,17 @@ CLAMPS = {
     "minimumRollMs": (0, 30000),
     "logoMaxHeight": (24, 480),
     "overlayOpacity": (0, 100),
+    # NEW: the board's own measurements. Zero everywhere means "leave it to the
+    # stylesheet", which is what every board did before these existed, so an
+    # organiser only sets the one thing they actually want to change.
+    "reelWidth": (0, 2400),
+    "reelHeight": (0, 420),
+    "reelFontSize": (0, 220),
+    "controlMinWidth": (0, 420),
+    "controlHeight": (0, 120),
+    "controlFontSize": (0, 48),
+    "controlPaddingX": (0, 90),
+    "controlRadius": (0, 999),
     "welcomeIntervalMs": WELCOME_INTERVAL_LIMITS,
     "prizeIntervalMs": WELCOME_INTERVAL_LIMITS,
 }
@@ -554,6 +565,22 @@ def normalize_app_settings(raw: Any) -> Dict[str, Any]:
         "prizes": _normalize_prizes(source.get("prizes")),
         "copy": _normalize_copy(source.get("copy")),
         "ui": {
+            # NEW: sizes for the two things the room looks at. Zero is "as the
+            # stylesheet has it", which keeps every existing board as it is.
+            "reel": {
+                "width": _clamp("reelWidth", (ui.get("reel") or {}).get("width"), 0),
+                "height": _clamp("reelHeight", (ui.get("reel") or {}).get("height"), 0),
+                "fontSize": _clamp("reelFontSize", (ui.get("reel") or {}).get("fontSize"), 0),
+            },
+            "controls": {
+                "minWidth": _clamp("controlMinWidth", (ui.get("controls") or {}).get("minWidth"), 0),
+                "height": _clamp("controlHeight", (ui.get("controls") or {}).get("height"), 0),
+                "fontSize": _clamp("controlFontSize", (ui.get("controls") or {}).get("fontSize"), 0),
+                "paddingX": _clamp("controlPaddingX", (ui.get("controls") or {}).get("paddingX"), 0),
+                # Unlike the rest, a radius has a real default: zero is a
+                # square corner, which is a choice, not "leave it alone".
+                "radius": _clamp("controlRadius", (ui.get("controls") or {}).get("radius"), 999),
+            },
             "primaryColor": _as_text(ui.get("primaryColor"), "#ffeb3b", 40),
             "backgroundColor": _as_text(
                 ui.get("backgroundColor"), "radial-gradient(circle at top, #1d2671, #c33764)", 400

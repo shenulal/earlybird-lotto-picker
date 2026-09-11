@@ -20,6 +20,30 @@
      before it is sent. A 10 MB photograph is 6000px across; the board draws it
      at 2560 at most, and the bytes saved are the difference between an upload
      that works on a serverless host and one the platform refuses outright. */
+  /* NEW: the sizes each preset stands for. They fill the sliders rather than
+     being stored themselves, so there is one source of truth — the numbers —
+     and a preset is just a quick way to reach a set of them. */
+  const LAYOUT_PRESETS = {
+    reel: {
+      small: { width: 760, height: 130, fontSize: 56 },
+      medium: { width: 1080, height: 180, fontSize: 92 },
+      large: { width: 1440, height: 260, fontSize: 140 },
+    },
+    controls: {
+      small: { minWidth: 130, height: 44, fontSize: 15, paddingX: 20, radius: 999 },
+      medium: { minWidth: 190, height: 58, fontSize: 21, paddingX: 30, radius: 999 },
+      large: { minWidth: 260, height: 76, fontSize: 28, paddingX: 42, radius: 999 },
+    },
+  };
+
+  // What "Reset to defaults" goes back to: the board sizing itself, as it does
+  // on a board nobody has touched.
+  const LAYOUT_DEFAULTS = {
+    overlayOpacity: 45,
+    reel: { width: 0, height: 0, fontSize: 0 },
+    controls: { minWidth: 0, height: 0, fontSize: 0, paddingX: 0, radius: 999 },
+  };
+
   const BACKGROUND_MAX_BYTES = 10 * 1024 * 1024;
   const BACKGROUND_MAX_EDGE = 2560;
   // Comfortably inside the 4.5 MB body a serverless request may carry, once
@@ -225,6 +249,16 @@
       qrColorText: document.getElementById('qrColorText'),
       socialHeading: document.getElementById('socialHeading'),
       qrPreview: document.getElementById('qrPreview'),
+
+      // NEW: board layout.
+      overlayOpacity: document.getElementById('overlayOpacity'),
+      overlayValue: document.getElementById('overlayValue'),
+      saveLayoutBtn: document.getElementById('saveLayoutBtn'),
+      revertLayoutBtn: document.getElementById('revertLayoutBtn'),
+      resetLayoutBtn: document.getElementById('resetLayoutBtn'),
+      boardPreview: document.getElementById('boardPreview'),
+      boardPreviewBackdrop: document.getElementById('boardPreviewBackdrop'),
+      boardPreviewOverlay: document.getElementById('boardPreviewOverlay'),
       prizeEditor: document.getElementById('prizeEditor'),
       addPrizeBtn: document.getElementById('addPrizeBtn'),
       savePrizesBtn: document.getElementById('savePrizesBtn'),
@@ -952,6 +986,133 @@
       }
     }
 
+    /* ----------------------------------------------- NEW: board layout */
+
+    // Every slider, and which part of the settings it belongs to.
+    const LAYOUT_SLIDERS = [
+      { id: 'reelWidth', group: 'reel', key: 'width' },
+      { id: 'reelHeight', group: 'reel', key: 'height' },
+      { id: 'reelFontSize', group: 'reel', key: 'fontSize' },
+      { id: 'controlMinWidth', group: 'controls', key: 'minWidth' },
+      { id: 'controlHeight', group: 'controls', key: 'height' },
+      { id: 'controlFontSize', group: 'controls', key: 'fontSize' },
+      { id: 'controlPaddingX', group: 'controls', key: 'paddingX' },
+      { id: 'controlRadius', group: 'controls', key: 'radius', zeroIsAValue: true },
+    ];
+
+    function layoutInput(id) {
+      return document.getElementById(id);
+    }
+
+    /** Zero means "let the board decide", except where zero is a real choice. */
+    function describeSize(value, zeroIsAValue) {
+      if (!value && !zeroIsAValue) return 'Auto';
+      return `${value}px`;
+    }
+
+    function renderLayout() {
+      const settings = context.getSettings();
+      const { ui, branding } = settings;
+
+      elements.overlayOpacity.value = branding.background.overlayOpacity;
+      elements.overlayValue.textContent = `${branding.background.overlayOpacity}%`;
+
+      LAYOUT_SLIDERS.forEach((slider) => {
+        const value = (ui[slider.group] || {})[slider.key] || 0;
+        layoutInput(slider.id).value = value;
+        layoutInput(`${slider.id}Value`).textContent = describeSize(value, slider.zeroIsAValue);
+      });
+
+      renderBoardPreview();
+    }
+
+    function collectLayout() {
+      const settings = context.getSettings();
+      const reel = {};
+      const controls = {};
+
+      LAYOUT_SLIDERS.forEach((slider) => {
+        const value = Number(layoutInput(slider.id).value) || 0;
+        if (slider.group === 'reel') reel[slider.key] = value;
+        else controls[slider.key] = value;
+      });
+
+      return {
+        ...settings,
+        branding: {
+          ...settings.branding,
+          background: {
+            ...settings.branding.background,
+            overlayOpacity: Number(elements.overlayOpacity.value),
+          },
+        },
+        ui: { ...settings.ui, reel, controls },
+      };
+    }
+
+    /**
+     * NEW: the board as the room will see it.
+     *
+     * The real backdrop at the chosen darkening, with the reel and the buttons
+     * at their chosen sizes, scaled down to the preview's width. A number of
+     * pixels means nothing on its own; seen against the artwork it is about to
+     * sit on, it means everything.
+     */
+    function renderBoardPreview() {
+      const draft = collectLayout();
+      const preview = elements.boardPreview;
+      if (!preview) return;
+
+      const background = draft.branding.background;
+      elements.boardPreviewBackdrop.style.backgroundImage = background.src
+        ? `url("${encodeURI(background.src)}")`
+        : 'none';
+      preview.dataset.hasImage = String(Boolean(background.src));
+      elements.boardPreviewOverlay.style.opacity = String(background.overlayOpacity / 100);
+
+      // The board is drawn at the chosen width and then scaled to fit here, so
+      // what is on screen is proportionally what will be projected.
+      const wide = preview.dataset.width !== 'mobile';
+      const boardWidth = wide ? 1440 : 390;
+      const frame = elements.boardPreview.getBoundingClientRect().width || 520;
+      const scale = frame / boardWidth;
+
+      preview.style.setProperty('--preview-board-width', `${boardWidth}px`);
+      preview.style.setProperty('--preview-scale', String(scale));
+
+      // Auto values fall back to what the board itself would have chosen at
+      // this width, so the preview never shows a size the board would not.
+      const auto = wide
+        ? { reelWidth: 860, reelHeight: 180, reelFont: 118, ctlWidth: 208, ctlHeight: 54, ctlFont: 22, ctlPad: 30 }
+        : { reelWidth: 358, reelHeight: 132, reelFont: 48, ctlWidth: 146, ctlHeight: 46, ctlFont: 17, ctlPad: 22 };
+
+      const { reel, controls } = draft.ui;
+      const set = (name, value) => preview.style.setProperty(name, `${value}px`);
+      set('--preview-reel-width', Math.min(reel.width || auto.reelWidth, boardWidth - 40));
+      set('--preview-reel-height', reel.height || auto.reelHeight);
+      set('--preview-reel-font', reel.fontSize || auto.reelFont);
+      set('--preview-control-width', controls.minWidth || auto.ctlWidth);
+      set('--preview-control-height', controls.height || auto.ctlHeight);
+      set('--preview-control-font', controls.fontSize || auto.ctlFont);
+      set('--preview-control-padding', controls.paddingX || auto.ctlPad);
+      set('--preview-control-radius', controls.radius);
+      preview.style.setProperty('--preview-accent', draft.ui.primaryColor);
+    }
+
+    function applyLayoutValues(values) {
+      elements.overlayOpacity.value = values.overlayOpacity;
+      LAYOUT_SLIDERS.forEach((slider) => {
+        const group = values[slider.group];
+        if (group && group[slider.key] !== undefined) layoutInput(slider.id).value = group[slider.key];
+        layoutInput(`${slider.id}Value`).textContent = describeSize(
+          Number(layoutInput(slider.id).value) || 0,
+          slider.zeroIsAValue
+        );
+      });
+      elements.overlayValue.textContent = `${elements.overlayOpacity.value}%`;
+      renderBoardPreview();
+    }
+
     /* ---------------------------------------------------- NEW: channels */
 
     const CHANNEL_ORDER = [
@@ -1160,6 +1321,56 @@
         );
         input.value = '';
       });
+      // NEW: board layout. Every slider redraws the preview as it moves; only
+      // Save writes anything.
+      elements.overlayOpacity.addEventListener('input', () => {
+        elements.overlayValue.textContent = `${elements.overlayOpacity.value}%`;
+        renderBoardPreview();
+      });
+
+      LAYOUT_SLIDERS.forEach((slider) => {
+        layoutInput(slider.id).addEventListener('input', () => {
+          layoutInput(`${slider.id}Value`).textContent = describeSize(
+            Number(layoutInput(slider.id).value) || 0,
+            slider.zeroIsAValue
+          );
+          renderBoardPreview();
+        });
+      });
+
+      document.getElementById('panel-layout').addEventListener('click', (event) => {
+        const preset = event.target.closest('[data-preset]');
+        if (preset) {
+          const values = LAYOUT_PRESETS[preset.dataset.preset][preset.dataset.size];
+          applyLayoutValues({ overlayOpacity: elements.overlayOpacity.value, [preset.dataset.preset]: values });
+          return;
+        }
+
+        if (event.target.closest('[data-reset="overlay"]')) {
+          applyLayoutValues({ overlayOpacity: LAYOUT_DEFAULTS.overlayOpacity });
+          return;
+        }
+
+        const width = event.target.closest('[data-preview]');
+        if (width) {
+          elements.boardPreview.dataset.width = width.dataset.preview;
+          document.querySelectorAll('#panel-layout [data-preview]').forEach((button) => {
+            const active = button === width;
+            button.classList.toggle('is-active', active);
+            button.setAttribute('aria-pressed', String(active));
+          });
+          renderBoardPreview();
+        }
+      });
+
+      elements.saveLayoutBtn.addEventListener('click', () => context.save(collectLayout(), 'Board layout saved.'));
+      elements.revertLayoutBtn.addEventListener('click', renderLayout);
+      elements.resetLayoutBtn.addEventListener('click', () => {
+        if (!global.confirm('Put the reel, the buttons and the darkening back to their defaults?')) return;
+        applyLayoutValues(LAYOUT_DEFAULTS);
+        context.save(collectLayout(), 'Board layout reset.');
+      });
+
       // NEW: channels. An unsaved link is worth keeping while it is typed, so
       // edits stay local and only the preview follows them live.
       elements.addChannelBtn.addEventListener('click', addChannel);
@@ -1293,6 +1504,7 @@
         renderWelcome();
         renderPrizes();
         renderChannels(); // NEW
+        renderLayout();   // NEW
       },
     };
   }

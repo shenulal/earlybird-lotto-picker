@@ -50,6 +50,7 @@ Behind a sign-in.
 |---|---|
 | **Overview** | Live counters, data-health warnings, results table, CSV export, undo last draw, reset draw |
 | **Participants** | Upload the entry list or link a Google Sheet, with a column preview; download a template, export, or delete |
+| **Board layout** | How big the reel and the buttons are, and how far the backdrop is darkened — judged against a live preview of the board |
 | **Channels** | Social links and their QR codes: style, position, size, display mode, with a live preview |
 | **Fields** | Rename columns, mark sensitive ones, choose the identifier and what appears in the export |
 | **Display** | Choose exactly which fields appear while spinning, on the announcement, on the winner card and in the winners list |
@@ -490,6 +491,34 @@ window steps on a slow timer instead.
 
 ---
 
+## Board layout
+
+Under **Board layout** the reel and the buttons can be given their own
+measurements, and the backdrop its darkening — all three against a preview of
+the board itself, because none of them mean much as a number on their own.
+
+**Darkening** is the one that confuses. Raising it darkens the background so
+the ticket numbers and the winner's name stay readable over a busy photograph;
+lowering it shows more of the image, and at 0% the photograph is left exactly as
+uploaded. The slider says what it is at, the preview shows what it does, and
+there is a reset beside it.
+
+**Sizes** are in pixels, with Small / Medium / Large presets that simply fill
+the sliders — the numbers are what is stored, so a preset is a quick way to
+reach a set of them rather than a fourth thing to keep in step. A slider left
+at **Auto** means the board sizes that dimension to the screen, exactly as it
+does on a board nobody has configured, so an organiser only sets the one thing
+they want to change.
+
+The preview lays the board out at its real width and scales the whole thing
+down, so what is shown is proportionally what will be projected rather than a
+small design that merely resembles it. It uses the uploaded backdrop at the
+chosen darkening, or the gradient the board falls back to when there is none,
+and switches between desktop and phone widths. **Save configuration** commits
+everything; **Reset to defaults** puts the sizing and the darkening back.
+
+---
+
 ## Social channels and QR codes
 
 Under **Channels** in the console, add as many links as the event needs —
@@ -590,6 +619,10 @@ commit where there is one, and otherwise a hash of the served files themselves.
 | `animation.celebration` | Which celebration fires: `classic`, `streamers`, `stars`, `balloons`, `snow`, `money`, `mix` or `none` |
 | `ui.showEventName` | Show the event name on the board. Off gives the header back to the draw |
 | `ui.showNewDrawButton` | Offer "New draw" on the board at all. Off removes the button and its N shortcut |
+| `ui.reel.width` / `.height` / `.fontSize` | The draw reel's measurements in pixels. Zero means the board sizes that dimension to the screen, as it does unconfigured |
+| `ui.controls.minWidth` / `.height` / `.fontSize` / `.paddingX` | The buttons' measurements in pixels; zero is again "leave it to the board" |
+| `ui.controls.radius` | Corner radius in pixels. Unlike the rest, zero is a real choice — a square corner — so this defaults to 999 |
+| `branding.background.overlayOpacity` | How far the backdrop is darkened, 0–100. Higher darkens it so text stays readable; 0 leaves the photograph untouched |
 | `social.channels[]` | The links, in order: `{ id, type, url, label }` |
 | `social.qr.style` | `standard`, `colored`, `logo` or `rounded` |
 | `social.qr.position` | `bottom-left`, `bottom-right`, `bottom-center`, `top-right`, `sidebar` or `footer` |

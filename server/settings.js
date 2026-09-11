@@ -137,6 +137,17 @@ const CLAMPS = Object.freeze({
   minimumRollMs: [0, 30000],
   logoMaxHeight: [24, 480],
   overlayOpacity: [0, 100],
+  /* NEW: the board's own measurements. Zero everywhere means "leave it to the
+     stylesheet", which is what every board did before these existed, so an
+     organiser only sets the one thing they actually want to change. */
+  reelWidth: [0, 2400],
+  reelHeight: [0, 420],
+  reelFontSize: [0, 220],
+  controlMinWidth: [0, 420],
+  controlHeight: [0, 120],
+  controlFontSize: [0, 48],
+  controlPaddingX: [0, 90],
+  controlRadius: [0, 999],
   welcomeIntervalMs: WELCOME_INTERVAL_LIMITS,
   prizeIntervalMs: WELCOME_INTERVAL_LIMITS,
 });
@@ -517,6 +528,22 @@ function normalizeAppSettings(input) {
     copy: normalizeCopy(source.copy),
 
     ui: {
+      // NEW: sizes for the two things the room looks at. Zero is "as the
+      // stylesheet has it", which keeps every existing board exactly as it is.
+      reel: {
+        width: clamp('reelWidth', (ui.reel || {}).width, 0),
+        height: clamp('reelHeight', (ui.reel || {}).height, 0),
+        fontSize: clamp('reelFontSize', (ui.reel || {}).fontSize, 0),
+      },
+      controls: {
+        minWidth: clamp('controlMinWidth', (ui.controls || {}).minWidth, 0),
+        height: clamp('controlHeight', (ui.controls || {}).height, 0),
+        fontSize: clamp('controlFontSize', (ui.controls || {}).fontSize, 0),
+        paddingX: clamp('controlPaddingX', (ui.controls || {}).paddingX, 0),
+        // Unlike the rest, a radius has a real default: zero is a square
+        // corner, which is a choice, not "leave it alone".
+        radius: clamp('controlRadius', (ui.controls || {}).radius, 999),
+      },
       primaryColor: asText(ui.primaryColor, '#ffeb3b', 40),
       backgroundColor: asText(ui.backgroundColor, 'radial-gradient(circle at top, #1d2671, #c33764)', 400),
       // NEW: on by default, so a board configured before this existed keeps
