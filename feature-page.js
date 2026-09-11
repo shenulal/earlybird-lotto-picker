@@ -51,40 +51,15 @@
         intervalMs: welcome.intervalMs,
         showCaptions: welcome.showCaptions,
         altFallback: welcome.title,
+        // CHANGED: nothing is laid over the photographs here. The dots sit
+        // below the frame, and the carousel advances on its own.
+        showArrows: false,
       })
     );
-
-    // NEW: somewhere to go from here. A screen in a foyer is a dead end
-    // otherwise, and the drawer is not obvious to a guest who wanders past.
-    renderActions(settings);
 
     // With no photo the message takes the full width rather than leaving a
     // gap where the carousel would have been.
     card.classList.toggle('is-textonly', welcome.images.length === 0);
-  }
-
-  /** The two places a guest might want to go, in the organiser's wording. */
-  function renderActions(settings) {
-    const mount = document.getElementById('welcomeActions');
-    if (!mount) return;
-
-    const links = [
-      { href: '/', label: settings.copy.boardToggle, primary: true },
-      { href: '/prizes', label: settings.copy.prizesToggle, when: settings.prizes.enabled },
-    ].filter((link) => link.label && link.when !== false);
-
-    if (links.length === 0) {
-      mount.hidden = true;
-      return;
-    }
-
-    mount.hidden = false;
-    mount.innerHTML = links
-      .map(
-        (link) =>
-          `<a class="welcome-action${link.primary ? ' is-primary' : ''}" href="${link.href}">${escapeHtml(link.label)}</a>`
-      )
-      .join('');
   }
 
   function renderPrizes(settings) {

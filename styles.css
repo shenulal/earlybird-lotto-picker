@@ -1716,8 +1716,8 @@ body[data-logo-position='top-right'] {
    self-hosted, which is what lets this work with no network at all. */
 
 .welcome-stage {
-  justify-content: flex-start;
-  padding-block: clamp(16px, 3.5vh, 42px);
+  justify-content: center;
+  padding-block: clamp(16px, 3.5vh, 48px);
 }
 
 .welcome {
@@ -1798,77 +1798,72 @@ body[data-logo-position='top-right'] {
 
 /* --- the photographs, as the centrepiece ---------------------------- */
 
+/* CHANGED: a circle rather than a rectangle, and nothing laid over it. The
+   frame is square so the crop is even on every side, and the clipping sits on
+   the track rather than the carousel, which leaves the dots free to sit below
+   the picture instead of on top of it. */
 .welcome-media {
   /* Sized by whichever runs out first: the width available, a sensible
-     maximum, or the height left once the heading, message and buttons have
-     taken theirs. A screen being projected should never have to be scrolled. */
-  width: min(100%, 900px, calc((100vh - 31rem) * 4 / 3));
-  min-width: min(100%, 280px);
+     maximum, or the height left once the heading and message have taken
+     theirs. A screen being projected should never have to be scrolled. */
+  width: min(100%, 640px, calc(100vh - 25.5rem));
+  min-width: min(100%, 240px);
   margin: 0;
 }
 
 .welcome-media .carousel {
-  /* A fixed landscape frame, so a set of photographs of different shapes still
-     reads as one gallery rather than a column of different sizes. */
-  aspect-ratio: 4 / 3;
-  border-radius: clamp(16px, 1.6vw, 26px);
+  aspect-ratio: 1;
+  /* The dots hang below the circle, so this must not clip them. */
+  overflow: visible;
+  background: none;
+}
+
+.welcome-media .carousel-track {
+  /* Positioned, so the slides are clipped by this rather than by the carousel,
+     and the circle is what they are clipped to. */
+  position: relative;
+  border-radius: 50%;
+  overflow: hidden;
+  /* A hairline ring, a wider soft halo and a drop shadow: what lifts a circle
+     off a dark backdrop without putting a panel behind it. */
   box-shadow:
-    0 40px 90px rgba(0, 0, 0, 0.55),
-    0 0 0 1px var(--hairline-bright) inset;
+    0 0 0 1px rgba(255, 255, 255, 0.16),
+    0 0 0 10px rgba(255, 255, 255, 0.035),
+    0 34px 70px rgba(0, 0, 0, 0.55);
 }
 
 .welcome-media .carousel-slide img {
   /* Faces sit above the middle of a photograph, so the crop favours the top. */
-  object-position: center 30%;
+  object-fit: cover;
+  object-position: center 32%;
+}
+
+/* Below the picture, not over it. */
+.welcome-media .carousel-dots {
+  position: static;
+  width: fit-content;
+  margin: clamp(16px, 2.2vh, 26px) auto 0;
+  padding: 0;
+  transform: none;
+  background: none;
+  backdrop-filter: none;
+}
+
+.welcome-media .carousel-dot {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.welcome-media .carousel-dot:hover {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.welcome-media .carousel-dot.is-active {
+  background: var(--accent);
 }
 
 .welcome-media .carousel-caption {
-  margin-top: 14px;
+  margin-top: 12px;
   font-size: var(--text-meta);
-}
-
-/* --- somewhere to go next ------------------------------------------- */
-
-.welcome-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  justify-content: center;
-}
-
-.welcome-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 26px;
-  border: 1px solid var(--hairline-bright);
-  border-radius: 999px;
-  color: var(--ink);
-  font-family: var(--font-display);
-  font-size: var(--text-title);
-  letter-spacing: 0.08em;
-  text-decoration: none;
-  text-transform: uppercase;
-  transition: transform var(--fast) var(--ease), border-color var(--fast), background var(--fast), color var(--fast);
-}
-
-.welcome-action:hover,
-.welcome-action:focus-visible {
-  transform: translateY(-2px);
-  border-color: var(--accent);
-  color: var(--accent-ink);
-}
-
-.welcome-action.is-primary {
-  border-color: transparent;
-  background: var(--accent);
-  color: #10121f;
-}
-
-.welcome-action.is-primary:hover,
-.welcome-action.is-primary:focus-visible {
-  color: #10121f;
-  box-shadow: 0 12px 30px var(--accent-glow);
 }
 
 /* --- arrival --------------------------------------------------------- */
@@ -1879,8 +1874,7 @@ body[data-logo-position='top-right'] {
 .welcome-title,
 .welcome-rule,
 .welcome-message,
-.welcome-media,
-.welcome-actions {
+.welcome-media {
   animation: welcomeRise 620ms var(--ease) both;
 }
 
@@ -1888,7 +1882,6 @@ body[data-logo-position='top-right'] {
 .welcome-rule { animation-delay: 150ms; }
 .welcome-message { animation-delay: 210ms; }
 .welcome-media { animation-delay: 300ms; }
-.welcome-actions { animation-delay: 380ms; }
 
 @keyframes welcomeRise {
   from {
@@ -1909,17 +1902,15 @@ body[data-logo-position='top-right'] {
 
 @media (max-width: 720px) {
   .welcome {
-    gap: 24px;
+    gap: 22px;
   }
 
-  .welcome-media .carousel {
-    /* Taller on a phone, where a wide crop leaves the subject tiny. */
-    aspect-ratio: 4 / 3.4;
-  }
-
-  .welcome-action {
-    flex: 1 1 auto;
-    justify-content: center;
+  /* The halo around the circle is trimmed, or it crowds the edges. */
+  .welcome-media .carousel-track {
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.16),
+      0 0 0 6px rgba(255, 255, 255, 0.035),
+      0 20px 44px rgba(0, 0, 0, 0.5);
   }
 }
 
@@ -1928,14 +1919,8 @@ body[data-logo-position='top-right'] {
   .welcome-title,
   .welcome-rule,
   .welcome-message,
-  .welcome-media,
-  .welcome-actions {
+  .welcome-media {
     animation: none;
-  }
-
-  .welcome-action:hover,
-  .welcome-action:focus-visible {
-    transform: none;
   }
 }
 

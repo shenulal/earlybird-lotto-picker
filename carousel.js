@@ -22,6 +22,9 @@
   function createCarousel(mount, images, options = {}) {
     const prefersReducedMotion = global.matchMedia('(prefers-reduced-motion: reduce)');
     const showCaptions = options.showCaptions !== false;
+    // NEW: the welcome screen shows its photographs and nothing else, so the
+    // arrows are optional. The dots stay: they say how many there are.
+    const showArrows = options.showArrows !== false;
     const interval = Number(options.intervalMs) || 0;
 
     let index = 0;
@@ -49,8 +52,9 @@
             .join('')}
         </ol>
         ${images.length > 1 ? `
-          <button type="button" class="carousel-nav carousel-prev" aria-label="Previous photo">&#8249;</button>
-          <button type="button" class="carousel-nav carousel-next" aria-label="Next photo">&#8250;</button>
+          ${showArrows ? `
+            <button type="button" class="carousel-nav carousel-prev" aria-label="Previous photo">&#8249;</button>
+            <button type="button" class="carousel-nav carousel-next" aria-label="Next photo">&#8250;</button>` : ''}
           <div class="carousel-dots" role="tablist" aria-label="Choose a photo">
             ${images.map((_, position) => `<button type="button" class="carousel-dot${position === 0 ? ' is-active' : ''}" role="tab" aria-selected="${position === 0}" aria-label="Photo ${position + 1}"></button>`).join('')}
           </div>` : ''}

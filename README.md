@@ -402,10 +402,14 @@ and each part arrives just after the one above it. The whole composition is
 sized to fit the screen it is on, so a projected welcome never has to be
 scrolled.
 
-Photos are framed 4:3, so 1200 × 900 px landscape is the size to aim for; up to
-20, each with an optional caption, reorderable, and the carousel interval is
-yours to set. Anything a different shape is cropped to fit, favouring the top of
-the frame so faces are not cut off.
+Photographs are shown in a circle, so square is the shape to aim for —
+1000 × 1000 px — up to 20, each with an optional caption, reorderable, and the
+carousel interval is yours to set. Anything a different shape is cropped square,
+favouring the top of the frame so faces are not cut off.
+
+Nothing is laid over the photographs: no arrows, no buttons. The carousel turns
+on its own, and the dots that say how many there are sit below the circle rather
+than on the picture.
 
 ### Prizes
 
