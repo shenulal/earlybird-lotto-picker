@@ -58,6 +58,8 @@
         <!-- NEW -->
         <!-- NEW -->
         <button type="button" class="nav-item" data-panel="layout">Board layout</button>
+        <!-- NEW -->
+        <button type="button" class="nav-item" data-panel="text">Text &amp; media</button>
         <button type="button" class="nav-item" data-panel="channels">Channels</button>
         <button type="button" class="nav-item" data-panel="settings">Settings</button>
         <button type="button" class="nav-item" data-panel="wording">Wording</button>
@@ -691,6 +693,320 @@
           <button type="button" class="btn btn-primary" id="saveLayoutBtn">Save configuration</button>
         </div>
       </section>
+
+      <!-- ------------------------------------------------- text & media -->
+      <!-- NEW: how the words are set on each screen, and what the board does
+           with a prize's photographs. Three tabs rather than one long page,
+           because the three screens share no setting with one another. -->
+      <section class="panel" id="panel-text" aria-labelledby="textHeading" hidden>
+        <header class="panel-head">
+          <div>
+            <h1 id="textHeading">Text &amp; media</h1>
+            <p class="panel-lede">How the words are set on each screen, judged against the background they will sit on. Every screen is configured on its own.</p>
+          </div>
+        </header>
+
+        <div class="tabs" role="tablist" aria-label="Screen">
+          <button type="button" class="tab is-active" role="tab" data-text-tab="welcome" aria-selected="true">Welcome screen</button>
+          <button type="button" class="tab" role="tab" data-text-tab="prizes" aria-selected="false">Prize page</button>
+          <button type="button" class="tab" role="tab" data-text-tab="board" aria-selected="false">Drawboard</button>
+        </div>
+
+        <div class="layout-grid">
+          <div class="layout-controls">
+            <div data-text-pane="welcome">
+            <div class="card">
+              <div class="card-head">
+                <h2 class="card-title">Welcome message</h2>
+                <div class="card-actions">
+                  <button type="button" class="btn btn-ghost btn-small" data-text-preset="welcome" data-size="small">Small</button>
+                  <button type="button" class="btn btn-ghost btn-small" data-text-preset="welcome" data-size="medium">Medium</button>
+                  <button type="button" class="btn btn-ghost btn-small" data-text-preset="welcome" data-size="large">Large</button>
+                </div>
+              </div>
+
+              <div class="grid-2">
+                <label class="field">
+                  <span class="field-label">Font family</span>
+                  <select data-text="welcome.fontFamily">
+                    <option value="body">Lato — the board's own body face</option>
+                    <option value="display">Bebas Neue — the board's display face</option>
+                    <option value="mono">IBM Plex Mono</option>
+                    <option value="system">System UI</option>
+                    <option value="sans">Helvetica / Arial</option>
+                    <option value="serif">Georgia / Times</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span class="field-label">Font weight</span>
+                  <select data-text="welcome.fontWeight">
+                    <option value="0">As the screen has it</option>
+                    <option value="300">Light</option>
+                    <option value="400">Regular</option>
+                    <option value="500">Medium</option>
+                    <option value="700">Bold</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span class="field-label">Alignment</span>
+                  <select data-text="welcome.align">
+                    <option value="auto">As the screen has it</option>
+                    <option value="left">Left</option>
+                    <option value="center">Centre</option>
+                    <option value="right">Right</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span class="field-label">Colour</span>
+                  <span class="color-field">
+                    <input type="color" data-text-color="welcome" value="#e8ecf7">
+                    <input type="text" data-text="welcome.color" maxlength="9" placeholder="Leave empty for the screen's own" spellcheck="false">
+                  </span>
+                </label>
+              </div>
+
+              <label class="field">
+                <span class="field-label">Font size <output class="field-value" data-text-value="welcome.fontSize">Auto</output></span>
+                <input type="range" data-text="welcome.fontSize" min="0" max="200" step="1">
+              </label>
+              <label class="field">
+                <span class="field-label">Opacity <output class="field-value" data-text-value="welcome.opacity">100%</output></span>
+                <input type="range" data-text="welcome.opacity" min="0" max="100" step="1">
+              </label>
+              <label class="field">
+                <span class="field-label">Line height <output class="field-value" data-text-value="welcome.lineHeight">Auto</output></span>
+                <input type="range" data-text="welcome.lineHeight" min="0" max="300" step="5">
+              </label>
+              <label class="field">
+                <span class="field-label">Letter spacing <output class="field-value" data-text-value="welcome.letterSpacing">Auto</output></span>
+                <input type="range" data-text="welcome.letterSpacing" min="-20" max="100" step="1">
+              </label>
+            </div>
+            </div>
+
+            <div data-text-pane="prizes" hidden>
+            <div class="card">
+              <div class="card-head">
+                <h2 class="card-title">Prize name and description</h2>
+                <div class="card-actions">
+                  <button type="button" class="btn btn-ghost btn-small" data-text-preset="prizes" data-size="small">Small</button>
+                  <button type="button" class="btn btn-ghost btn-small" data-text-preset="prizes" data-size="medium">Medium</button>
+                  <button type="button" class="btn btn-ghost btn-small" data-text-preset="prizes" data-size="large">Large</button>
+                </div>
+              </div>
+
+              <div class="grid-2">
+                <label class="field">
+                  <span class="field-label">Font family</span>
+                  <select data-text="prizes.fontFamily">
+                    <option value="body">Lato — the board's own body face</option>
+                    <option value="display">Bebas Neue — the board's display face</option>
+                    <option value="mono">IBM Plex Mono</option>
+                    <option value="system">System UI</option>
+                    <option value="sans">Helvetica / Arial</option>
+                    <option value="serif">Georgia / Times</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span class="field-label">Font weight</span>
+                  <select data-text="prizes.fontWeight">
+                    <option value="0">As the screen has it</option>
+                    <option value="300">Light</option>
+                    <option value="400">Regular</option>
+                    <option value="500">Medium</option>
+                    <option value="700">Bold</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span class="field-label">Alignment</span>
+                  <select data-text="prizes.align">
+                    <option value="auto">As the screen has it</option>
+                    <option value="left">Left</option>
+                    <option value="center">Centre</option>
+                    <option value="right">Right</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span class="field-label">Colour</span>
+                  <span class="color-field">
+                    <input type="color" data-text-color="prizes" value="#e8ecf7">
+                    <input type="text" data-text="prizes.color" maxlength="9" placeholder="Leave empty for the screen's own" spellcheck="false">
+                  </span>
+                </label>
+              </div>
+
+              <label class="field">
+                <span class="field-label">Font size <output class="field-value" data-text-value="prizes.fontSize">Auto</output></span>
+                <input type="range" data-text="prizes.fontSize" min="0" max="200" step="1">
+              </label>
+              <label class="field">
+                <span class="field-label">Opacity <output class="field-value" data-text-value="prizes.opacity">100%</output></span>
+                <input type="range" data-text="prizes.opacity" min="0" max="100" step="1">
+              </label>
+              <label class="field">
+                <span class="field-label">Line height <output class="field-value" data-text-value="prizes.lineHeight">Auto</output></span>
+                <input type="range" data-text="prizes.lineHeight" min="0" max="300" step="5">
+              </label>
+              <label class="field">
+                <span class="field-label">Letter spacing <output class="field-value" data-text-value="prizes.letterSpacing">Auto</output></span>
+                <input type="range" data-text="prizes.letterSpacing" min="-20" max="100" step="1">
+              </label>
+            </div>
+            </div>
+
+            <div data-text-pane="board" hidden>
+            <div class="card">
+              <div class="card-head">
+                <h2 class="card-title">Prize named with each draw</h2>
+                <div class="card-actions">
+                  <button type="button" class="btn btn-ghost btn-small" data-text-preset="board" data-size="small">Small</button>
+                  <button type="button" class="btn btn-ghost btn-small" data-text-preset="board" data-size="medium">Medium</button>
+                  <button type="button" class="btn btn-ghost btn-small" data-text-preset="board" data-size="large">Large</button>
+                </div>
+              </div>
+
+              <div class="grid-2">
+                <label class="field">
+                  <span class="field-label">Font family</span>
+                  <select data-text="board.fontFamily">
+                    <option value="body">Lato — the board's own body face</option>
+                    <option value="display">Bebas Neue — the board's display face</option>
+                    <option value="mono">IBM Plex Mono</option>
+                    <option value="system">System UI</option>
+                    <option value="sans">Helvetica / Arial</option>
+                    <option value="serif">Georgia / Times</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span class="field-label">Font weight</span>
+                  <select data-text="board.fontWeight">
+                    <option value="0">As the screen has it</option>
+                    <option value="300">Light</option>
+                    <option value="400">Regular</option>
+                    <option value="500">Medium</option>
+                    <option value="700">Bold</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span class="field-label">Alignment</span>
+                  <select data-text="board.align">
+                    <option value="auto">As the screen has it</option>
+                    <option value="left">Left</option>
+                    <option value="center">Centre</option>
+                    <option value="right">Right</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span class="field-label">Colour</span>
+                  <span class="color-field">
+                    <input type="color" data-text-color="board" value="#e8ecf7">
+                    <input type="text" data-text="board.color" maxlength="9" placeholder="Leave empty for the screen's own" spellcheck="false">
+                  </span>
+                </label>
+              </div>
+
+              <label class="field">
+                <span class="field-label">Font size <output class="field-value" data-text-value="board.fontSize">Auto</output></span>
+                <input type="range" data-text="board.fontSize" min="0" max="200" step="1">
+              </label>
+              <label class="field">
+                <span class="field-label">Opacity <output class="field-value" data-text-value="board.opacity">100%</output></span>
+                <input type="range" data-text="board.opacity" min="0" max="100" step="1">
+              </label>
+              <label class="field">
+                <span class="field-label">Line height <output class="field-value" data-text-value="board.lineHeight">Auto</output></span>
+                <input type="range" data-text="board.lineHeight" min="0" max="300" step="5">
+              </label>
+              <label class="field">
+                <span class="field-label">Letter spacing <output class="field-value" data-text-value="board.letterSpacing">Auto</output></span>
+                <input type="range" data-text="board.letterSpacing" min="-20" max="100" step="1">
+              </label>
+            </div>
+
+              <div class="card">
+                <h2 class="card-title">Prize photographs on the board</h2>
+                <div class="grid-2">
+                  <label class="field">
+                    <span class="field-label">Display mode</span>
+                    <select id="prizeImageMode">
+                      <option value="single">Single image — the first photograph only</option>
+                      <option value="carousel">Carousel — every photograph in turn</option>
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span class="field-label">Shape</span>
+                    <select id="prizeImageShape">
+                      <option value="rounded">Rounded rectangle</option>
+                      <option value="circle">Circle</option>
+                      <option value="oval">Oval</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div id="prizeCarouselOptions">
+                  <label class="switch">
+                    <input type="checkbox" id="prizeAutoplay">
+                    <span><strong>Turn on its own</strong><small>Off leaves the first photograph showing until the draw starts.</small></span>
+                  </label>
+                  <div class="grid-2">
+                    <label class="field">
+                      <span class="field-label">Seconds per photograph <output class="field-value" id="prizeSlideValue">3s</output></span>
+                      <input type="range" id="prizeSlideMs" min="1000" max="20000" step="500">
+                    </label>
+                    <label class="field">
+                      <span class="field-label">Transition</span>
+                      <select id="prizeTransition">
+                        <option value="fade">Fade</option>
+                        <option value="slide">Slide</option>
+                      </select>
+                    </label>
+                  </div>
+                  <label class="switch">
+                    <input type="checkbox" id="prizeShowDots">
+                    <span><strong>Show the dots</strong><small>They say how many photographs there are.</small></span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="layout-preview-column">
+            <div class="card layout-preview-card">
+              <div class="card-head">
+                <h2 class="card-title">Preview</h2>
+                <div class="card-actions" role="group" aria-label="Preview width">
+                  <button type="button" class="btn btn-ghost btn-small is-active" data-text-preview="desktop" aria-pressed="true">Desktop</button>
+                  <button type="button" class="btn btn-ghost btn-small" data-text-preview="mobile" aria-pressed="false">Mobile</button>
+                </div>
+              </div>
+              <p class="field-hint">On the uploaded background at its current darkening, so the colour and opacity can be judged against what the words will actually sit on.</p>
+
+              <div class="text-preview" id="textPreview" data-width="desktop">
+                <!-- Drawn at the real screen width and scaled down, so a size
+                     given in pixels is judged at the proportion it will have
+                     when it is projected. -->
+                <div class="text-preview-frame" id="textPreviewFrame">
+                  <div class="text-preview-backdrop" id="textPreviewBackdrop"></div>
+                  <div class="text-preview-overlay" id="textPreviewOverlay"></div>
+                  <div class="text-preview-content" id="textPreviewContent">
+                    <p class="text-preview-eyebrow" id="textPreviewEyebrow">Welcome</p>
+                    <h3 class="text-preview-heading" id="textPreviewHeading">Our guest of honour</h3>
+                    <p class="text-preview-body" id="textPreviewBody"></p>
+                    <div class="text-preview-media" id="textPreviewMedia" hidden></div>
+                  </div>
+                </div>
+              </div>
+              <p class="field-hint" id="prizeMediaNote" hidden>No prize has photographs yet, so the panels above stand in for them — the timing, transition, dots and shape are shown as they will behave.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-foot">
+          <button type="button" class="btn btn-ghost" id="resetTextBtn">Reset to defaults</button>
+          <button type="button" class="btn btn-ghost" id="revertTextBtn">Revert</button>
+          <button type="button" class="btn btn-primary" id="saveTextBtn">Save configuration</button>
+        </div>
+      </section>
       <!-- ---------------------------------------------------- channels -->
       <!-- NEW: the organiser's social channels and how their QR codes are
            drawn and placed on the public screens. -->
@@ -1015,6 +1331,9 @@
        public pages use, so the preview cannot drift from the result. -->
   <script src="qr.js" defer></script>
   <script src="social.js" defer></script>
+  <!-- The console previews the board's prize carousel with the board's own
+       carousel, so the two cannot drift apart. -->
+  <script src="carousel.js" defer></script>
   <script src="admin-config.js" defer></script>
   <script src="admin.js" defer></script>
 </body>

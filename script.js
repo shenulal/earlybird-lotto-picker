@@ -72,6 +72,7 @@
 
   let confetti = null;
   let reel = null;
+  let prizeCarousel = null;
 
   /* ------------------------------------------------------------- utilities */
 
@@ -142,6 +143,12 @@
     if (reel) {
       reel.destroy();
       reel = null;
+    }
+    // NEW: a prize carousel on the stage is torn down with everything else, or
+    // its timer keeps turning photographs nobody can see.
+    if (prizeCarousel) {
+      prizeCarousel.destroy();
+      prizeCarousel = null;
     }
     elements.reel.innerHTML = html;
   }
@@ -302,13 +309,24 @@
    * a photo of it, held until the operator starts the reel.
    */
   function renderPrizeAnnouncement(prize) {
+    /* CHANGED: a prize with several photographs can show all of them rather
+       than only the first, in whichever way the organiser chose. */
+    const board = state.settings.prizes.board;
+    const asCarousel = board.imageMode === 'carousel' && prize.images.length > 1;
     const image = prize.images[0];
+
+    const media = asCarousel
+      ? '<span class="prize-call-media" data-shape="' + escapeHtml(board.shape) + '"><span class="prize-call-carousel"></span></span>'
+      : image
+        ? `<span class="prize-call-media" data-shape="${escapeHtml(board.shape)}"><img src="${escapeHtml(image.src)}" alt=""
+            ${image.width && image.height ? `width="${image.width}" height="${image.height}"` : ''}></span>`
+        : '';
+
     setStage(`
       <div class="prize-call reveal-rise">
         <p class="prize-call-eyebrow">${escapeHtml(copy('upNextLabel'))} &middot; ${escapeHtml(prize.label)}</p>
         <div class="prize-call-body">
-          ${image ? `<span class="prize-call-media"><img src="${escapeHtml(image.src)}" alt=""
-              ${image.width && image.height ? `width="${image.width}" height="${image.height}"` : ''}></span>` : ''}
+          ${media}
           <span class="prize-call-text">
             <span class="prize-call-name">${escapeHtml(prize.name)}</span>
             ${prize.description ? `<span class="prize-call-note">${escapeHtml(prize.description)}</span>` : ''}
@@ -316,6 +334,17 @@
         </div>
         <p class="prize-call-prompt">${escapeHtml(copy('drawPrompt'))}</p>
       </div>`);
+
+    if (asCarousel && global.createCarousel) {
+      prizeCarousel = global.createCarousel(elements.reel.querySelector('.prize-call-carousel'), prize.images, {
+        intervalMs: board.autoplay ? board.slideMs : 0,
+        transition: board.transition,
+        showDots: board.showDots,
+        showArrows: false,
+        showCaptions: false,
+        altFallback: prize.name,
+      });
+    }
   }
 
   function renderWinnerCard(winner, animation, isReplay = false) {

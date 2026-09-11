@@ -25,6 +25,10 @@
     // NEW: the welcome screen shows its photographs and nothing else, so the
     // arrows are optional. The dots stay: they say how many there are.
     const showArrows = options.showArrows !== false;
+    // NEW: fade is the default and what every carousel did before; slide moves
+    // the photographs across instead.
+    const transition = options.transition === 'slide' ? 'slide' : 'fade';
+    const showDots = options.showDots !== false;
     const interval = Number(options.intervalMs) || 0;
 
     let index = 0;
@@ -38,7 +42,7 @@
 
     mount.hidden = false;
     mount.innerHTML = `
-      <div class="carousel" data-count="${images.length}">
+      <div class="carousel" data-count="${images.length}" data-transition="${transition}">
         <ol class="carousel-track">
           ${images
             .map(
@@ -55,7 +59,7 @@
           ${showArrows ? `
             <button type="button" class="carousel-nav carousel-prev" aria-label="Previous photo">&#8249;</button>
             <button type="button" class="carousel-nav carousel-next" aria-label="Next photo">&#8250;</button>` : ''}
-          <div class="carousel-dots" role="tablist" aria-label="Choose a photo">
+          <div class="carousel-dots" role="tablist" aria-label="Choose a photo"${showDots ? '' : ' hidden'}>
             ${images.map((_, position) => `<button type="button" class="carousel-dot${position === 0 ? ' is-active' : ''}" role="tab" aria-selected="${position === 0}" aria-label="Photo ${position + 1}"></button>`).join('')}
           </div>` : ''}
       </div>
@@ -66,8 +70,15 @@
     const dots = Array.from(root.querySelectorAll('.carousel-dot'));
     const caption = mount.querySelector('.carousel-caption');
 
+    let previous = 0;
+
     function paint() {
-      slides.forEach((slide, position) => slide.classList.toggle('is-active', position === index));
+      slides.forEach((slide, position) => {
+        slide.classList.toggle('is-active', position === index);
+        // NEW: the photograph being replaced needs to know it is leaving, or a
+        // slide transition has nothing to move out of the way.
+        slide.classList.toggle('is-leaving', position === previous && position !== index);
+      });
       dots.forEach((dot, position) => {
         dot.classList.toggle('is-active', position === index);
         dot.setAttribute('aria-selected', String(position === index));
@@ -76,6 +87,7 @@
     }
 
     function goTo(next) {
+      previous = index;
       index = ((next % images.length) + images.length) % images.length;
       paint();
     }

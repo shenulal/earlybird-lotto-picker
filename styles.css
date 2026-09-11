@@ -659,6 +659,35 @@ body[data-align='right'] .stats { justify-content: flex-end; }
   animation: prizeBreathe 4.5s ease-in-out infinite;
 }
 
+/* NEW: the shape the organiser chose for a prize photograph on the board. */
+.prize-call-media[data-shape='circle'] {
+  aspect-ratio: 1;
+  border-radius: 50%;
+}
+
+.prize-call-media[data-shape='oval'] {
+  aspect-ratio: 4 / 5;
+  border-radius: 50%;
+}
+
+/* A carousel fills the frame the single photograph would have had. */
+.prize-call-carousel,
+.prize-call-carousel .carousel {
+  display: block;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+}
+
+.prize-call-carousel .carousel-dots {
+  bottom: 8px;
+  padding: 5px 9px;
+}
+
+.prize-call-carousel .carousel-dot.is-active {
+  width: 18px;
+}
+
 .prize-call-media img {
   width: 100%;
   height: 100%;
@@ -673,19 +702,27 @@ body[data-align='right'] .stats { justify-content: flex-end; }
   text-align: center;
 }
 
+/* NEW: the prize named with each draw, styled for the board on its own. */
 .prize-call-name {
-  font-family: var(--font-display);
-  font-size: var(--text-headline);
-  line-height: 1.04;
-  color: var(--accent-ink);
+  font-family: var(--text-font, var(--font-display));
+  font-size: var(--text-size, var(--text-headline));
+  font-weight: var(--text-weight, 400);
+  letter-spacing: var(--text-letter-spacing, normal);
+  line-height: var(--text-line-height, 1.04);
+  text-align: var(--text-align, center);
+  color: var(--text-color, var(--accent-ink));
+  opacity: var(--text-opacity, 1);
   text-shadow: 0 0 52px var(--accent-glow), 0 2px 24px rgba(0, 0, 0, 0.4);
   overflow-wrap: anywhere;
 }
 
 .prize-call-note {
-  font-size: var(--text-meta);
-  font-weight: 300;
-  color: var(--ink-soft);
+  font-family: var(--text-font, inherit);
+  font-size: var(--text-size-meta, var(--text-meta));
+  font-weight: var(--text-weight, 300);
+  letter-spacing: var(--text-letter-spacing, normal);
+  color: var(--text-color, var(--ink-soft));
+  opacity: var(--text-opacity, 1);
   overflow-wrap: anywhere;
 }
 
@@ -1228,8 +1265,10 @@ body[data-logo-position='top-right'] {
   margin: clamp(14px, 1.8vw, 24px) 0 0;
   padding-top: clamp(12px, 1.4vw, 18px);
   border-top: 1px solid var(--hairline);
+  font-family: var(--text-font, inherit);
   font-size: var(--text-support);
-  font-weight: 700;
+  font-weight: var(--text-weight, 700);
+  opacity: var(--text-opacity, 1);
   letter-spacing: 0.06em;
   color: var(--accent-ink);
 }
@@ -1794,14 +1833,20 @@ body[data-logo-position='top-right'] {
 
 /* The message is prose now: body face, generous leading, muted, and held to a
    measure that can actually be read rather than running the width of a hall. */
+/* NEW: --text-* are set by theme.js from the operator's style for this screen.
+   Each falls back to what the screen always used, so an untouched style leaves
+   the design exactly as designed. */
 .welcome-message {
   margin: 0;
   max-width: 58ch;
-  color: var(--ink-soft);
-  font-family: var(--font-body);
-  font-size: clamp(1rem, 0.86rem + 0.6vw, 1.4rem);
-  font-weight: 300;
-  line-height: 1.65;
+  color: var(--text-color, var(--ink-soft));
+  opacity: var(--text-opacity, 1);
+  font-family: var(--text-font, var(--font-body));
+  font-size: var(--text-size, clamp(1rem, 0.86rem + 0.6vw, 1.4rem));
+  font-weight: var(--text-weight, 300);
+  letter-spacing: var(--text-letter-spacing, normal);
+  text-align: var(--text-align, center);
+  line-height: var(--text-line-height, 1.65);
   white-space: pre-line;
   overflow-wrap: anywhere;
 }
@@ -1904,10 +1949,11 @@ body[data-logo-position='top-right'] {
   }
 }
 
-/* With no photograph the message carries the screen, so it is given room. */
+/* With no photograph the message carries the screen, so it is given room.
+   An organiser's chosen size still wins over the larger default. */
 .welcome.is-textonly .welcome-message {
   max-width: 46ch;
-  font-size: clamp(1.15rem, 0.9rem + 1.1vw, 1.9rem);
+  font-size: var(--text-size, clamp(1.15rem, 0.9rem + 1.1vw, 1.9rem));
 }
 
 @media (max-width: 720px) {
@@ -2006,20 +2052,30 @@ body[data-logo-position='top-right'] {
   color: #14110a;
 }
 
+/* NEW: styled by the operator's choices for the prize screen; each falls back
+   to what the screen always used. */
 .prize-name {
   margin: 0;
-  font-family: var(--font-display);
-  font-size: clamp(1.3rem, 0.9rem + 1.3vw, 2.3rem);
-  line-height: 1.1;
-  color: var(--accent-ink);
+  font-family: var(--text-font, var(--font-display));
+  font-size: var(--text-size, clamp(1.3rem, 0.9rem + 1.3vw, 2.3rem));
+  font-weight: var(--text-weight, 400);
+  letter-spacing: var(--text-letter-spacing, normal);
+  line-height: var(--text-line-height, 1.1);
+  text-align: var(--text-align, start);
+  color: var(--text-color, var(--accent-ink));
+  opacity: var(--text-opacity, 1);
 }
 
 .prize-description {
   margin: 0;
-  font-size: var(--text-meta);
-  font-weight: 300;
-  line-height: 1.5;
-  color: var(--ink-soft);
+  font-family: var(--text-font, inherit);
+  font-size: var(--text-size-meta, var(--text-meta));
+  font-weight: var(--text-weight, 300);
+  letter-spacing: var(--text-letter-spacing, normal);
+  line-height: var(--text-line-height, 1.5);
+  text-align: var(--text-align, start);
+  color: var(--text-color, var(--ink-soft));
+  opacity: var(--text-opacity, 1);
 }
 
 /* ------------------------------------------------------------ carousel */
@@ -2048,6 +2104,28 @@ body[data-logo-position='top-right'] {
 
 .carousel-slide.is-active {
   opacity: 1;
+}
+
+/* NEW: the photographs move across instead of dissolving. The one leaving goes
+   the way the new one came from, so the whole set reads as a strip. */
+.carousel[data-transition='slide'] .carousel-slide {
+  opacity: 1;
+  transform: translateX(100%);
+  transition: transform var(--slow) var(--ease);
+}
+
+.carousel[data-transition='slide'] .carousel-slide.is-active {
+  transform: none;
+}
+
+.carousel[data-transition='slide'] .carousel-slide.is-leaving {
+  transform: translateX(-100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .carousel[data-transition='slide'] .carousel-slide {
+    transition: none;
+  }
 }
 
 .carousel-slide img {

@@ -86,6 +86,18 @@ QR_POSITIONS = (
 )
 QR_SIZES = ("small", "medium", "large", "xl")
 QR_DISPLAY_MODES = ("icons", "qr", "both")
+
+# NEW: how the words on each screen are set. Every family here is either one the
+# application already ships or a stack the operating system provides, so nothing
+# needs fetching and an offline board looks the same as a hosted one.
+FONT_FAMILIES = ("display", "body", "mono", "system", "sans", "serif")
+FONT_WEIGHTS = (0, 300, 400, 500, 700)
+TEXT_ALIGNMENTS = ("auto", "left", "center", "right")
+
+# NEW: what the board does with a prize that has more than one photograph.
+PRIZE_IMAGE_MODES = ("single", "carousel")
+CAROUSEL_TRANSITIONS = ("fade", "slide")
+PRIZE_IMAGE_SHAPES = ("rounded", "circle", "oval")
 MAX_CHANNELS = 24
 
 # Which end of the prize list the evening starts from.
@@ -157,6 +169,11 @@ CLAMPS = {
     # NEW: the board's own measurements. Zero everywhere means "leave it to the
     # stylesheet", which is what every board did before these existed, so an
     # organiser only sets the one thing they actually want to change.
+    "textFontSize": (0, 200),
+    "textOpacity": (0, 100),
+    "textLineHeight": (0, 300),
+    "textLetterSpacing": (-20, 100),
+    "prizeSlideMs": (1000, 20000),
     "reelWidth": (0, 2400),
     "reelHeight": (0, 420),
     "reelFontSize": (0, 220),
@@ -336,6 +353,8 @@ def _normalize_prizes(raw: Any) -> Dict[str, Any]:
         seen.add(item["id"])
         unique.append(item)
 
+    board = source.get("board") if isinstance(source.get("board"), dict) else {}
+
     return {
         # Ticked by default: the screen is part of the product, and an organiser
         # who does not want it in the board's navigation unticks it.
@@ -347,6 +366,16 @@ def _normalize_prizes(raw: Any) -> Dict[str, Any]:
         "announceMode": _as_choice(source.get("announceMode"), PRIZE_ANNOUNCE_MODES, "before"),
         "showCaptions": _as_bool(source.get("showCaptions"), True),
         "intervalMs": _clamp("prizeIntervalMs", source.get("intervalMs"), 5000),
+        # NEW: what the board does with a prize that has several photographs —
+        # one still, or all of them turning.
+        "board": {
+            "imageMode": _as_choice(board.get("imageMode"), PRIZE_IMAGE_MODES, "single"),
+            "autoplay": _as_bool(board.get("autoplay"), True),
+            "slideMs": _clamp("prizeSlideMs", board.get("slideMs"), 3000),
+            "transition": _as_choice(board.get("transition"), CAROUSEL_TRANSITIONS, "fade"),
+            "showDots": _as_bool(board.get("showDots"), True),
+            "shape": _as_choice(board.get("shape"), PRIZE_IMAGE_SHAPES, "rounded"),
+        },
         "items": unique,
     }
 
@@ -443,6 +472,40 @@ def _normalize_social(raw: Any) -> Dict[str, Any]:
             # rather than each channel's own.
             "color": _as_text(qr.get("color"), "", 40),
         },
+    }
+
+
+def _as_color(value: Any, fallback: str) -> str:
+    """NEW: a hex colour, or empty for "whatever the screen already uses"."""
+    if not isinstance(value, str):
+        return fallback
+    trimmed = value.strip()
+    return trimmed if HEX_COLOR.match(trimmed) else fallback
+
+
+def _normalize_text_style(raw: Any) -> Dict[str, Any]:
+    """NEW: one screen's text style.
+
+    Zero means "as the screen has it", so a style nobody has touched renders
+    exactly as it did before any of this existed and an operator only sets the
+    one thing they want to change.
+    """
+    source = raw if isinstance(raw, dict) else {}
+
+    try:
+        weight = int(source.get("fontWeight"))
+    except (TypeError, ValueError):
+        weight = 0
+
+    return {
+        "fontSize": _clamp("textFontSize", source.get("fontSize"), 0),
+        "color": _as_color(source.get("color"), ""),
+        "opacity": _clamp("textOpacity", source.get("opacity"), 100),
+        "fontFamily": _as_choice(source.get("fontFamily"), FONT_FAMILIES, "body"),
+        "fontWeight": weight if weight in FONT_WEIGHTS else 0,
+        "align": _as_choice(source.get("align"), TEXT_ALIGNMENTS, "auto"),
+        "lineHeight": _clamp("textLineHeight", source.get("lineHeight"), 0),
+        "letterSpacing": _clamp("textLetterSpacing", source.get("letterSpacing"), 0),
     }
 
 
@@ -561,6 +624,13 @@ def normalize_app_settings(raw: Any) -> Dict[str, Any]:
         },
         "branding": _normalize_branding(source.get("branding")),
         "social": _normalize_social(source.get("social")),
+        # NEW: each screen's words are styled on their own; none of the three
+        # share a setting with another.
+        "text": {
+            "welcome": _normalize_text_style((source.get("text") or {}).get("welcome")),
+            "prizes": _normalize_text_style((source.get("text") or {}).get("prizes")),
+            "board": _normalize_text_style((source.get("text") or {}).get("board")),
+        },
         "welcome": _normalize_welcome(source.get("welcome")),
         "prizes": _normalize_prizes(source.get("prizes")),
         "copy": _normalize_copy(source.get("copy")),

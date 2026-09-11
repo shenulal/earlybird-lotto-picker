@@ -190,6 +190,9 @@
   }
 
   function createConfigEditors(context) {
+    // NEW: the prize carousel shown in the text preview, torn down whenever it
+    // is rebuilt so its timer never outlives the element it turns.
+    let previewCarousel = null;
     const elements = {
       fieldsBody: document.getElementById('fieldsBody'),
       identifierPill: document.getElementById('identifierPill'),
@@ -253,6 +256,9 @@
       // NEW: board layout.
       overlayOpacity: document.getElementById('overlayOpacity'),
       overlayValue: document.getElementById('overlayValue'),
+      saveTextBtn: document.getElementById('saveTextBtn'),
+      revertTextBtn: document.getElementById('revertTextBtn'),
+      resetTextBtn: document.getElementById('resetTextBtn'),
       saveLayoutBtn: document.getElementById('saveLayoutBtn'),
       revertLayoutBtn: document.getElementById('revertLayoutBtn'),
       resetLayoutBtn: document.getElementById('resetLayoutBtn'),
@@ -986,6 +992,272 @@
       }
     }
 
+    /* ------------------------------------------------ NEW: text styling */
+
+    const TEXT_SCOPES = ['welcome', 'prizes', 'board'];
+
+    // Sizes a preset stands for. As with the layout presets, these fill the
+    // controls rather than being stored, so the numbers remain the only truth.
+    const TEXT_PRESETS = {
+      small: { fontSize: 16, lineHeight: 150 },
+      medium: { fontSize: 24, lineHeight: 155 },
+      large: { fontSize: 36, lineHeight: 140 },
+    };
+
+    const TEXT_DEFAULTS = {
+      fontSize: 0,
+      color: '',
+      opacity: 100,
+      fontFamily: 'body',
+      fontWeight: 0,
+      align: 'auto',
+      lineHeight: 0,
+      letterSpacing: 0,
+    };
+
+    const PRIZE_MEDIA_DEFAULTS = {
+      imageMode: 'single',
+      autoplay: true,
+      slideMs: 3000,
+      transition: 'fade',
+      showDots: true,
+      shape: 'rounded',
+    };
+
+    // What the preview says for a value meaning "as the screen has it".
+    const TEXT_READOUTS = {
+      fontSize: (value) => (value ? `${value}px` : 'Auto'),
+      opacity: (value) => `${value}%`,
+      lineHeight: (value) => (value ? (value / 100).toFixed(2) : 'Auto'),
+      letterSpacing: (value) => (value ? `${(value / 100).toFixed(2)}em` : 'Auto'),
+    };
+
+    function textField(scope, key) {
+      return document.querySelector(`[data-text="${scope}.${key}"]`);
+    }
+
+    function readTextStyle(scope) {
+      const style = { ...TEXT_DEFAULTS };
+      Object.keys(TEXT_DEFAULTS).forEach((key) => {
+        const field = textField(scope, key);
+        if (!field) return;
+        const raw = field.value;
+        style[key] = typeof TEXT_DEFAULTS[key] === 'number' ? Number(raw) || 0 : raw;
+      });
+      return style;
+    }
+
+    function writeTextStyle(scope, style) {
+      Object.keys(TEXT_DEFAULTS).forEach((key) => {
+        const field = textField(scope, key);
+        if (!field) return;
+        field.value = style[key];
+
+        const readout = document.querySelector(`[data-text-value="${scope}.${key}"]`);
+        if (readout && TEXT_READOUTS[key]) readout.textContent = TEXT_READOUTS[key](Number(style[key]) || 0);
+      });
+
+      const swatch = document.querySelector(`[data-text-color="${scope}"]`);
+      if (swatch && /^#[0-9a-f]{6}$/i.test(style.color)) swatch.value = style.color;
+    }
+
+    function renderText() {
+      const settings = context.getSettings();
+      TEXT_SCOPES.forEach((scope) => writeTextStyle(scope, (settings.text || {})[scope] || TEXT_DEFAULTS));
+
+      const media = settings.prizes.board || PRIZE_MEDIA_DEFAULTS;
+      document.getElementById('prizeImageMode').value = media.imageMode;
+      document.getElementById('prizeImageShape').value = media.shape;
+      document.getElementById('prizeAutoplay').checked = media.autoplay;
+      document.getElementById('prizeSlideMs').value = media.slideMs;
+      document.getElementById('prizeTransition').value = media.transition;
+      document.getElementById('prizeShowDots').checked = media.showDots;
+
+      renderTextPreview();
+    }
+
+    function collectText() {
+      const settings = context.getSettings();
+      const text = {};
+      TEXT_SCOPES.forEach((scope) => {
+        text[scope] = readTextStyle(scope);
+      });
+
+      return {
+        ...settings,
+        text,
+        prizes: {
+          ...settings.prizes,
+          board: {
+            imageMode: document.getElementById('prizeImageMode').value,
+            autoplay: document.getElementById('prizeAutoplay').checked,
+            slideMs: Number(document.getElementById('prizeSlideMs').value),
+            transition: document.getElementById('prizeTransition').value,
+            showDots: document.getElementById('prizeShowDots').checked,
+            shape: document.getElementById('prizeImageShape').value,
+          },
+        },
+      };
+    }
+
+    function activeTextScope() {
+      const tab = document.querySelector('#panel-text .tab.is-active');
+      return tab ? tab.dataset.textTab : 'welcome';
+    }
+
+    const PREVIEW_SAMPLES = {
+      welcome: {
+        eyebrow: 'Welcome',
+        heading: 'Our guest of honour',
+        body: 'Please join us in welcoming H.E. Dr. Amina Al Suwaidi, who will open tonight\u2019s draw and present the first prize to our winner.',
+      },
+      prizes: {
+        eyebrow: 'Tonight\u2019s prizes',
+        heading: 'iPhone 18 Pro Max',
+        body: 'The latest flagship, in titanium \u2014 512 GB, with a two-year warranty.',
+      },
+      board: {
+        eyebrow: 'Up next · First prize',
+        heading: 'iPhone 18 Pro Max',
+        body: 'The latest flagship, in titanium.',
+      },
+    };
+
+    /**
+     * NEW: the words on the background they will actually sit on.
+     *
+     * Colour and opacity are only judgeable against the photograph behind
+     * them, so the preview uses the uploaded backdrop at its current darkening
+     * rather than a flat panel.
+     */
+    function renderTextPreview() {
+      const draft = collectText();
+      const scope = activeTextScope();
+      const style = draft.text[scope];
+      const preview = document.getElementById('textPreview');
+      if (!preview) return;
+
+      const background = draft.branding.background;
+      document.getElementById('textPreviewBackdrop').style.backgroundImage = background.src
+        ? `url("${encodeURI(background.src)}")`
+        : 'none';
+      preview.dataset.hasImage = String(Boolean(background.src));
+      document.getElementById('textPreviewOverlay').style.opacity = String(background.overlayOpacity / 100);
+
+      // Sizes here are given in pixels, which only mean something at the width
+      // the screen will really be. So the sample is laid out at that width and
+      // scaled down to fit the panel, exactly as the board preview does.
+      const screenWidth = preview.dataset.width === 'mobile' ? 390 : 1440;
+      preview.style.setProperty('--preview-screen-width', `${screenWidth}px`);
+      preview.style.setProperty(
+        '--preview-scale',
+        String((preview.getBoundingClientRect().width || 520) / screenWidth)
+      );
+
+      const sample = PREVIEW_SAMPLES[scope];
+      document.getElementById('textPreviewEyebrow').textContent = sample.eyebrow;
+      const heading = document.getElementById('textPreviewHeading');
+      heading.textContent = sample.heading;
+      heading.hidden = !sample.heading;
+      document.getElementById('textPreviewBody').textContent = sample.body;
+
+      const content = document.getElementById('textPreviewContent');
+      const families = {
+        display: "'Bebas Neue', 'Lato', system-ui, sans-serif",
+        body: "'Lato', 'Segoe UI', system-ui, sans-serif",
+        mono: "'IBM Plex Mono', ui-monospace, Menlo, monospace",
+        system: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+        sans: 'Helvetica, Arial, system-ui, sans-serif',
+        serif: 'Georgia, "Times New Roman", Times, serif',
+      };
+
+      const set = (name, value) => {
+        if (value) content.style.setProperty(name, value);
+        else content.style.removeProperty(name);
+      };
+      set('--text-font', families[style.fontFamily] || '');
+
+      // Which line the size governs differs by screen. On the welcome screen it
+      // is the message; on the prize page and the board it is the prize's name,
+      // with its description following proportionally beneath.
+      const chosen = style.fontSize;
+      const secondary = chosen ? `${Math.round(chosen * 0.72)}px` : '';
+      set('--preview-heading-size', scope === 'welcome' || !chosen ? '' : `${chosen}px`);
+      set('--preview-body-size', scope === 'welcome' ? (chosen ? `${chosen}px` : '') : secondary);
+      set('--text-size', chosen ? `${chosen}px` : '');
+      set('--text-color', style.color || '');
+      set('--text-weight', style.fontWeight ? String(style.fontWeight) : '');
+      set('--text-align', style.align !== 'auto' ? style.align : '');
+      set('--text-line-height', style.lineHeight ? String(style.lineHeight / 100) : '');
+      set('--text-letter-spacing', style.letterSpacing ? `${style.letterSpacing / 100}em` : '');
+      set('--text-opacity', style.opacity < 100 ? String(style.opacity / 100) : '');
+
+      renderPrizeMediaPreview(draft, scope);
+    }
+
+    /**
+     * Three plain panels, shown when no prize has photographs yet.
+     *
+     * The timing, the transition, the dots and the shape are all judgeable
+     * without a real photograph, and an organiser configuring the board before
+     * the pictures arrive should not be left looking at an empty box.
+     */
+    const PLACEHOLDER_SLIDES = ['#2b3550', '#3d3055', '#26414d'].map((tone, index) => ({
+      src:
+        'data:image/svg+xml;utf8,' +
+        encodeURIComponent(
+          `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">` +
+            `<rect width="400" height="300" fill="${tone}"/>` +
+            `<text x="200" y="160" text-anchor="middle" font-family="sans-serif" ` +
+            `font-size="34" fill="#8f9bbd">Photo ${index + 1}</text></svg>`
+        ),
+      caption: '',
+    }));
+
+    /** The board tab also previews what happens to a prize's photographs. */
+    function renderPrizeMediaPreview(draft, scope) {
+      const mount = document.getElementById('textPreviewMedia');
+      const media = draft.prizes.board;
+      const real = draft.prizes.items.flatMap((prize) => prize.images).slice(0, 6);
+      const images = real.length > 0 ? real : PLACEHOLDER_SLIDES;
+
+      document.getElementById('prizeCarouselOptions').hidden = media.imageMode !== 'carousel';
+      const note = document.getElementById('prizeMediaNote');
+      if (note) note.hidden = real.length > 0;
+
+      if (scope !== 'board') {
+        mount.hidden = true;
+        mount.innerHTML = '';
+        if (previewCarousel) {
+          previewCarousel.destroy();
+          previewCarousel = null;
+        }
+        return;
+      }
+
+      mount.hidden = false;
+      mount.dataset.shape = media.shape;
+
+      if (previewCarousel) {
+        previewCarousel.destroy();
+        previewCarousel = null;
+      }
+
+      if (media.imageMode === 'carousel' && images.length > 1 && global.createCarousel) {
+        previewCarousel = global.createCarousel(mount, images, {
+          intervalMs: media.autoplay ? media.slideMs : 0,
+          transition: media.transition,
+          showDots: media.showDots,
+          showArrows: false,
+          showCaptions: false,
+          altFallback: 'Prize photograph',
+        });
+        return;
+      }
+
+      mount.innerHTML = `<img src="${escapeHtml(images[0].src)}" alt="">`;
+    }
+
     /* ----------------------------------------------- NEW: board layout */
 
     // Every slider, and which part of the settings it belongs to.
@@ -1321,6 +1593,92 @@
         );
         input.value = '';
       });
+      /* NEW: text and media. Everything redraws the preview as it changes;
+         only Save writes anything. */
+      const textPanel = document.getElementById('panel-text');
+
+      textPanel.addEventListener('input', (event) => {
+        const field = event.target.closest('[data-text]');
+        if (field) {
+          const [scope, key] = field.dataset.text.split('.');
+          const readout = document.querySelector(`[data-text-value="${scope}.${key}"]`);
+          if (readout && TEXT_READOUTS[key]) readout.textContent = TEXT_READOUTS[key](Number(field.value) || 0);
+
+          // Typing a hex keeps the swatch beside it in step.
+          const swatch = document.querySelector(`[data-text-color="${scope}"]`);
+          if (key === 'color' && swatch && /^#[0-9a-f]{6}$/i.test(field.value.trim())) {
+            swatch.value = field.value.trim();
+          }
+        }
+
+        const swatch = event.target.closest('[data-text-color]');
+        if (swatch) {
+          const target = textField(swatch.dataset.textColor, 'color');
+          if (target) target.value = swatch.value;
+        }
+
+        if (event.target.id === 'prizeSlideMs') {
+          document.getElementById('prizeSlideValue').textContent = `${(Number(event.target.value) / 1000).toFixed(1)}s`;
+        }
+
+        renderTextPreview();
+      });
+
+      textPanel.addEventListener('change', renderTextPreview);
+
+      textPanel.addEventListener('click', (event) => {
+        const tab = event.target.closest('[data-text-tab]');
+        if (tab) {
+          textPanel.querySelectorAll('[data-text-tab]').forEach((button) => {
+            const active = button === tab;
+            button.classList.toggle('is-active', active);
+            button.setAttribute('aria-selected', String(active));
+          });
+          textPanel.querySelectorAll('[data-text-pane]').forEach((pane) => {
+            pane.hidden = pane.dataset.textPane !== tab.dataset.textTab;
+          });
+          renderTextPreview();
+          return;
+        }
+
+        const preset = event.target.closest('[data-text-preset]');
+        if (preset) {
+          const scope = preset.dataset.textPreset;
+          writeTextStyle(scope, { ...readTextStyle(scope), ...TEXT_PRESETS[preset.dataset.size] });
+          renderTextPreview();
+          return;
+        }
+
+        const width = event.target.closest('[data-text-preview]');
+        if (width) {
+          document.getElementById('textPreview').dataset.width = width.dataset.textPreview;
+          textPanel.querySelectorAll('[data-text-preview]').forEach((button) => {
+            const active = button === width;
+            button.classList.toggle('is-active', active);
+            button.setAttribute('aria-pressed', String(active));
+          });
+          // The frame is drawn at the chosen screen's width, so the scale it is
+          // shown at has to be worked out again for it.
+          renderTextPreview();
+        }
+      });
+
+      elements.saveTextBtn.addEventListener('click', () => context.save(collectText(), 'Text and media saved.'));
+      elements.revertTextBtn.addEventListener('click', renderText);
+      elements.resetTextBtn.addEventListener('click', () => {
+        if (!global.confirm('Put the text styling and the prize photographs back to their defaults?')) return;
+        TEXT_SCOPES.forEach((scope) => writeTextStyle(scope, TEXT_DEFAULTS));
+        document.getElementById('prizeImageMode').value = PRIZE_MEDIA_DEFAULTS.imageMode;
+        document.getElementById('prizeImageShape').value = PRIZE_MEDIA_DEFAULTS.shape;
+        document.getElementById('prizeAutoplay').checked = PRIZE_MEDIA_DEFAULTS.autoplay;
+        document.getElementById('prizeSlideMs').value = PRIZE_MEDIA_DEFAULTS.slideMs;
+        document.getElementById('prizeTransition').value = PRIZE_MEDIA_DEFAULTS.transition;
+        document.getElementById('prizeShowDots').checked = PRIZE_MEDIA_DEFAULTS.showDots;
+        document.getElementById('prizeSlideValue').textContent = '3.0s';
+        renderTextPreview();
+        context.save(collectText(), 'Text and media reset.');
+      });
+
       // NEW: board layout. Every slider redraws the preview as it moves; only
       // Save writes anything.
       elements.overlayOpacity.addEventListener('input', () => {
@@ -1505,6 +1863,7 @@
         renderPrizes();
         renderChannels(); // NEW
         renderLayout();   // NEW
+        renderText();     // NEW
       },
     };
   }

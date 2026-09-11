@@ -97,6 +97,13 @@
     const backLink = document.getElementById('backToBoard');
     if (backLink) backLink.textContent = settings.copy.prizesBack;
 
+    /* NEW: each screen's own text style. Which one applies is decided by the
+       page, so the welcome screen, the prize screen and the board never share
+       a setting. */
+    const text = settings.text || {};
+    const page = global.PICKORA_PAGE === 'welcome' || global.PICKORA_PAGE === 'prizes' ? global.PICKORA_PAGE : 'board';
+    applyTextStyle(document.body, text[page]);
+
     // NEW: the organiser's channels, on whichever screen this is.
     if (global.pickoraSocial) global.pickoraSocial.render('socialBlock', settings);
 
@@ -220,6 +227,49 @@
   }
 
   bindConsoleLinks();
+
+  /* ------------------------------------------------- NEW: text styling */
+
+  /* Families the application already ships, and stacks the operating system
+     provides. Nothing here is fetched, so an offline board is identical. */
+  const FONT_STACKS = {
+    display: "'Bebas Neue', 'Lato', system-ui, sans-serif",
+    body: "'Lato', 'Segoe UI', system-ui, sans-serif",
+    mono: "'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace",
+    system: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+    sans: 'Helvetica, Arial, system-ui, sans-serif',
+    serif: 'Georgia, "Times New Roman", Times, serif',
+  };
+
+  /**
+   * NEW: turns one screen's text style into the variables its CSS reads.
+   *
+   * Every value has an "as the screen has it" state — zero, or auto — which
+   * removes the variable rather than setting it, so a style nobody has touched
+   * leaves the stylesheet's own choices completely alone.
+   */
+  function applyTextStyle(scope, style) {
+    if (!scope || !style) return;
+
+    const set = (name, value) => {
+      if (value) scope.style.setProperty(name, value);
+      else scope.style.removeProperty(name);
+    };
+
+    set('--text-font', FONT_STACKS[style.fontFamily] || '');
+    set('--text-size', style.fontSize ? `${style.fontSize}px` : '');
+    // A prize's description is set smaller than its name, and stays smaller:
+    // it follows the chosen size rather than matching it, so asking for bigger
+    // type does not flatten the two lines into one another.
+    set('--text-size-meta', style.fontSize ? `${Math.round(style.fontSize * 0.72)}px` : '');
+    set('--text-color', style.color || '');
+    set('--text-weight', style.fontWeight ? String(style.fontWeight) : '');
+    set('--text-align', style.align !== 'auto' ? style.align : '');
+    set('--text-line-height', style.lineHeight ? String(style.lineHeight / 100) : '');
+    set('--text-letter-spacing', style.letterSpacing ? `${style.letterSpacing / 100}em` : '');
+    // Full opacity is the same as not saying anything about it.
+    set('--text-opacity', style.opacity < 100 ? String(style.opacity / 100) : '');
+  }
 
   /* --------------------------------------------- NEW: keeping a page current */
 

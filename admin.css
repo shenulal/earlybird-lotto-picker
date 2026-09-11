@@ -570,6 +570,251 @@ input:focus-visible,
   box-shadow: 0 0 0 3px rgba(245, 181, 68, 0.22);
 }
 
+/* --------------------------------------------------- NEW: text & media */
+
+/* Tabs rather than one long page: the three screens share no setting, so
+   showing all of them at once only invites editing the wrong one. */
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 18px;
+  padding: 4px;
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius);
+  background: #0d1016;
+}
+
+.tab {
+  flex: 1;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--c-text-faint);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--duration), color var(--duration);
+}
+
+.tab:hover { color: var(--c-text); }
+
+.tab.is-active {
+  background: var(--c-amber);
+  color: #14161c;
+}
+
+.tab:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(245, 181, 68, 0.22);
+}
+
+/* The sliders stack directly in the card; without this they collide with the
+   label of the one below. */
+#panel-text .card > .field { margin-top: 14px; }
+
+/* --- the words, on the background they will sit on -------------------- */
+
+.text-preview {
+  --preview-screen-width: 1440px;
+  --preview-scale: 0.36;
+
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  margin-top: 12px;
+  overflow: hidden;
+  border: 1px solid var(--c-line-strong);
+  border-radius: var(--radius);
+  background: #0d1016;
+}
+
+.text-preview[data-width='mobile'] {
+  aspect-ratio: 9 / 16;
+  width: min(100%, 290px);
+  margin-inline: auto;
+}
+
+.text-preview-frame {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--preview-screen-width);
+  height: calc(var(--preview-screen-width) * 9 / 16);
+  transform: scale(var(--preview-scale));
+  transform-origin: top left;
+}
+
+.text-preview[data-width='mobile'] .text-preview-frame {
+  height: calc(var(--preview-screen-width) * 16 / 9);
+}
+
+.text-preview-backdrop {
+  position: absolute;
+  inset: 0;
+  background: center / cover no-repeat;
+}
+
+/* No backdrop uploaded: the gradient the board falls back to. */
+.text-preview[data-has-image='false'] .text-preview-backdrop {
+  background: radial-gradient(circle at top, #1d2671, #c33764);
+}
+
+.text-preview-overlay {
+  position: absolute;
+  inset: 0;
+  background: #05060f;
+}
+
+/* The sample text reads the same --text-* variables the real screens do, so
+   what is previewed is produced by the same rules rather than a copy of them. */
+.text-preview-content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  align-items: center;
+  justify-content: center;
+  padding: 7% 9%;
+  text-align: var(--text-align, center);
+}
+
+.text-preview-eyebrow {
+  margin: 0;
+  color: var(--c-amber);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+
+.text-preview-heading {
+  margin: 0;
+  color: var(--text-color, #ffffff);
+  opacity: var(--text-opacity, 1);
+  font-family: var(--text-font, 'Bebas Neue', 'Lato', sans-serif);
+  font-size: var(--preview-heading-size, 76px);
+  font-weight: var(--text-weight, 400);
+  letter-spacing: var(--text-letter-spacing, normal);
+  line-height: var(--text-line-height, 1.05);
+}
+
+.text-preview-body {
+  margin: 0;
+  max-width: 46ch;
+  color: var(--text-color, #cdd5ea);
+  opacity: var(--text-opacity, 1);
+  font-family: var(--text-font, 'Lato', system-ui, sans-serif);
+  font-size: var(--preview-body-size, 30px);
+  font-weight: var(--text-weight, 300);
+  letter-spacing: var(--text-letter-spacing, normal);
+  line-height: var(--text-line-height, 1.6);
+}
+
+/* The width the board itself gives a prize photograph at each screen size, so
+   the shape is judged at the proportion it will really have. */
+.text-preview-media {
+  width: 210px;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: 28px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+}
+
+.text-preview[data-width='mobile'] .text-preview-media { width: 156px; }
+
+.text-preview-media[data-shape='circle'] { aspect-ratio: 1; border-radius: 50%; }
+.text-preview-media[data-shape='oval'] { aspect-ratio: 4 / 5; border-radius: 50%; }
+
+.text-preview-media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* The carousel itself is the board's module, so the preview needs the board's
+   rules for it. Only what the preview can actually show is repeated here —
+   the arrows and captions are switched off in this context. */
+.text-preview-media .carousel {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.text-preview-media .carousel-track {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  height: 100%;
+}
+
+.text-preview-media .carousel-slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 620ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.text-preview-media .carousel-slide.is-active { opacity: 1; }
+
+.text-preview-media .carousel[data-transition='slide'] .carousel-slide {
+  opacity: 1;
+  transform: translateX(100%);
+  transition: transform 620ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.text-preview-media .carousel[data-transition='slide'] .carousel-slide.is-active {
+  transform: none;
+}
+
+.text-preview-media .carousel[data-transition='slide'] .carousel-slide.is-leaving {
+  transform: translateX(-100%);
+}
+
+.text-preview-media .carousel-slide img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.text-preview-media .carousel-dots {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: rgba(5, 6, 24, 0.42);
+}
+
+.text-preview-media .carousel-dot {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.42);
+  transition: width 300ms ease;
+}
+
+.text-preview-media .carousel-dot.is-active {
+  width: 26px;
+  background: var(--c-amber);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .text-preview-media .carousel-slide,
+  .text-preview-media .carousel-dot { transition: none; }
+}
+
 /* -------------------------------------------------- NEW: board layout */
 
 .layout-grid {

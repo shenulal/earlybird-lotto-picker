@@ -76,6 +76,18 @@ const QR_POSITIONS = Object.freeze([
 ]);
 const QR_SIZES = Object.freeze(['small', 'medium', 'large', 'xl']);
 const QR_DISPLAY_MODES = Object.freeze(['icons', 'qr', 'both']);
+
+/* NEW: how the words on each screen are set. Every family here is either one
+   the application already ships or a stack the operating system provides, so
+   nothing needs fetching and an offline board looks the same as a hosted one. */
+const FONT_FAMILIES = Object.freeze(['display', 'body', 'mono', 'system', 'sans', 'serif']);
+const FONT_WEIGHTS = Object.freeze([0, 300, 400, 500, 700]);
+const TEXT_ALIGNMENTS = Object.freeze(['auto', 'left', 'center', 'right']);
+
+/* NEW: what the board does with a prize that has more than one photograph. */
+const PRIZE_IMAGE_MODES = Object.freeze(['single', 'carousel']);
+const CAROUSEL_TRANSITIONS = Object.freeze(['fade', 'slide']);
+const PRIZE_IMAGE_SHAPES = Object.freeze(['rounded', 'circle', 'oval']);
 const MAX_CHANNELS = 24;
 
 // Which end of the prize list the evening starts from.
@@ -140,6 +152,11 @@ const CLAMPS = Object.freeze({
   /* NEW: the board's own measurements. Zero everywhere means "leave it to the
      stylesheet", which is what every board did before these existed, so an
      organiser only sets the one thing they actually want to change. */
+  textFontSize: [0, 200],
+  textOpacity: [0, 100],
+  textLineHeight: [0, 300],
+  textLetterSpacing: [-20, 100],
+  prizeSlideMs: [1000, 20000],
   reelWidth: [0, 2400],
   reelHeight: [0, 420],
   reelFontSize: [0, 220],
@@ -216,6 +233,13 @@ function normalizeCopy(input) {
     (accumulator, key) => ({ ...accumulator, [key]: asText(source[key], DEFAULT_COPY[key], 160) }),
     {}
   );
+}
+
+/** NEW: a hex colour, or empty for "whatever the screen already uses". */
+function asColor(value, fallback) {
+  if (typeof value !== 'string') return fallback;
+  const trimmed = value.trim();
+  return /^#[0-9a-f]{3,8}$/i.test(trimmed) ? trimmed : fallback;
 }
 
 function normalizePalette(input) {
@@ -299,6 +323,19 @@ function normalizePrizes(input) {
     announceMode: asChoice(source.announceMode, PRIZE_ANNOUNCE_MODES, 'before'),
     showCaptions: asBoolean(source.showCaptions, true),
     intervalMs: clamp('prizeIntervalMs', source.intervalMs, 5000),
+    /* NEW: what the board does with a prize that has several photographs —
+       one still, or all of them turning. */
+    board: (() => {
+      const board = source.board && typeof source.board === 'object' ? source.board : {};
+      return {
+        imageMode: asChoice(board.imageMode, PRIZE_IMAGE_MODES, 'single'),
+        autoplay: asBoolean(board.autoplay, true),
+        slideMs: clamp('prizeSlideMs', board.slideMs, 3000),
+        transition: asChoice(board.transition, CAROUSEL_TRANSITIONS, 'fade'),
+        showDots: asBoolean(board.showDots, true),
+        shape: asChoice(board.shape, PRIZE_IMAGE_SHAPES, 'rounded'),
+      };
+    })(),
     items: unique,
   };
 }
@@ -418,6 +455,28 @@ function normalizeSocial(input) {
   };
 }
 
+/**
+ * NEW: one screen's text style.
+ *
+ * Zero means "as the screen has it", so a style nobody has touched renders
+ * exactly as it did before any of this existed and an operator only sets the
+ * one thing they want to change.
+ */
+function normalizeTextStyle(input) {
+  const source = input && typeof input === 'object' ? input : {};
+
+  return {
+    fontSize: clamp('textFontSize', source.fontSize, 0),
+    color: asColor(source.color, ''),
+    opacity: clamp('textOpacity', source.opacity, 100),
+    fontFamily: asChoice(source.fontFamily, FONT_FAMILIES, 'body'),
+    fontWeight: FONT_WEIGHTS.includes(Number(source.fontWeight)) ? Number(source.fontWeight) : 0,
+    align: asChoice(source.align, TEXT_ALIGNMENTS, 'auto'),
+    lineHeight: clamp('textLineHeight', source.lineHeight, 0),
+    letterSpacing: clamp('textLetterSpacing', source.letterSpacing, 0),
+  };
+}
+
 function normalizeBranding(input) {
   const source = input && typeof input === 'object' ? input : {};
   const logo = source.logo || {};
@@ -523,6 +582,13 @@ function normalizeAppSettings(input) {
 
     branding: normalizeBranding(source.branding),
     social: normalizeSocial(source.social),
+    // NEW: each screen's words are styled on their own; none of the three
+    // share a setting with another.
+    text: {
+      welcome: normalizeTextStyle((source.text || {}).welcome),
+      prizes: normalizeTextStyle((source.text || {}).prizes),
+      board: normalizeTextStyle((source.text || {}).board),
+    },
     welcome: normalizeWelcome(source.welcome),
     prizes: normalizePrizes(source.prizes),
     copy: normalizeCopy(source.copy),

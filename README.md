@@ -51,6 +51,7 @@ Behind a sign-in.
 | **Overview** | Live counters, data-health warnings, results table, CSV export, undo last draw, reset draw |
 | **Participants** | Upload the entry list or link a Google Sheet, with a column preview; download a template, export, or delete |
 | **Board layout** | How big the reel and the buttons are, and how far the backdrop is darkened — judged against a live preview of the board |
+| **Text & media** | How the words are set on each screen — face, size, weight, colour, opacity, alignment, line height, letter spacing — and how a prize's photographs are shown on the board, with a live preview |
 | **Channels** | Social links and their QR codes: style, position, size, display mode, with a live preview |
 | **Fields** | Rename columns, mark sensitive ones, choose the identifier and what appears in the export |
 | **Display** | Choose exactly which fields appear while spinning, on the announcement, on the winner card and in the winners list |
@@ -519,6 +520,43 @@ everything; **Reset to defaults** puts the sizing and the darkening back.
 
 ---
 
+## Text and media
+
+Under **Text & media** each screen is styled on its own — the welcome screen,
+the prize page, and the prize named on the draw board. They share no setting
+with one another, so a serif welcome does not drag a serif prize page along
+with it, and the three sit behind tabs rather than one long page for the same
+reason.
+
+Per screen: **font family** from the faces the application already ships (no
+network call, so it still works offline), **weight**, **alignment**, **colour**
+with a swatch and a hex field that follow each other, **opacity**, **size**,
+**line height** and **letter spacing**. Small / Medium / Large fill the sliders
+in one click, exactly as they do under Board layout.
+
+Everything left at **Auto** is left alone: the screen keeps the size, the face
+and the colour it has always had, which is why a board nobody has configured is
+pixel-for-pixel the board that shipped. A size set here governs the line that
+carries the screen — the message on the welcome screen, the prize's name on the
+other two — and a prize's description follows it proportionally rather than
+matching it, so asking for bigger type does not flatten the two lines into one.
+
+**Prize photographs on the board** decides what happens when a prize has more
+than one photograph. *Single* shows the first, as before. *Carousel* shows each
+in turn, with its own timing, a fade or a slide, dots that say how many there
+are, and a shape — rounded rectangle, circle or oval. The preview runs the
+board's own carousel on the board's own stylesheet, so what is shown is what
+will happen rather than an imitation of it; before any photographs are uploaded
+it stands in three plain panels, which is enough to judge the timing and the
+shape.
+
+As under Board layout, the preview is drawn at the real screen width and scaled
+down, on the uploaded backdrop at its current darkening, with desktop and phone
+widths. **Save configuration** commits, **Revert** drops unsaved edits, and
+**Reset to defaults** puts every screen and the photographs back.
+
+---
+
 ## Social channels and QR codes
 
 Under **Channels** in the console, add as many links as the event needs —
@@ -623,6 +661,20 @@ commit where there is one, and otherwise a hash of the served files themselves.
 | `ui.controls.minWidth` / `.height` / `.fontSize` / `.paddingX` | The buttons' measurements in pixels; zero is again "leave it to the board" |
 | `ui.controls.radius` | Corner radius in pixels. Unlike the rest, zero is a real choice — a square corner — so this defaults to 999 |
 | `branding.background.overlayOpacity` | How far the backdrop is darkened, 0–100. Higher darkens it so text stays readable; 0 leaves the photograph untouched |
+| `text.welcome` / `.prizes` / `.board` | How the words are set on each screen, one block each and independent of one another |
+| `text.*.fontFamily` | `display`, `body`, `mono`, `system`, `sans` or `serif` — faces the application ships, so this still works offline |
+| `text.*.fontSize` | Size in pixels, 0–200. Zero means the screen keeps the size it chooses for itself |
+| `text.*.fontWeight` | 300, 400, 500 or 700; zero leaves the screen's own weight |
+| `text.*.color` | Hex, or empty for the screen's own colour |
+| `text.*.opacity` | 0–100; 100 is the same as saying nothing |
+| `text.*.align` | `auto`, `left`, `center` or `right` |
+| `text.*.lineHeight` | Percentage, 0–300; zero leaves the screen's own |
+| `text.*.letterSpacing` | Hundredths of an em, −20 to 100; zero leaves it normal |
+| `prizes.board.imageMode` | `single` shows the first photograph, `carousel` shows each in turn |
+| `prizes.board.autoplay`, `.slideMs` | Whether the carousel advances on its own, and how long each photograph holds (1000–20000) |
+| `prizes.board.transition` | `fade` or `slide` |
+| `prizes.board.showDots` | Show the dots that say how many photographs there are |
+| `prizes.board.shape` | `rounded`, `circle` or `oval` |
 | `social.channels[]` | The links, in order: `{ id, type, url, label }` |
 | `social.qr.style` | `standard`, `colored`, `logo` or `rounded` |
 | `social.qr.position` | `bottom-left`, `bottom-right`, `bottom-center`, `top-right`, `sidebar` or `footer` |
@@ -727,14 +779,16 @@ pickora/
 ├── index.html / styles.css / script.js   # public draw board
 ├── admin.html / admin.css                # organiser console
 │   ├── admin.js                          # console shell, data, draw supervision
-│   └── admin-config.js                   # fields, display slots, branding, wording
+│   └── admin-config.js                   # fields, display slots, branding, wording,
+│                                         # board layout, text and media
 ├── api.js                                # shared API client
 ├── confetti.js                           # the celebrations, all seven of them
 ├── qr.js                                 # QR encoder, level H, no dependency
 ├── social.js                             # the channel block on public pages
 ├── welcome.html / prizes.html            # the two feature screens
 ├── feature-page.js                       # their shared controller
-├── carousel.js                           # the shared image slider
+├── carousel.js                           # the shared image slider, on the board,
+│                                         # the feature screens and the console preview
 ├── theme.js                              # one identity across every page
 ├── fonts/                                # bundled webfonts (no CDN)
 ├── server.js                             # local entry point (no dependencies)
