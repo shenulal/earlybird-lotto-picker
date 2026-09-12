@@ -126,6 +126,7 @@ WELCOME_CAROUSEL_DEFAULTS = {
     "aspect": "standard",
     "radius": 18,
     "placement": "bottom",
+    "showDots": True,
 }
 
 PRIZE_CAROUSEL_DEFAULTS = {
@@ -133,6 +134,7 @@ PRIZE_CAROUSEL_DEFAULTS = {
     "aspect": "standard",
     "radius": 18,
     "placement": "top",
+    "showDots": True,
 }
 
 MAX_WELCOME_IMAGES = 20
@@ -437,6 +439,9 @@ def _normalize_carousel(raw: Any, defaults: Dict[str, Any]) -> Dict[str, Any]:
         "aspect": _as_choice(source.get("aspect"), CAROUSEL_ASPECTS, defaults["aspect"]),
         "radius": _clamp("carouselRadius", source.get("radius"), defaults["radius"]),
         "placement": _as_choice(source.get("placement"), CAROUSEL_PLACEMENTS, defaults["placement"]),
+        # NEW: whether the dots under the photographs are there at all. On by
+        # default, which is what both screens have always shown.
+        "showDots": _as_bool(source.get("showDots"), defaults["showDots"]),
     }
 
 

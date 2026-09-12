@@ -612,6 +612,11 @@ whatever else is chosen, which is why the console stops offering the choice for
 them rather than letting it sit there doing nothing. Every shape crops from the
 centre with `object-fit: cover`, so a photograph is never stretched to fill one.
 
+**Show carousel dots** decides whether the navigation dots appear under the
+photographs. On by default, which is what both screens have always shown.
+Turning them off hides them and nothing else: the photographs still turn on
+their own, at the same interval, with the same transition.
+
 **Placement** is top, centre, bottom, left or right. Centre means between the
 heading and the message — the prize's name and what it is, on a prize card.
 Left and right set the carousel beside the words on a wide screen and stack it
@@ -765,6 +770,7 @@ commit where there is one, and otherwise a hash of the served files themselves.
 | `*.carousel.aspect` | `standard` 4:3, `wide` 16:9 or `classic` 3:2. Ignored by the two square shapes |
 | `*.carousel.radius` | Corner radius in pixels, 0–80. Used by `rounded` only |
 | `*.carousel.placement` | `top`, `center`, `bottom`, `left` or `right`. The last two stack on a phone, picture first |
+| `*.carousel.showDots` | Show the navigation dots under the photographs. On by default; off leaves the carousel turning without them |
 | `prizes.board.imageMode` | `single` shows the first photograph, `carousel` shows each in turn |
 | `prizes.board.autoplay`, `.slideMs` | Whether the carousel advances on its own, and how long each photograph holds (1000–20000) |
 | `prizes.board.transition` | `fade` or `slide` |

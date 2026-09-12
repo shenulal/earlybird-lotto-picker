@@ -1154,8 +1154,8 @@
        circle below the message since that screen was redesigned, a prize's a
        plain frame above its name. Both are left exactly as they are. */
     const CAROUSEL_DEFAULTS = {
-      welcome: { shape: 'circle', aspect: 'standard', radius: 18, placement: 'bottom' },
-      prizes: { shape: 'rectangle', aspect: 'standard', radius: 18, placement: 'top' },
+      welcome: { shape: 'circle', aspect: 'standard', radius: 18, placement: 'bottom', showDots: true },
+      prizes: { shape: 'rectangle', aspect: 'standard', radius: 18, placement: 'top', showDots: true },
     };
 
     // Where each screen keeps it. The board's own photograph settings are a
@@ -1247,22 +1247,33 @@
       return document.querySelector(`[data-carousel="${scope}.${key}"]`);
     }
 
+    /** Reads by the shape of the default, so a switch is read as a switch. */
     function readCarousel(scope) {
       const carousel = { ...CAROUSEL_DEFAULTS[scope] };
+
       Object.keys(carousel).forEach((key) => {
         const field = carouselField(scope, key);
         if (!field) return;
-        carousel[key] = key === 'radius' ? Number(field.value) || 0 : field.value;
+
+        const fallback = CAROUSEL_DEFAULTS[scope][key];
+        if (typeof fallback === 'boolean') carousel[key] = field.checked;
+        else if (typeof fallback === 'number') carousel[key] = Number(field.value) || 0;
+        else carousel[key] = field.value;
       });
+
       return carousel;
     }
 
     function writeCarousel(scope, carousel) {
       const values = { ...CAROUSEL_DEFAULTS[scope], ...(carousel || {}) };
+
       Object.keys(CAROUSEL_DEFAULTS[scope]).forEach((key) => {
         const field = carouselField(scope, key);
-        if (field) field.value = values[key];
+        if (!field) return;
+        if (typeof CAROUSEL_DEFAULTS[scope][key] === 'boolean') field.checked = Boolean(values[key]);
+        else field.value = values[key];
       });
+
       renderCarouselControls(scope);
     }
 
@@ -1563,7 +1574,7 @@
       if (images.length > 1 && global.createCarousel) {
         previewCarousel = global.createCarousel(mount, images, {
           intervalMs: scope === 'welcome' ? draft.welcome.intervalMs : draft.prizes.intervalMs,
-          showDots: true,
+          showDots: carousel.showDots,
           showArrows: false,
           showCaptions: false,
           altFallback: 'Photograph',

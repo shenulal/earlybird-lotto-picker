@@ -126,6 +126,9 @@ function normalizeCarousel(input, defaults) {
     aspect: asChoice(source.aspect, CAROUSEL_ASPECTS, defaults.aspect),
     radius: clamp('carouselRadius', source.radius, defaults.radius),
     placement: asChoice(source.placement, CAROUSEL_PLACEMENTS, defaults.placement),
+    // NEW: whether the dots under the photographs are there at all. On by
+    // default, which is what both screens have always shown.
+    showDots: asBoolean(source.showDots, defaults.showDots),
   };
 }
 
@@ -134,6 +137,7 @@ const WELCOME_CAROUSEL_DEFAULTS = Object.freeze({
   aspect: 'standard',
   radius: 18,
   placement: 'bottom',
+  showDots: true,
 });
 
 const PRIZE_CAROUSEL_DEFAULTS = Object.freeze({
@@ -141,6 +145,7 @@ const PRIZE_CAROUSEL_DEFAULTS = Object.freeze({
   aspect: 'standard',
   radius: 18,
   placement: 'top',
+  showDots: true,
 });
 
 const MAX_WELCOME_IMAGES = 20;

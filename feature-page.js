@@ -65,6 +65,9 @@
         // CHANGED: nothing is laid over the photographs here. The dots sit
         // below the frame, and the carousel advances on its own.
         showArrows: false,
+        // NEW: the dots are the organiser's to keep or drop. Dropping them
+        // changes nothing else — the photographs still turn on their own.
+        showDots: welcome.carousel.showDots,
       })
     );
 
@@ -151,6 +154,7 @@
           intervalMs: prizes.intervalMs,
           showCaptions: prizes.showCaptions,
           altFallback: prize.name,
+          showDots: prizes.carousel.showDots,
         })
       );
     });
