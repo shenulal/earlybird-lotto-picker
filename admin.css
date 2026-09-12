@@ -570,6 +570,155 @@ input:focus-visible,
   box-shadow: 0 0 0 3px rgba(245, 181, 68, 0.22);
 }
 
+/* ------------------------------------------- NEW: winner reveal rehearsal */
+
+.reveal-sim {
+  margin-top: 16px;
+  overflow: hidden;
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius);
+  background: #0d1016;
+}
+
+.reveal-sim-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px 10px 14px;
+  border-bottom: 1px solid var(--c-line);
+}
+
+.reveal-sim-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--c-text-faint);
+}
+
+.reveal-sim[data-phase='call'] .reveal-sim-label { color: var(--c-amber); }
+.reveal-sim[data-phase='card'] .reveal-sim-label { color: var(--c-green); }
+
+/* Deep enough that the announcement and the card can swap without the panel
+   below jumping as one gives way to the other. */
+.reveal-sim-stage {
+  display: grid;
+  place-items: center;
+  min-height: 168px;
+  padding: 22px 18px;
+  text-align: center;
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(245, 181, 68, 0.07), transparent 60%),
+    linear-gradient(180deg, #12161f, #0d1016);
+}
+
+.reveal-sim[data-phase='idle'] .reveal-sim-stage::after {
+  content: 'Press play to rehearse the reveal at this delay.';
+  font-size: 0.82rem;
+  color: var(--c-text-faint);
+}
+
+/* The wait, while it is happening rather than only in hindsight. */
+.reveal-sim-track {
+  height: 3px;
+  background: var(--c-line);
+}
+
+.reveal-sim-bar {
+  display: block;
+  height: 100%;
+  background: var(--c-amber);
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+.sim-call,
+.sim-card {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  width: 100%;
+}
+
+.sim-eyebrow {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--c-amber);
+}
+
+.sim-line {
+  margin: 0;
+  display: grid;
+  gap: 2px;
+  overflow-wrap: anywhere;
+}
+
+.sim-line[data-emphasis='primary'] {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--c-text);
+}
+
+.sim-line[data-emphasis='secondary'] {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--c-text);
+}
+
+.sim-line[data-emphasis='meta'] {
+  font-size: 0.82rem;
+  color: var(--c-text-soft);
+}
+
+.sim-line-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--c-text-faint);
+}
+
+.sim-prize {
+  margin: 4px 0 0;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--c-amber-soft);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--c-amber);
+}
+
+/* The same two moves the board makes, so the rehearsal is of the real thing. */
+.sim-enter { animation: simEnter 460ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+.sim-call.is-leaving {
+  animation: none;
+  opacity: 0;
+  transform: translate3d(0, -18px, 0) scale(0.985);
+  transition:
+    opacity var(--announcement-exit, 300ms) cubic-bezier(0.22, 1, 0.36, 1),
+    transform var(--announcement-exit, 300ms) cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes simEnter {
+  from { opacity: 0; transform: translate3d(0, 22px, 0) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sim-enter { animation: none; }
+
+  .sim-call.is-leaving {
+    transform: none;
+    transition: none;
+  }
+}
+
 /* --------------------------------------------------- NEW: text & media */
 
 /* Tabs rather than one long page: the three screens share no setting, so

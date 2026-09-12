@@ -276,6 +276,33 @@
 
         <div class="slot-grid" id="slotEditors"></div>
 
+        <!-- NEW: how long the announcement holds before the card, with a
+             rehearsal of the sequence so the number can be judged as a length
+             of time rather than read as one. -->
+        <div class="card">
+          <div class="card-head">
+            <h2 class="card-title">Winner reveal timing</h2>
+            <div class="card-actions">
+              <button type="button" class="btn btn-ghost btn-small" id="resetRevealDelayBtn">Reset to default</button>
+            </div>
+          </div>
+
+          <label class="field">
+            <span class="field-label">Winner announcement delay <output class="field-value" id="revealDelayValue">5.0s</output></span>
+            <input type="range" id="revealDelay" min="0" max="30000" step="500" value="5000">
+            <span class="field-hint">Set how long the Winner Announcement screen stays displayed before the Winner Card appears after a draw completes. The clock starts when the reel stops and the winner is known, never during the spin. At 0 the announcement is skipped and the card appears at once.</span>
+          </label>
+
+          <div class="reveal-sim" id="revealSim" data-phase="idle">
+            <div class="reveal-sim-head">
+              <span class="reveal-sim-label" id="revealSimLabel">Rehearsal</span>
+              <button type="button" class="btn btn-ghost btn-small" id="playRevealBtn">Play the sequence</button>
+            </div>
+            <div class="reveal-sim-stage" id="revealSimStage"></div>
+            <div class="reveal-sim-track" aria-hidden="true"><span class="reveal-sim-bar" id="revealSimBar"></span></div>
+          </div>
+        </div>
+
         <div class="card">
           <h2 class="card-title">Winners panel</h2>
           <label class="field" style="max-width:260px">
@@ -1192,10 +1219,6 @@
                   <option value="right">Right</option>
                 </select>
                 <span class="field-hint">Move the draw panel clear of artwork in the background image.</span>
-              </label>
-              <label class="field">
-                <span class="field-label">Winner announcement delay (ms)</span>
-                <input type="number" name="animation.winnerAnnouncementDelay" min="0" max="15000" step="100">
               </label>
               <label class="field">
                 <span class="field-label">Confetti start delay (ms)</span>

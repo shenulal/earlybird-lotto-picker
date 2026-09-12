@@ -7,6 +7,7 @@ what to paint from display slots that reference those columns by key.
 Mirrors ``server/schema.js`` exactly so both runtimes read the same file.
 """
 
+import math
 import re
 from typing import Any, Dict, List, Optional, Sequence
 
@@ -173,12 +174,17 @@ def default_display(schema: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _clamp_entries(value: Any, fallback: int) -> int:
+    if isinstance(value, (list, dict)) or value is None:
+        return fallback
     try:
         number = float(value)
     except (TypeError, ValueError):
         return fallback
+    if number != number or number in (float("inf"), float("-inf")):
+        return fallback
     low, high = PANEL_ENTRY_LIMITS
-    return int(min(high, max(low, round(number))))
+    # Rounded the way JavaScript rounds, so a half lands on the same integer.
+    return int(min(high, max(low, math.floor(number + 0.5))))
 
 
 def normalize_display(raw: Any, schema: Dict[str, Any]) -> Dict[str, Any]:

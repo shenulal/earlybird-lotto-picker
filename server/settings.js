@@ -144,7 +144,9 @@ const CLAMPS = Object.freeze({
   rollingSpeed: [10, 1000],
   confettiDuration: [0, 60000],
   confettiCount: [0, 600],
-  winnerAnnouncementDelay: [0, 15000],
+  // Up to half a minute: long enough to hold a room in suspense, and zero is
+  // a real choice meaning "no announcement at all".
+  winnerAnnouncementDelay: [0, 30000],
   confettiStartDelay: [0, 15000],
   minimumRollMs: [0, 30000],
   logoMaxHeight: [24, 480],
@@ -170,6 +172,16 @@ const CLAMPS = Object.freeze({
 });
 
 function clamp(key, value, fallback) {
+  // FIX: Number() turns null, '' and [] into 0, where Python's float() refuses
+  // them and falls back. The two backends have to agree, and for a setting like
+  // the announcement delay the difference is not cosmetic — zero is a real
+  // instruction ("no announcement"), so a missing value must never read as one.
+  const numeric =
+    typeof value === 'number' ||
+    typeof value === 'boolean' ||
+    (typeof value === 'string' && value.trim() !== '');
+  if (!numeric) return fallback;
+
   const number = Number(value);
   if (!Number.isFinite(number)) return fallback;
   const [min, max] = CLAMPS[key];
@@ -566,7 +578,7 @@ function normalizeAppSettings(input) {
       confettiDuration: clamp('confettiDuration', animation.confettiDuration, 8000),
       confettiCount: clamp('confettiCount', animation.confettiCount, 150),
       confettiPalette: normalizePalette(animation.confettiPalette),
-      winnerAnnouncementDelay: clamp('winnerAnnouncementDelay', animation.winnerAnnouncementDelay, 2500),
+      winnerAnnouncementDelay: clamp('winnerAnnouncementDelay', animation.winnerAnnouncementDelay, 5000),
       confettiStartDelay: clamp('confettiStartDelay', animation.confettiStartDelay, 500),
       // NEW: which celebration the reveal fires. Absent on an event saved
       // before this existed, which is exactly what 'classic' means.

@@ -54,7 +54,7 @@ Behind a sign-in.
 | **Text & media** | How the words are set on each screen — face, size, weight, colour, opacity, alignment, line height, letter spacing — and how a prize's photographs are shown on the board, with a live preview |
 | **Channels** | Social links and their QR codes: style, position, size, display mode, with a live preview |
 | **Fields** | Rename columns, mark sensitive ones, choose the identifier and what appears in the export |
-| **Display** | Choose exactly which fields appear while spinning, on the announcement, on the winner card and in the winners list |
+| **Display** | Choose exactly which fields appear while spinning, on the announcement, on the winner card and in the winners list, and how long the announcement is held before the card — with a rehearsal of the reveal |
 | **Branding** | Upload the logo and backdrop, with size and resolution validated on the server |
 | **Welcome** | Greet a chief guest with a message and a carousel of photos |
 | **Prizes** | Build the prize list, each with its own photo carousel |
@@ -492,6 +492,38 @@ window steps on a slow timer instead.
 
 ---
 
+## The winner reveal
+
+A draw ends in two beats: the **announcement**, which names the winner and
+nothing else, and then the **winner card**, which carries the full result. The
+pause between them is the suspense, so it is the organiser's to set.
+
+**Winner announcement delay** lives under **Display**, directly beneath the two
+slots it sits between, and runs from 0 to 30 seconds. The clock starts when the
+reel has stopped and the winner is known — never during the spin — so the pause
+the organiser configured is the pause the room gets, whatever the draw itself
+took to arrive.
+
+At **0** there is no announcement at all. Not one shown for no time, which
+reads as a flicker: the card takes the stage the moment the reel stops.
+
+The announcement fades out over the last 300ms of the delay rather than after
+it, so the hand-over is smooth without quietly lengthening the wait — the card
+still appears on the beat. A browser asking for reduced motion gets the swap
+with no movement at all.
+
+Because a number of seconds is hard to judge as a length of suspense, the panel
+will **rehearse** it: press play and the same sequence runs at the configured
+delay, on the organiser's own slots and one of their own entries, with a bar
+showing the wait as it happens. Moving the slider stops a rehearsal rather than
+letting it finish at a delay the slider no longer says.
+
+Every timer belonging to a reveal is cancelled the moment anything else takes
+the stage, so a second draw restarts the sequence cleanly and a card from the
+previous round can never land on top of the current one.
+
+---
+
 ## Board layout
 
 Under **Board layout** the reel and the buttons can be given their own
@@ -651,7 +683,7 @@ commit where there is one, and otherwise a hash of the served files themselves.
 | `draw.requireAuthForDraw` | Only a signed-in browser may draw |
 | `draw.minimumRollMs` | Shortest a roll may last; an early Stop is spent slowing down rather than waiting |
 | `animation.rollingSpeed` | Milliseconds per entry on the reel |
-| `animation.winnerAnnouncementDelay` | Pause between the announcement and the winner card |
+| `animation.winnerAnnouncementDelay` | How long the announcement is held before the winner card, 0–30000ms (default 5000). Timed from the moment the reel stops; 0 skips the announcement entirely |
 | `animation.confettiStartDelay`, `confettiDuration`, `confettiCount` | Confetti timing and density. Two cannons fire from the bottom corners, a softer fall keeps coming from above, and emission stops early so the last pieces drift out of frame rather than being cut off |
 | `animation.confettiPalette` | Up to 12 hex colours for the confetti |
 | `animation.celebration` | Which celebration fires: `classic`, `streamers`, `stars`, `balloons`, `snow`, `money`, `mix` or `none` |

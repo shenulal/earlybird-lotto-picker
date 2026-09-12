@@ -4,6 +4,7 @@ Mirrors ``server/settings.js`` field for field, so one ``appsettings.json``
 works under either runtime.
 """
 
+import math
 import os
 import re
 import secrets
@@ -161,7 +162,9 @@ CLAMPS = {
     "rollingSpeed": (10, 1000),
     "confettiDuration": (0, 60000),
     "confettiCount": (0, 600),
-    "winnerAnnouncementDelay": (0, 15000),
+    # Up to half a minute: long enough to hold a room in suspense, and zero is
+    # a real choice meaning "no announcement at all".
+    "winnerAnnouncementDelay": (0, 30000),
     "confettiStartDelay": (0, 15000),
     "minimumRollMs": (0, 30000),
     "logoMaxHeight": (24, 480),
@@ -192,6 +195,10 @@ HEX_COLOR = re.compile(r"^#[0-9a-f]{3,8}$", re.I)
 
 
 def _clamp(key: str, value: Any, fallback: int) -> int:
+    # A list converts to neither backend's idea of a number, but float() accepts
+    # a few shapes Number() does not; both are refused here so the two agree.
+    if isinstance(value, (list, dict)) or value is None:
+        return fallback
     try:
         number = float(value)
     except (TypeError, ValueError):
@@ -199,7 +206,10 @@ def _clamp(key: str, value: Any, fallback: int) -> int:
     if number != number or number in (float("inf"), float("-inf")):
         return fallback
     low, high = CLAMPS[key]
-    return int(min(high, max(low, round(number))))
+    # FIX: Python rounds a half to even (2.5 -> 2) and JavaScript rounds it up
+    # (2.5 -> 3). Floor of value-plus-a-half is what Math.round does, including
+    # for negatives, so a hostile half-value lands on the same integer in both.
+    return int(min(high, max(low, math.floor(number + 0.5))))
 
 
 def _as_bool(value: Any, fallback: bool) -> bool:
@@ -610,7 +620,7 @@ def normalize_app_settings(raw: Any) -> Dict[str, Any]:
             "confettiDuration": _clamp("confettiDuration", animation.get("confettiDuration"), 8000),
             "confettiCount": _clamp("confettiCount", animation.get("confettiCount"), 150),
             "confettiPalette": _normalize_palette(animation.get("confettiPalette")),
-            "winnerAnnouncementDelay": _clamp("winnerAnnouncementDelay", animation.get("winnerAnnouncementDelay"), 2500),
+            "winnerAnnouncementDelay": _clamp("winnerAnnouncementDelay", animation.get("winnerAnnouncementDelay"), 5000),
             "confettiStartDelay": _clamp("confettiStartDelay", animation.get("confettiStartDelay"), 500),
             # NEW: which celebration the reveal fires. Absent on an event saved
             # before this existed, which is exactly what "classic" means.

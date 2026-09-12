@@ -24,6 +24,10 @@
   };
   const REVEAL_ANIMATIONS = ['reveal-rise', 'reveal-flip', 'reveal-zoom', 'reveal-swing', 'reveal-drop'];
 
+  // How long the announcement takes to give way to the card, at most. Taken
+  // out of the configured delay rather than added to it.
+  const ANNOUNCEMENT_EXIT_MS = 300;
+
   const prefersReducedMotion = global.matchMedia('(prefers-reduced-motion: reduce)');
 
   const elements = {
@@ -73,6 +77,11 @@
   let confetti = null;
   let reel = null;
   let prizeCarousel = null;
+
+  // NEW: every timer belonging to the reveal currently on the stage. A second
+  // draw, a reset, or anything else that takes the stage cancels them, so a
+  // winner card from the previous round can never land on top of this one.
+  let revealTimers = [];
 
   /* ------------------------------------------------------------- utilities */
 
@@ -139,7 +148,20 @@
    * Anything that writes here replaces the reel, so the reel is torn down
    * first — otherwise its animation frames keep painting a detached element.
    */
+  /** Drops any pending step of a reveal that is no longer on the stage. */
+  function clearRevealTimers() {
+    revealTimers.forEach(clearTimeout);
+    revealTimers = [];
+  }
+
+  /** A timer that belongs to this reveal, and dies with it. */
+  function afterReveal(callback, delay) {
+    revealTimers.push(setTimeout(callback, delay));
+  }
+
   function setStage(html) {
+    clearRevealTimers();
+
     if (reel) {
       reel.destroy();
       reel = null;
@@ -469,9 +491,40 @@
     }
   }
 
+  /**
+   * CHANGED: the announcement is held for exactly as long as the organiser
+   * asked, and then gives way to the card.
+   *
+   * The delay is measured from here — the reel has already stopped and the
+   * winner is already known — so the suspense the organiser configured is the
+   * suspense the room gets, whatever the draw took to arrive.
+   *
+   * The announcement fades out over the last moments of that delay rather than
+   * after it, so a longer fade never quietly lengthens the wait; the card still
+   * appears on the beat. At zero there is no announcement at all, not an
+   * announcement shown for no time, which would read as a flicker.
+   */
   function revealWinner(winner) {
     const { animation } = state.settings;
     const revealAnimation = REVEAL_ANIMATIONS[(winner.prizeNumber - 1) % REVEAL_ANIMATIONS.length];
+    const delay = Math.max(0, Number(animation.winnerAnnouncementDelay) || 0);
+
+    const showCard = () => {
+      renderWinnerCard(winner, revealAnimation);
+      // CHANGED: the reveal fires whichever celebration the organiser chose.
+      afterReveal(() => {
+        confetti.start({
+          count: animation.confettiCount,
+          duration: animation.confettiDuration,
+          type: animation.celebration,
+        });
+      }, animation.confettiStartDelay);
+    };
+
+    if (delay === 0) {
+      showCard();
+      return Promise.resolve();
+    }
 
     setStage(`
       <div class="winner-call ${revealAnimation}">
@@ -480,19 +533,30 @@
       </div>`);
 
     return new Promise((resolve) => {
-      setTimeout(() => {
-        renderWinnerCard(winner, revealAnimation);
-        setTimeout(() => {
-          // CHANGED: the reveal fires whichever celebration the organiser chose.
-      confetti.start({
-        count: animation.confettiCount,
-        duration: animation.confettiDuration,
-        type: animation.celebration,
-      });
-        }, animation.confettiStartDelay);
+      const fade = announcementExitMs(delay);
+      const announcement = elements.reel.querySelector('.winner-call');
+
+      if (announcement && fade > 0) {
+        announcement.style.setProperty('--announcement-exit', `${fade}ms`);
+        afterReveal(() => announcement.classList.add('is-leaving'), delay - fade);
+      }
+
+      afterReveal(() => {
+        showCard();
         resolve();
-      }, animation.winnerAnnouncementDelay);
+      }, delay);
     });
+  }
+
+  /**
+   * How long the announcement takes to leave.
+   *
+   * It is carved out of the delay, so on a short one it shrinks rather than
+   * eating the whole moment, and a reduced-motion browser gets no fade at all.
+   */
+  function announcementExitMs(delay) {
+    if (prefersReducedMotion.matches) return 0;
+    return Math.min(ANNOUNCEMENT_EXIT_MS, Math.round(delay / 3));
   }
 
   /* ------------------------------------------------------------ data sync */

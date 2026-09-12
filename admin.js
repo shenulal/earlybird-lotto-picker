@@ -635,7 +635,6 @@
     'animation.rollingSpeed',
     'animation.confettiDuration',
     'animation.confettiCount',
-    'animation.winnerAnnouncementDelay',
     'animation.confettiStartDelay',
     'draw.minimumRollMs',
   ];
@@ -799,6 +798,12 @@
       // was read, base64-encoded and posted only to be refused. The editors
       // need the deployment's real limit to fail fast instead.
       getLimits: () => (state.overview && state.overview.limits) || {},
+      // NEW: a real entry for the winner-reveal simulation, so an organiser
+      // previews their own fields with their own data rather than a mock-up.
+      getSampleRecord: () => {
+        const sample = state.overview && state.overview.data && state.overview.data.sample;
+        return Array.isArray(sample) && sample.length > 0 ? sample[0] : null;
+      },
       applySettings(appSettings) {
         state.overview = { ...state.overview, appSettings };
         if (configEditors) configEditors.render();

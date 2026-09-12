@@ -1308,6 +1308,26 @@ body[data-logo-position='top-right'] {
   min-width: 0;
 }
 
+/* NEW: the announcement handing over to the card.
+   The entrance animation is cancelled first, or it fights the exit for the
+   same properties. Only opacity and transform move, so the hand-over stays on
+   the compositor even on the underpowered stick PC behind a projector. */
+.winner-call.is-leaving {
+  animation: none;
+  opacity: 0;
+  transform: translate3d(0, -18px, 0) scale(0.985);
+  transition:
+    opacity var(--announcement-exit, 300ms) var(--ease),
+    transform var(--announcement-exit, 300ms) var(--ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .winner-call.is-leaving {
+    transform: none;
+    transition: none;
+  }
+}
+
 /* -------------------------------------------------------------- reveals */
 
 .reveal-rise { animation: revealRise 820ms var(--ease) both; }

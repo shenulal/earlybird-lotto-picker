@@ -205,6 +205,15 @@
       saveDisplayBtn: document.getElementById('saveDisplayBtn'),
       revertDisplayBtn: document.getElementById('revertDisplayBtn'),
 
+      revealDelay: document.getElementById('revealDelay'),
+      revealDelayValue: document.getElementById('revealDelayValue'),
+      resetRevealDelayBtn: document.getElementById('resetRevealDelayBtn'),
+      revealSim: document.getElementById('revealSim'),
+      revealSimStage: document.getElementById('revealSimStage'),
+      revealSimLabel: document.getElementById('revealSimLabel'),
+      revealSimBar: document.getElementById('revealSimBar'),
+      playRevealBtn: document.getElementById('playRevealBtn'),
+
       copyFields: document.getElementById('copyFields'),
       saveCopyBtn: document.getElementById('saveCopyBtn'),
       revertCopyBtn: document.getElementById('revertCopyBtn'),
@@ -372,7 +381,128 @@
       ).join('');
 
       elements.panelMaxEntries.value = settings.display.panel.maxEntries;
+      elements.revealDelay.value = settings.animation.winnerAnnouncementDelay;
+      renderRevealDelay();
       renderSensitiveWarning();
+    }
+
+    /* ------------------------------------------- NEW: winner reveal timing */
+
+    const REVEAL_DELAY_DEFAULT = 5000;
+
+    // Long enough to read as a hand-over, short enough that it never eats a
+    // brief delay. The board carves the same slice out of the same delay.
+    const REVEAL_EXIT_MS = 300;
+
+    function revealDelayMs() {
+      return Math.max(0, Number(elements.revealDelay.value) || 0);
+    }
+
+    /** Says the delay as a length of time, and says what zero means. */
+    function renderRevealDelay() {
+      const ms = revealDelayMs();
+      elements.revealDelayValue.textContent =
+        ms === 0 ? 'Off — card at once' : `${(ms / 1000).toFixed(1)}s`;
+    }
+
+    /**
+     * NEW: a rehearsal of the reveal, at the delay currently set.
+     *
+     * A number of seconds is hard to judge as a length of suspense, and the
+     * only other way to find out is to spend a real draw on it in front of an
+     * audience. This plays the same sequence the board plays — announcement,
+     * the same hand-over carved out of the same delay, then the card — on the
+     * organiser's own slots and one of their own entries.
+     */
+    let revealSimTimers = [];
+
+    function stopRevealSim() {
+      revealSimTimers.forEach(clearTimeout);
+      revealSimTimers = [];
+      elements.revealSim.dataset.phase = 'idle';
+      elements.revealSimBar.style.transition = 'none';
+      elements.revealSimBar.style.transform = 'scaleX(0)';
+      elements.playRevealBtn.textContent = 'Play the sequence';
+    }
+
+    function simLater(callback, delay) {
+      revealSimTimers.push(setTimeout(callback, delay));
+    }
+
+    /** The slot's chosen lines, filled from a real entry where there is one. */
+    function simSlot(slotKey, record) {
+      const settings = context.getSettings();
+      const labels = new Map(settings.data.fields.map((f) => [f.key, f.label || f.key]));
+
+      const lines = settings.display[slotKey].lines
+        .map((line) => {
+          const value = record ? record[line.field] : '';
+          if (value === undefined || value === null || String(value).trim() === '') return '';
+          const label = line.showLabel && labels.get(line.field)
+            ? `<span class="sim-line-label">${escapeHtml(labels.get(line.field))}</span>`
+            : '';
+          return `<p class="sim-line" data-emphasis="${escapeHtml(line.emphasis)}">${label}<span>${escapeHtml(value)}</span></p>`;
+        })
+        .filter(Boolean)
+        .join('');
+
+      return lines || '<p class="sim-line" data-emphasis="meta">Nothing is placed on this slot yet.</p>';
+    }
+
+    function playRevealSim() {
+      stopRevealSim();
+
+      const settings = context.getSettings();
+      const record = context.getSampleRecord();
+      const delay = revealDelayMs();
+      const prize = settings.prizes.items[0];
+      const rank = prize ? prize.label : `${settings.copy.prizeLabel} 1`;
+
+      const card = () => {
+        elements.revealSim.dataset.phase = 'card';
+        elements.revealSimLabel.textContent = 'Winner card';
+        elements.revealSimStage.innerHTML = `
+          <div class="sim-card sim-enter">
+            <p class="sim-eyebrow">${escapeHtml(settings.copy.winnerEyebrow)} &middot; ${escapeHtml(rank)}</p>
+            ${simSlot('card', record)}
+            ${prize ? `<p class="sim-prize">${escapeHtml(prize.name)}</p>` : ''}
+          </div>`;
+        elements.playRevealBtn.textContent = 'Play the sequence';
+      };
+
+      // Zero is not a very short announcement, it is no announcement: the
+      // rehearsal has to show that, or the setting looks broken at 0.
+      if (delay === 0) {
+        card();
+        return;
+      }
+
+      elements.revealSim.dataset.phase = 'call';
+      elements.revealSimLabel.textContent = 'Winner announcement';
+      elements.playRevealBtn.textContent = 'Playing…';
+      elements.revealSimStage.innerHTML = `
+        <div class="sim-call sim-enter">
+          <p class="sim-eyebrow">${escapeHtml(settings.copy.winnerEyebrow)}</p>
+          ${simSlot('call', record)}
+        </div>`;
+
+      // The bar runs the whole delay, so the wait is visible while it happens
+      // rather than only in hindsight.
+      const bar = elements.revealSimBar;
+      bar.style.transition = 'none';
+      bar.style.transform = 'scaleX(0)';
+      requestAnimationFrame(() => {
+        bar.style.transition = `transform ${delay}ms linear`;
+        bar.style.transform = 'scaleX(1)';
+      });
+
+      const fade = Math.min(REVEAL_EXIT_MS, Math.round(delay / 3));
+      const announcement = elements.revealSimStage.querySelector('.sim-call');
+      simLater(() => {
+        announcement.style.setProperty('--announcement-exit', `${fade}ms`);
+        announcement.classList.add('is-leaving');
+      }, delay - fade);
+      simLater(card, delay);
     }
 
     /** Warns when a field marked sensitive has been placed on a public slot. */
@@ -422,7 +552,11 @@
       }, {});
 
       display.panel.maxEntries = Number(elements.panelMaxEntries.value);
-      return { ...settings, display: { ...settings.display, ...display } };
+      return {
+        ...settings,
+        display: { ...settings.display, ...display },
+        animation: { ...settings.animation, winnerAnnouncementDelay: revealDelayMs() },
+      };
     }
 
     /* ---------------------------------------------------------- wording */
@@ -1547,7 +1681,29 @@
       elements.revertFieldsBtn.addEventListener('click', renderFields);
 
       elements.saveDisplayBtn.addEventListener('click', () => context.save(collectDisplay(), 'Display saved.'));
-      elements.revertDisplayBtn.addEventListener('click', renderDisplay);
+      elements.revertDisplayBtn.addEventListener('click', () => {
+        stopRevealSim();
+        renderDisplay();
+      });
+
+      // NEW: the winner reveal timing.
+      elements.revealDelay.addEventListener('input', () => {
+        renderRevealDelay();
+        // A rehearsal pacing the old value while the slider says a new one is
+        // worse than no rehearsal, so it is dropped the moment this moves.
+        stopRevealSim();
+      });
+
+      elements.resetRevealDelayBtn.addEventListener('click', () => {
+        elements.revealDelay.value = String(REVEAL_DELAY_DEFAULT);
+        renderRevealDelay();
+        stopRevealSim();
+      });
+
+      elements.playRevealBtn.addEventListener('click', () => {
+        if (elements.revealSim.dataset.phase === 'call') stopRevealSim();
+        else playRevealSim();
+      });
 
       elements.saveCopyBtn.addEventListener('click', () => context.save(collectCopy(), 'Wording saved.'));
       elements.revertCopyBtn.addEventListener('click', renderCopy);

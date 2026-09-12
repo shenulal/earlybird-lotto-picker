@@ -168,6 +168,14 @@ function defaultDisplay(schema) {
 }
 
 function clampEntries(value, fallback) {
+  // FIX: as in settings.js — null, '' and [] are not numbers anybody gave us,
+  // and Number() turning them into 0 disagreed with the Python side.
+  const numeric =
+    typeof value === 'number' ||
+    typeof value === 'boolean' ||
+    (typeof value === 'string' && value.trim() !== '');
+  if (!numeric) return fallback;
+
   const number = Number(value);
   if (!Number.isFinite(number)) return fallback;
   const [min, max] = PANEL_ENTRY_LIMITS;
