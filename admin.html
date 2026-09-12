@@ -771,7 +771,9 @@
                     <option value="300">Light</option>
                     <option value="400">Regular</option>
                     <option value="500">Medium</option>
+                    <option value="600">Semi-Bold</option>
                     <option value="700">Bold</option>
+                    <option value="800">Extra-Bold</option>
                   </select>
                 </label>
                 <label class="field">
@@ -809,6 +811,52 @@
                 <input type="range" data-text="welcome.letterSpacing" min="-20" max="100" step="1">
               </label>
             </div>
+
+            <!-- NEW: a plate behind the words, so they survive a busy photograph. -->
+            <div class="card">
+              <div class="card-head">
+                <h2 class="card-title">Text background</h2>
+                <div class="card-actions">
+                  <button type="button" class="btn btn-ghost btn-small" data-backdrop-reset="welcome">Reset to default</button>
+                </div>
+              </div>
+              <p class="field-hint">Add a coloured backdrop behind your text so it stays readable even over busy or bright background images. It covers the words themselves, not the whole screen. At 0% there is no backdrop at all.</p>
+
+              <label class="field">
+                <span class="field-label">Backdrop opacity <output class="field-value" data-text-value="welcome.backdrop.opacity">Off</output></span>
+                <input type="range" data-text="welcome.backdrop.opacity" min="0" max="100" step="1">
+              </label>
+
+              <div class="grid-2">
+                <label class="field">
+                  <span class="field-label">Backdrop colour</span>
+                  <span class="color-field">
+                    <input type="color" data-backdrop-color="welcome" value="#000000">
+                    <input type="text" data-text="welcome.backdrop.color" maxlength="9" spellcheck="false" placeholder="#000000">
+                  </span>
+                </label>
+                <label class="field">
+                  <span class="field-label">Corner radius</span>
+                  <select data-text="welcome.backdrop.radius">
+                    <option value="none">None — square corners</option>
+                    <option value="slight">Slight</option>
+                    <option value="rounded">Rounded</option>
+                    <option value="pill">Pill</option>
+                  </select>
+                </label>
+              </div>
+
+              <label class="field">
+                <span class="field-label">Padding around the text</span>
+                <select data-text="welcome.backdrop.padding">
+                  <option value="none">None</option>
+                  <option value="small">Small</option>
+                  <option value="medium">Medium</option>
+                  <option value="large">Large</option>
+                </select>
+                <span class="field-hint">How far the backdrop reaches past the words. It grows with the text size, so this stays in proportion whatever size you set.</span>
+              </label>
+            </div>
             </div>
 
             <div data-text-pane="prizes" hidden>
@@ -841,7 +889,9 @@
                     <option value="300">Light</option>
                     <option value="400">Regular</option>
                     <option value="500">Medium</option>
+                    <option value="600">Semi-Bold</option>
                     <option value="700">Bold</option>
+                    <option value="800">Extra-Bold</option>
                   </select>
                 </label>
                 <label class="field">
@@ -879,6 +929,52 @@
                 <input type="range" data-text="prizes.letterSpacing" min="-20" max="100" step="1">
               </label>
             </div>
+
+            <!-- NEW: a plate behind the words, so they survive a busy photograph. -->
+            <div class="card">
+              <div class="card-head">
+                <h2 class="card-title">Text background</h2>
+                <div class="card-actions">
+                  <button type="button" class="btn btn-ghost btn-small" data-backdrop-reset="prizes">Reset to default</button>
+                </div>
+              </div>
+              <p class="field-hint">Add a coloured backdrop behind your text so it stays readable even over busy or bright background images. It covers the words themselves, not the whole screen. At 0% there is no backdrop at all.</p>
+
+              <label class="field">
+                <span class="field-label">Backdrop opacity <output class="field-value" data-text-value="prizes.backdrop.opacity">Off</output></span>
+                <input type="range" data-text="prizes.backdrop.opacity" min="0" max="100" step="1">
+              </label>
+
+              <div class="grid-2">
+                <label class="field">
+                  <span class="field-label">Backdrop colour</span>
+                  <span class="color-field">
+                    <input type="color" data-backdrop-color="prizes" value="#000000">
+                    <input type="text" data-text="prizes.backdrop.color" maxlength="9" spellcheck="false" placeholder="#000000">
+                  </span>
+                </label>
+                <label class="field">
+                  <span class="field-label">Corner radius</span>
+                  <select data-text="prizes.backdrop.radius">
+                    <option value="none">None — square corners</option>
+                    <option value="slight">Slight</option>
+                    <option value="rounded">Rounded</option>
+                    <option value="pill">Pill</option>
+                  </select>
+                </label>
+              </div>
+
+              <label class="field">
+                <span class="field-label">Padding around the text</span>
+                <select data-text="prizes.backdrop.padding">
+                  <option value="none">None</option>
+                  <option value="small">Small</option>
+                  <option value="medium">Medium</option>
+                  <option value="large">Large</option>
+                </select>
+                <span class="field-hint">How far the backdrop reaches past the words. It grows with the text size, so this stays in proportion whatever size you set.</span>
+              </label>
+            </div>
             </div>
 
             <div data-text-pane="board" hidden>
@@ -911,7 +1007,9 @@
                     <option value="300">Light</option>
                     <option value="400">Regular</option>
                     <option value="500">Medium</option>
+                    <option value="600">Semi-Bold</option>
                     <option value="700">Bold</option>
+                    <option value="800">Extra-Bold</option>
                   </select>
                 </label>
                 <label class="field">
@@ -947,6 +1045,52 @@
               <label class="field">
                 <span class="field-label">Letter spacing <output class="field-value" data-text-value="board.letterSpacing">Auto</output></span>
                 <input type="range" data-text="board.letterSpacing" min="-20" max="100" step="1">
+              </label>
+            </div>
+
+            <!-- NEW: a plate behind the words, so they survive a busy photograph. -->
+            <div class="card">
+              <div class="card-head">
+                <h2 class="card-title">Text background</h2>
+                <div class="card-actions">
+                  <button type="button" class="btn btn-ghost btn-small" data-backdrop-reset="board">Reset to default</button>
+                </div>
+              </div>
+              <p class="field-hint">Add a coloured backdrop behind your text so it stays readable even over busy or bright background images. It covers the words themselves, not the whole screen. At 0% there is no backdrop at all.</p>
+
+              <label class="field">
+                <span class="field-label">Backdrop opacity <output class="field-value" data-text-value="board.backdrop.opacity">Off</output></span>
+                <input type="range" data-text="board.backdrop.opacity" min="0" max="100" step="1">
+              </label>
+
+              <div class="grid-2">
+                <label class="field">
+                  <span class="field-label">Backdrop colour</span>
+                  <span class="color-field">
+                    <input type="color" data-backdrop-color="board" value="#000000">
+                    <input type="text" data-text="board.backdrop.color" maxlength="9" spellcheck="false" placeholder="#000000">
+                  </span>
+                </label>
+                <label class="field">
+                  <span class="field-label">Corner radius</span>
+                  <select data-text="board.backdrop.radius">
+                    <option value="none">None — square corners</option>
+                    <option value="slight">Slight</option>
+                    <option value="rounded">Rounded</option>
+                    <option value="pill">Pill</option>
+                  </select>
+                </label>
+              </div>
+
+              <label class="field">
+                <span class="field-label">Padding around the text</span>
+                <select data-text="board.backdrop.padding">
+                  <option value="none">None</option>
+                  <option value="small">Small</option>
+                  <option value="medium">Medium</option>
+                  <option value="large">Large</option>
+                </select>
+                <span class="field-hint">How far the backdrop reaches past the words. It grows with the text size, so this stays in proportion whatever size you set.</span>
               </label>
             </div>
 

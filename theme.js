@@ -248,6 +248,35 @@
    * removes the variable rather than setting it, so a style nobody has touched
    * leaves the stylesheet's own choices completely alone.
    */
+  /* NEW: the plate behind the words. */
+
+  const BACKDROP_RADII = { none: '0px', slight: '8px', rounded: '18px', pill: '999px' };
+
+  // In em, so the plate grows with whatever size the text is set at rather than
+  // crowding large type and swamping small.
+  const BACKDROP_PADDINGS = {
+    none: ['0', '0'],
+    small: ['0.22em', '0.45em'],
+    medium: ['0.45em', '0.8em'],
+    large: ['0.75em', '1.3em'],
+  };
+
+  /**
+   * A hex colour at a given opacity, as rgba().
+   *
+   * Computed here rather than left to color-mix(), which some of the browsers
+   * these boards actually run on — a venue's stick PC, a hotel's smart TV —
+   * still do not have.
+   */
+  function withOpacity(hex, percent) {
+    const value = String(hex || '').trim().replace('#', '');
+    const full = value.length === 3 ? value.split('').map((c) => c + c).join('') : value.slice(0, 6);
+    if (!/^[0-9a-f]{6}$/i.test(full)) return '';
+
+    const channel = (at) => parseInt(full.slice(at, at + 2), 16);
+    return `rgba(${channel(0)}, ${channel(2)}, ${channel(4)}, ${Math.max(0, Math.min(100, percent)) / 100})`;
+  }
+
   function applyTextStyle(scope, style) {
     if (!scope || !style) return;
 
@@ -269,6 +298,57 @@
     set('--text-letter-spacing', style.letterSpacing ? `${style.letterSpacing / 100}em` : '');
     // Full opacity is the same as not saying anything about it.
     set('--text-opacity', style.opacity < 100 ? String(style.opacity / 100) : '');
+
+    applyBackdrop(set, style);
+  }
+
+  /**
+   * NEW: a coloured plate drawn behind the text, and nothing else.
+   *
+   * Every variable below stays unset until the organiser asks for a plate, so
+   * the elements keep the width and spacing they have always had. Switching it
+   * on shrinks each block to its own content — that is what keeps the plate on
+   * the words instead of spread across the artwork behind them.
+   */
+  function applyBackdrop(set, style) {
+    const backdrop = style.backdrop || {};
+    const fill = backdrop.opacity > 0 ? withOpacity(backdrop.color, backdrop.opacity) : '';
+
+    if (!fill) {
+      [
+        '--text-backdrop',
+        '--text-backdrop-radius',
+        '--text-backdrop-pad',
+        '--text-backdrop-pad-y',
+        '--text-backdrop-width',
+        '--text-backdrop-justify',
+        '--text-backdrop-align-center',
+        '--text-backdrop-align-start',
+        '--text-backdrop-rule',
+      ].forEach((name) => set(name, ''));
+      return;
+    }
+
+    set('--text-backdrop', fill);
+    set('--text-backdrop-radius', BACKDROP_RADII[backdrop.radius] || BACKDROP_RADII.rounded);
+    const [padY, padX] = BACKDROP_PADDINGS[backdrop.padding] || BACKDROP_PADDINGS.medium;
+    set('--text-backdrop-pad', `${padY} ${padX}`);
+    // Declared on its own too: an element carrying its own padding-top has to
+    // be able to follow the plate rather than override one edge of it.
+    set('--text-backdrop-pad-y', padY);
+    set('--text-backdrop-width', 'fit-content');
+
+    // A block that has shrunk to its content needs telling where to sit. With
+    // no alignment chosen each element keeps the side its screen already put it
+    // on, which is why there are two of these rather than one.
+    set('--text-backdrop-align-center', 'center');
+    set('--text-backdrop-align-start', 'start');
+    const ends = { left: 'start', center: 'center', right: 'end' };
+    set('--text-backdrop-justify', ends[style.align] || '');
+
+    // The winner's prize is divided from the card above it by a hairline, which
+    // reads as a stray line once the block is a plate of its own.
+    set('--text-backdrop-rule', 'transparent');
   }
 
   /* --------------------------------------------- NEW: keeping a page current */

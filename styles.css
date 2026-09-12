@@ -532,6 +532,51 @@ body[data-align='right'] .stats { justify-content: flex-end; }
   min-width: 0;
 }
 
+/* ----------------------------------------- NEW: the plate behind the words
+
+   A background photograph an organiser loves is rarely one that text sits
+   happily on. Darkening the whole image is the blunt instrument — it dims the
+   photograph everywhere, including the parts nobody is reading over. This is
+   the precise one: a coloured plate behind the words themselves and nothing
+   else, at whatever colour, opacity, radius and padding the organiser picks.
+
+   Every variable here is unset until they ask for one, and each falls back to
+   what the element already did, so an unconfigured screen is untouched. The
+   width is the load-bearing part: a block shrunk to its own content is what
+   keeps the plate on the words rather than spread across the artwork. Blocks
+   that shrink need telling which side to sit on, and the answer differs by
+   screen — a welcome message is centred, a prize in a list is not — so the
+   fallback is per element rather than one value for all of them.            */
+
+.welcome-eyebrow,
+.welcome-title,
+.welcome-message,
+.feature-eyebrow,
+.feature-lede,
+.prize-call-eyebrow,
+.prize-call-name,
+.prize-call-note,
+.winner-eyebrow,
+.winner-prize,
+.slot-call,
+.slot-card {
+  background-color: var(--text-backdrop, transparent);
+  padding: var(--text-backdrop-pad, 0);
+  border-radius: var(--text-backdrop-radius, 0);
+  width: var(--text-backdrop-width, auto);
+  justify-self: var(--text-backdrop-justify, var(--text-backdrop-align-center, auto));
+}
+
+/* A prize card is a list item, so its words stay against the reading edge. */
+.prize-name,
+.prize-description {
+  background-color: var(--text-backdrop, transparent);
+  padding: var(--text-backdrop-pad, 0);
+  border-radius: var(--text-backdrop-radius, 0);
+  width: var(--text-backdrop-width, auto);
+  justify-self: var(--text-backdrop-justify, var(--text-backdrop-align-start, auto));
+}
+
 /* ------------------------------------------------------ configurable slots */
 
 /* A slot renders whichever fields the organiser assigned to it; emphasis is
@@ -567,7 +612,7 @@ body[data-align='right'] .stats { justify-content: flex-end; }
 .slot-line[data-emphasis='primary'] {
   font-family: var(--font-display);
   font-size: var(--text-headline);
-  font-weight: 400;
+  font-weight: var(--text-weight, 400);
   letter-spacing: 0.012em;
   color: var(--accent-ink);
   text-shadow: 0 0 52px var(--accent-glow), 0 2px 24px rgba(0, 0, 0, 0.4);
@@ -575,21 +620,21 @@ body[data-align='right'] .stats { justify-content: flex-end; }
 
 .slot-line[data-emphasis='secondary'] {
   font-size: var(--text-support);
-  font-weight: 700;
+  font-weight: var(--text-weight, 700);
   letter-spacing: 0.18em;
   color: var(--ink);
 }
 
 .slot-line[data-emphasis='meta'] {
   font-size: var(--text-meta);
-  font-weight: 300;
+  font-weight: var(--text-weight, 300);
   letter-spacing: 0.02em;
   color: var(--ink-soft);
 }
 
 .slot-line[data-emphasis='eyebrow'] {
   font-size: var(--text-eyebrow);
-  font-weight: 700;
+  font-weight: var(--text-weight, 700);
   letter-spacing: 0.34em;
   text-transform: uppercase;
   color: var(--ink-faint);
@@ -621,7 +666,7 @@ body[data-align='right'] .stats { justify-content: flex-end; }
   gap: 14px;
   margin: 0;
   font-size: var(--text-eyebrow);
-  font-weight: 700;
+  font-weight: var(--text-weight, 700);
   letter-spacing: 0.4em;
   text-transform: uppercase;
   color: var(--accent-ink);
@@ -1263,8 +1308,8 @@ body[data-logo-position='top-right'] {
 /* What they have actually won, under the winner's details. */
 .winner-prize {
   margin: clamp(14px, 1.8vw, 24px) 0 0;
-  padding-top: clamp(12px, 1.4vw, 18px);
-  border-top: 1px solid var(--hairline);
+  padding-top: var(--text-backdrop-pad-y, clamp(12px, 1.4vw, 18px));
+  border-top: 1px solid var(--text-backdrop-rule, var(--hairline));
   font-family: var(--text-font, inherit);
   font-size: var(--text-support);
   font-weight: var(--text-weight, 700);
@@ -1280,7 +1325,7 @@ body[data-logo-position='top-right'] {
   justify-content: center;
   gap: 14px;
   font-size: var(--text-eyebrow);
-  font-weight: 700;
+  font-weight: var(--text-weight, 700);
   letter-spacing: 0.4em;
   text-transform: uppercase;
   color: var(--ink-faint);
@@ -1753,7 +1798,7 @@ body[data-logo-position='top-right'] {
 .feature-eyebrow {
   margin: 0;
   font-size: var(--text-eyebrow);
-  font-weight: 700;
+  font-weight: var(--text-weight, 700);
   letter-spacing: 0.36em;
   text-transform: uppercase;
   color: var(--accent-ink);
@@ -1762,7 +1807,7 @@ body[data-logo-position='top-right'] {
 .feature-lede {
   margin: 0;
   font-size: var(--text-meta);
-  font-weight: 300;
+  font-weight: var(--text-weight, 300);
   color: var(--ink-soft);
 }
 
@@ -1825,7 +1870,7 @@ body[data-logo-position='top-right'] {
   margin: 0;
   color: var(--accent-ink);
   font-size: var(--text-eyebrow);
-  font-weight: 700;
+  font-weight: var(--text-weight, 700);
   letter-spacing: 0.4em;
   text-indent: 0.4em; /* Letter-spacing pushes the last letter out; recentre. */
   text-transform: uppercase;
@@ -1836,7 +1881,7 @@ body[data-logo-position='top-right'] {
   max-width: 20ch;
   font-family: var(--font-display);
   font-size: clamp(2.2rem, 1.1rem + 3.6vw, 4.4rem);
-  font-weight: 400;
+  font-weight: var(--text-weight, 400);
   line-height: 0.98;
   letter-spacing: 0.012em;
   text-wrap: balance;

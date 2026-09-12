@@ -1149,6 +1149,15 @@
       letterSpacing: 0,
     };
 
+    // NEW: the plate behind the words. Opacity zero means there is none, which
+    // is the default, so a screen nobody has configured keeps its own look.
+    const BACKDROP_DEFAULTS = {
+      color: '#000000',
+      opacity: 0,
+      radius: 'rounded',
+      padding: 'medium',
+    };
+
     const PRIZE_MEDIA_DEFAULTS = {
       imageMode: 'single',
       autoplay: true,
@@ -1164,35 +1173,57 @@
       opacity: (value) => `${value}%`,
       lineHeight: (value) => (value ? (value / 100).toFixed(2) : 'Auto'),
       letterSpacing: (value) => (value ? `${(value / 100).toFixed(2)}em` : 'Auto'),
+      'backdrop.opacity': (value) => (value ? `${value}%` : 'Off'),
     };
 
     function textField(scope, key) {
       return document.querySelector(`[data-text="${scope}.${key}"]`);
     }
 
+    /** Every field of one screen's style, the plate's included. */
+    function styleKeys() {
+      return [
+        ...Object.keys(TEXT_DEFAULTS).map((key) => ({ key, defaults: TEXT_DEFAULTS })),
+        ...Object.keys(BACKDROP_DEFAULTS).map((key) => ({ key: `backdrop.${key}`, defaults: BACKDROP_DEFAULTS })),
+      ];
+    }
+
     function readTextStyle(scope) {
-      const style = { ...TEXT_DEFAULTS };
-      Object.keys(TEXT_DEFAULTS).forEach((key) => {
+      const style = { ...TEXT_DEFAULTS, backdrop: { ...BACKDROP_DEFAULTS } };
+
+      styleKeys().forEach(({ key, defaults }) => {
         const field = textField(scope, key);
         if (!field) return;
-        const raw = field.value;
-        style[key] = typeof TEXT_DEFAULTS[key] === 'number' ? Number(raw) || 0 : raw;
+
+        const leaf = key.startsWith('backdrop.') ? key.slice('backdrop.'.length) : key;
+        const value = typeof defaults[leaf] === 'number' ? Number(field.value) || 0 : field.value;
+        if (key === leaf) style[leaf] = value;
+        else style.backdrop[leaf] = value;
       });
+
       return style;
     }
 
     function writeTextStyle(scope, style) {
-      Object.keys(TEXT_DEFAULTS).forEach((key) => {
+      const backdrop = { ...BACKDROP_DEFAULTS, ...(style.backdrop || {}) };
+
+      styleKeys().forEach(({ key }) => {
         const field = textField(scope, key);
         if (!field) return;
-        field.value = style[key];
+
+        const leaf = key.startsWith('backdrop.') ? key.slice('backdrop.'.length) : key;
+        const value = key === leaf ? style[leaf] : backdrop[leaf];
+        field.value = value;
 
         const readout = document.querySelector(`[data-text-value="${scope}.${key}"]`);
-        if (readout && TEXT_READOUTS[key]) readout.textContent = TEXT_READOUTS[key](Number(style[key]) || 0);
+        if (readout && TEXT_READOUTS[key]) readout.textContent = TEXT_READOUTS[key](Number(value) || 0);
       });
 
       const swatch = document.querySelector(`[data-text-color="${scope}"]`);
       if (swatch && /^#[0-9a-f]{6}$/i.test(style.color)) swatch.value = style.color;
+
+      const plate = document.querySelector(`[data-backdrop-color="${scope}"]`);
+      if (plate && /^#[0-9a-f]{6}$/i.test(backdrop.color)) plate.value = backdrop.color;
     }
 
     function renderText() {
@@ -1326,6 +1357,16 @@
       set('--text-letter-spacing', style.letterSpacing ? `${style.letterSpacing / 100}em` : '');
       set('--text-opacity', style.opacity < 100 ? String(style.opacity / 100) : '');
 
+      // The plate, drawn the same way the screens draw it — the point of the
+      // preview is to answer "can this be read", so it has to be the real thing.
+      const backdrop = { ...BACKDROP_DEFAULTS, ...(style.backdrop || {}) };
+      const fill = backdrop.opacity > 0 ? hexToRgba(backdrop.color, backdrop.opacity) : '';
+      const [padY, padX] = PREVIEW_BACKDROP_PADDINGS[backdrop.padding] || PREVIEW_BACKDROP_PADDINGS.medium;
+      set('--preview-backdrop', fill);
+      set('--preview-backdrop-radius', fill ? PREVIEW_BACKDROP_RADII[backdrop.radius] || '18px' : '');
+      set('--preview-backdrop-pad', fill ? `${padY} ${padX}` : '');
+      set('--preview-backdrop-width', fill ? 'fit-content' : '');
+
       renderPrizeMediaPreview(draft, scope);
     }
 
@@ -1347,6 +1388,26 @@
         ),
       caption: '',
     }));
+
+    // The same scale the screens use, so a plate that looks right here looks
+    // right there.
+    const PREVIEW_BACKDROP_RADII = { none: '0px', slight: '8px', rounded: '18px', pill: '999px' };
+    const PREVIEW_BACKDROP_PADDINGS = {
+      none: ['0', '0'],
+      small: ['0.22em', '0.45em'],
+      medium: ['0.45em', '0.8em'],
+      large: ['0.75em', '1.3em'],
+    };
+
+    /** A hex colour at a given opacity, as rgba(), as theme.js does it. */
+    function hexToRgba(hex, percent) {
+      const value = String(hex || '').trim().replace('#', '');
+      const full = value.length === 3 ? value.split('').map((c) => c + c).join('') : value.slice(0, 6);
+      if (!/^[0-9a-f]{6}$/i.test(full)) return '';
+
+      const channel = (at) => parseInt(full.slice(at, at + 2), 16);
+      return `rgba(${channel(0)}, ${channel(2)}, ${channel(4)}, ${Math.max(0, Math.min(100, percent)) / 100})`;
+    }
 
     /** The board tab also previews what happens to a prize's photographs. */
     function renderPrizeMediaPreview(draft, scope) {
@@ -1756,14 +1817,25 @@
       textPanel.addEventListener('input', (event) => {
         const field = event.target.closest('[data-text]');
         if (field) {
-          const [scope, key] = field.dataset.text.split('.');
+          // Only the first dot separates the screen from the key: the plate's
+          // own settings are nested, so 'welcome.backdrop.opacity' is one key.
+          const name = field.dataset.text;
+          const scope = name.slice(0, name.indexOf('.'));
+          const key = name.slice(name.indexOf('.') + 1);
+
           const readout = document.querySelector(`[data-text-value="${scope}.${key}"]`);
           if (readout && TEXT_READOUTS[key]) readout.textContent = TEXT_READOUTS[key](Number(field.value) || 0);
 
           // Typing a hex keeps the swatch beside it in step.
-          const swatch = document.querySelector(`[data-text-color="${scope}"]`);
-          if (key === 'color' && swatch && /^#[0-9a-f]{6}$/i.test(field.value.trim())) {
-            swatch.value = field.value.trim();
+          const typed = field.value.trim();
+          const looksLikeHex = /^#[0-9a-f]{6}$/i.test(typed);
+          if (key === 'color' && looksLikeHex) {
+            const swatch = document.querySelector(`[data-text-color="${scope}"]`);
+            if (swatch) swatch.value = typed;
+          }
+          if (key === 'backdrop.color' && looksLikeHex) {
+            const plate = document.querySelector(`[data-backdrop-color="${scope}"]`);
+            if (plate) plate.value = typed;
           }
         }
 
@@ -1771,6 +1843,12 @@
         if (swatch) {
           const target = textField(swatch.dataset.textColor, 'color');
           if (target) target.value = swatch.value;
+        }
+
+        const plate = event.target.closest('[data-backdrop-color]');
+        if (plate) {
+          const target = textField(plate.dataset.backdropColor, 'backdrop.color');
+          if (target) target.value = plate.value;
         }
 
         if (event.target.id === 'prizeSlideMs') {
@@ -1801,6 +1879,14 @@
         if (preset) {
           const scope = preset.dataset.textPreset;
           writeTextStyle(scope, { ...readTextStyle(scope), ...TEXT_PRESETS[preset.dataset.size] });
+          renderTextPreview();
+          return;
+        }
+
+        const plateReset = event.target.closest('[data-backdrop-reset]');
+        if (plateReset) {
+          const scope = plateReset.dataset.backdropReset;
+          writeTextStyle(scope, { ...readTextStyle(scope), backdrop: { ...BACKDROP_DEFAULTS } });
           renderTextPreview();
           return;
         }

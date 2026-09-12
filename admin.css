@@ -829,11 +829,21 @@ input:focus-visible,
   text-align: var(--text-align, center);
 }
 
+/* The plate, on each block of the sample exactly as the screens draw it. */
+.text-preview-eyebrow,
+.text-preview-heading,
+.text-preview-body {
+  background-color: var(--preview-backdrop, transparent);
+  padding: var(--preview-backdrop-pad, 0);
+  border-radius: var(--preview-backdrop-radius, 0);
+  width: var(--preview-backdrop-width, auto);
+}
+
 .text-preview-eyebrow {
   margin: 0;
   color: var(--c-amber);
   font-size: 20px;
-  font-weight: 700;
+  font-weight: var(--text-weight, 700);
   letter-spacing: 0.3em;
   text-transform: uppercase;
 }

@@ -81,7 +81,13 @@ const QR_DISPLAY_MODES = Object.freeze(['icons', 'qr', 'both']);
    the application already ships or a stack the operating system provides, so
    nothing needs fetching and an offline board looks the same as a hosted one. */
 const FONT_FAMILIES = Object.freeze(['display', 'body', 'mono', 'system', 'sans', 'serif']);
-const FONT_WEIGHTS = Object.freeze([0, 300, 400, 500, 700]);
+// Zero is "leave the screen's own weight alone"; the rest are the weights the
+// bundled faces actually carry.
+const FONT_WEIGHTS = Object.freeze([0, 300, 400, 500, 600, 700, 800]);
+
+/* NEW: the plate drawn behind the words, so they stay readable over artwork. */
+const BACKDROP_RADII = Object.freeze(['none', 'slight', 'rounded', 'pill']);
+const BACKDROP_PADDINGS = Object.freeze(['none', 'small', 'medium', 'large']);
 const TEXT_ALIGNMENTS = Object.freeze(['auto', 'left', 'center', 'right']);
 
 /* NEW: what the board does with a prize that has more than one photograph. */
@@ -158,6 +164,7 @@ const CLAMPS = Object.freeze({
   textOpacity: [0, 100],
   textLineHeight: [0, 300],
   textLetterSpacing: [-20, 100],
+  textBackdropOpacity: [0, 100],
   prizeSlideMs: [1000, 20000],
   reelWidth: [0, 2400],
   reelHeight: [0, 420],
@@ -486,6 +493,17 @@ function normalizeTextStyle(input) {
     align: asChoice(source.align, TEXT_ALIGNMENTS, 'auto'),
     lineHeight: clamp('textLineHeight', source.lineHeight, 0),
     letterSpacing: clamp('textLetterSpacing', source.letterSpacing, 0),
+    // NEW: opacity zero is no plate at all, which is the default, so a screen
+    // nobody has configured is drawn exactly as it always was.
+    backdrop: (() => {
+      const backdrop = source.backdrop && typeof source.backdrop === 'object' ? source.backdrop : {};
+      return {
+        color: asColor(backdrop.color, '#000000'),
+        opacity: clamp('textBackdropOpacity', backdrop.opacity, 0),
+        radius: asChoice(backdrop.radius, BACKDROP_RADII, 'rounded'),
+        padding: asChoice(backdrop.padding, BACKDROP_PADDINGS, 'medium'),
+      };
+    })(),
   };
 }
 

@@ -561,10 +561,12 @@ with it, and the three sit behind tabs rather than one long page for the same
 reason.
 
 Per screen: **font family** from the faces the application already ships (no
-network call, so it still works offline), **weight**, **alignment**, **colour**
-with a swatch and a hex field that follow each other, **opacity**, **size**,
-**line height** and **letter spacing**. Small / Medium / Large fill the sliders
-in one click, exactly as they do under Board layout.
+network call, so it still works offline), **weight** from Light through
+Extra-Bold, **alignment**, **colour** with a swatch and a hex field that follow
+each other, **opacity**, **size**, **line height** and **letter spacing**.
+Small / Medium / Large fill the sliders in one click, exactly as they do under
+Board layout. The weight reaches every line the screen puts on stage — heading,
+message, prize name, the winner's own details — rather than one of them.
 
 Everything left at **Auto** is left alone: the screen keeps the size, the face
 and the colour it has always had, which is why a board nobody has configured is
@@ -572,6 +574,33 @@ pixel-for-pixel the board that shipped. A size set here governs the line that
 carries the screen — the message on the welcome screen, the prize's name on the
 other two — and a prize's description follows it proportionally rather than
 matching it, so asking for bigger type does not flatten the two lines into one.
+
+### Text background
+
+A photograph an organiser loves is rarely one that text sits happily on.
+Darkening the whole backdrop, under Board layout, is the blunt instrument: it
+dims the picture everywhere, including the parts nobody is reading over.
+**Text background** is the precise one — a coloured plate behind the words
+themselves and nothing else.
+
+Per screen, again independently: **colour** with a swatch and hex field,
+**opacity** from 0 to 100%, **corner radius** (none, slight, rounded, pill) and
+**padding** (none, small, medium, large), with a reset of its own that leaves
+that screen's type settings untouched.
+
+At **0%** there is no plate at all, which is the default, so nothing changes
+until it is asked for. Above zero each block of text shrinks to its own content
+and carries its own plate — the heading, the message, the prize's name, the
+winner's details — so the plate sits on the words rather than spread across the
+artwork. The padding is set in `em`, so it stays in proportion whatever size the
+text is: a large heading gets a proportionally larger plate, not the same
+handful of pixels.
+
+The preview draws the plate on the uploaded backdrop at its current darkening,
+which is the whole point — whether something can be read is not a question the
+numbers answer, only the picture does.
+
+### Prize photographs on the board
 
 **Prize photographs on the board** decides what happens when a prize has more
 than one photograph. *Single* shows the first, as before. *Carousel* shows each
@@ -696,7 +725,11 @@ commit where there is one, and otherwise a hash of the served files themselves.
 | `text.welcome` / `.prizes` / `.board` | How the words are set on each screen, one block each and independent of one another |
 | `text.*.fontFamily` | `display`, `body`, `mono`, `system`, `sans` or `serif` — faces the application ships, so this still works offline |
 | `text.*.fontSize` | Size in pixels, 0–200. Zero means the screen keeps the size it chooses for itself |
-| `text.*.fontWeight` | 300, 400, 500 or 700; zero leaves the screen's own weight |
+| `text.*.fontWeight` | 300, 400, 500, 600, 700 or 800; zero leaves the screen's own weight |
+| `text.*.backdrop.color` | The plate behind the words, as hex |
+| `text.*.backdrop.opacity` | 0–100. Zero is no plate at all, and is the default |
+| `text.*.backdrop.radius` | `none`, `slight`, `rounded` or `pill` |
+| `text.*.backdrop.padding` | `none`, `small`, `medium` or `large`, in em so it scales with the text |
 | `text.*.color` | Hex, or empty for the screen's own colour |
 | `text.*.opacity` | 0–100; 100 is the same as saying nothing |
 | `text.*.align` | `auto`, `left`, `center` or `right` |

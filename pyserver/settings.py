@@ -92,7 +92,13 @@ QR_DISPLAY_MODES = ("icons", "qr", "both")
 # application already ships or a stack the operating system provides, so nothing
 # needs fetching and an offline board looks the same as a hosted one.
 FONT_FAMILIES = ("display", "body", "mono", "system", "sans", "serif")
-FONT_WEIGHTS = (0, 300, 400, 500, 700)
+# Zero is "leave the screen's own weight alone"; the rest are the weights the
+# bundled faces actually carry.
+FONT_WEIGHTS = (0, 300, 400, 500, 600, 700, 800)
+
+# NEW: the plate drawn behind the words, so they stay readable over artwork.
+BACKDROP_RADII = ("none", "slight", "rounded", "pill")
+BACKDROP_PADDINGS = ("none", "small", "medium", "large")
 TEXT_ALIGNMENTS = ("auto", "left", "center", "right")
 
 # NEW: what the board does with a prize that has more than one photograph.
@@ -176,6 +182,7 @@ CLAMPS = {
     "textOpacity": (0, 100),
     "textLineHeight": (0, 300),
     "textLetterSpacing": (-20, 100),
+    "textBackdropOpacity": (0, 100),
     "prizeSlideMs": (1000, 20000),
     "reelWidth": (0, 2400),
     "reelHeight": (0, 420),
@@ -507,6 +514,8 @@ def _normalize_text_style(raw: Any) -> Dict[str, Any]:
     except (TypeError, ValueError):
         weight = 0
 
+    backdrop = source.get("backdrop") if isinstance(source.get("backdrop"), dict) else {}
+
     return {
         "fontSize": _clamp("textFontSize", source.get("fontSize"), 0),
         "color": _as_color(source.get("color"), ""),
@@ -516,6 +525,14 @@ def _normalize_text_style(raw: Any) -> Dict[str, Any]:
         "align": _as_choice(source.get("align"), TEXT_ALIGNMENTS, "auto"),
         "lineHeight": _clamp("textLineHeight", source.get("lineHeight"), 0),
         "letterSpacing": _clamp("textLetterSpacing", source.get("letterSpacing"), 0),
+        # NEW: opacity zero is no plate at all, which is the default, so a
+        # screen nobody has configured is drawn exactly as it always was.
+        "backdrop": {
+            "color": _as_color(backdrop.get("color"), "#000000"),
+            "opacity": _clamp("textBackdropOpacity", backdrop.get("opacity"), 0),
+            "radius": _as_choice(backdrop.get("radius"), BACKDROP_RADII, "rounded"),
+            "padding": _as_choice(backdrop.get("padding"), BACKDROP_PADDINGS, "medium"),
+        },
     }
 
 
