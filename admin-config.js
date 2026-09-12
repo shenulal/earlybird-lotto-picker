@@ -1149,6 +1149,23 @@
       letterSpacing: 0,
     };
 
+    /* NEW: the carousel's frame on the welcome and prize screens. The defaults
+       differ because the two screens do: the welcome photographs have been a
+       circle below the message since that screen was redesigned, a prize's a
+       plain frame above its name. Both are left exactly as they are. */
+    const CAROUSEL_DEFAULTS = {
+      welcome: { shape: 'circle', aspect: 'standard', radius: 18, placement: 'bottom' },
+      prizes: { shape: 'rectangle', aspect: 'standard', radius: 18, placement: 'top' },
+    };
+
+    // Where each screen keeps it. The board's own photograph settings are a
+    // separate question, asked on its own tab.
+    const CAROUSEL_HOMES = { welcome: 'welcome', prizes: 'prizes' };
+
+    // A circle and a square are square whatever else is chosen, and only one
+    // shape has a radius to set, so the two controls come and go with it.
+    const SHAPES_WITH_ASPECT = ['rectangle', 'rounded', 'oval'];
+
     // NEW: the plate behind the words. Opacity zero means there is none, which
     // is the default, so a screen nobody has configured keeps its own look.
     const BACKDROP_DEFAULTS = {
@@ -1226,9 +1243,51 @@
       if (plate && /^#[0-9a-f]{6}$/i.test(backdrop.color)) plate.value = backdrop.color;
     }
 
+    function carouselField(scope, key) {
+      return document.querySelector(`[data-carousel="${scope}.${key}"]`);
+    }
+
+    function readCarousel(scope) {
+      const carousel = { ...CAROUSEL_DEFAULTS[scope] };
+      Object.keys(carousel).forEach((key) => {
+        const field = carouselField(scope, key);
+        if (!field) return;
+        carousel[key] = key === 'radius' ? Number(field.value) || 0 : field.value;
+      });
+      return carousel;
+    }
+
+    function writeCarousel(scope, carousel) {
+      const values = { ...CAROUSEL_DEFAULTS[scope], ...(carousel || {}) };
+      Object.keys(CAROUSEL_DEFAULTS[scope]).forEach((key) => {
+        const field = carouselField(scope, key);
+        if (field) field.value = values[key];
+      });
+      renderCarouselControls(scope);
+    }
+
+    /** Hides the two controls that the chosen shape has no use for. */
+    function renderCarouselControls(scope) {
+      const shape = (carouselField(scope, 'shape') || {}).value || CAROUSEL_DEFAULTS[scope].shape;
+
+      const aspect = document.querySelector(`[data-carousel-aspect-field="${scope}"]`);
+      if (aspect) aspect.hidden = !SHAPES_WITH_ASPECT.includes(shape);
+
+      const radius = document.querySelector(`[data-carousel-radius-field="${scope}"]`);
+      if (radius) radius.hidden = shape !== 'rounded';
+
+      const readout = document.querySelector(`[data-carousel-value="${scope}.radius"]`);
+      const field = carouselField(scope, 'radius');
+      if (readout && field) readout.textContent = `${Number(field.value) || 0}px`;
+    }
+
     function renderText() {
       const settings = context.getSettings();
       TEXT_SCOPES.forEach((scope) => writeTextStyle(scope, (settings.text || {})[scope] || TEXT_DEFAULTS));
+
+      Object.keys(CAROUSEL_HOMES).forEach((scope) => {
+        writeCarousel(scope, (settings[CAROUSEL_HOMES[scope]] || {}).carousel);
+      });
 
       const media = settings.prizes.board || PRIZE_MEDIA_DEFAULTS;
       document.getElementById('prizeImageMode').value = media.imageMode;
@@ -1251,8 +1310,12 @@
       return {
         ...settings,
         text,
+        // Each screen's carousel frame lives with that screen, not with the
+        // text, because that is what it belongs to.
+        welcome: { ...settings.welcome, carousel: readCarousel('welcome') },
         prizes: {
           ...settings.prizes,
+          carousel: readCarousel('prizes'),
           board: {
             imageMode: document.getElementById('prizeImageMode').value,
             autoplay: document.getElementById('prizeAutoplay').checked,
@@ -1409,9 +1472,31 @@
       return `rgba(${channel(0)}, ${channel(2)}, ${channel(4)}, ${Math.max(0, Math.min(100, percent)) / 100})`;
     }
 
-    /** The board tab also previews what happens to a prize's photographs. */
+    /**
+     * The photographs, on whichever tab is open.
+     *
+     * The board asks what happens to a prize's photographs during a draw; the
+     * welcome and prize screens ask what shape theirs are cut to and where they
+     * sit against the words. All three are answered in the same frame, because
+     * all three are the same question to the organiser looking at it.
+     */
     function renderPrizeMediaPreview(draft, scope) {
       const mount = document.getElementById('textPreviewMedia');
+      const content = document.getElementById('textPreviewContent');
+
+      if (previewCarousel) {
+        previewCarousel.destroy();
+        previewCarousel = null;
+      }
+      mount.innerHTML = '';
+
+      return scope === 'board'
+        ? renderBoardMedia(draft, mount, content)
+        : renderScreenMedia(draft, scope, mount, content);
+    }
+
+    /** The board tab: one photograph, or all of them turning. */
+    function renderBoardMedia(draft, mount, content) {
       const media = draft.prizes.board;
       const real = draft.prizes.items.flatMap((prize) => prize.images).slice(0, 6);
       const images = real.length > 0 ? real : PLACEHOLDER_SLIDES;
@@ -1420,23 +1505,15 @@
       const note = document.getElementById('prizeMediaNote');
       if (note) note.hidden = real.length > 0;
 
-      if (scope !== 'board') {
-        mount.hidden = true;
-        mount.innerHTML = '';
-        if (previewCarousel) {
-          previewCarousel.destroy();
-          previewCarousel = null;
-        }
-        return;
-      }
-
+      content.dataset.carouselPlacement = 'bottom';
+      content.appendChild(mount);
+      // The board's own frame is not one of the five placements, so the words
+      // stay where they are and the photograph sits under them.
+      content.removeAttribute('data-carousel-placement');
       mount.hidden = false;
       mount.dataset.shape = media.shape;
-
-      if (previewCarousel) {
-        previewCarousel.destroy();
-        previewCarousel = null;
-      }
+      mount.removeAttribute('data-aspect');
+      mount.style.removeProperty('--carousel-radius');
 
       if (media.imageMode === 'carousel' && images.length > 1 && global.createCarousel) {
         previewCarousel = global.createCarousel(mount, images, {
@@ -1446,6 +1523,50 @@
           showArrows: false,
           showCaptions: false,
           altFallback: 'Prize photograph',
+        });
+        return;
+      }
+
+      mount.innerHTML = `<img src="${escapeHtml(images[0].src)}" alt="">`;
+    }
+
+    /**
+     * NEW: the welcome and prize tabs — the shape, and where it sits.
+     *
+     * The mount is moved rather than reordered, exactly as the screens move it,
+     * so what the placement does here is what it will do there.
+     */
+    function renderScreenMedia(draft, scope, mount, content) {
+      const carousel = readCarousel(scope);
+      const source = scope === 'welcome' ? draft.welcome.images : draft.prizes.items.flatMap((p) => p.images);
+      const real = (source || []).slice(0, 6);
+      const images = real.length > 0 ? real : PLACEHOLDER_SLIDES;
+
+      const note = document.getElementById('prizeMediaNote');
+      if (note) note.hidden = true;
+
+      mount.hidden = false;
+      mount.dataset.shape = carousel.shape;
+      mount.dataset.aspect = carousel.aspect;
+      mount.style.setProperty('--carousel-radius', `${carousel.radius}px`);
+      content.dataset.carouselPlacement = carousel.placement;
+
+      // Before the words for the placements that read first — above them, or to
+      // their left — and after for the rest. The screens order it the same way,
+      // so the picture a reader meets first is the same one in both.
+      const words = document.getElementById('textPreviewWords');
+      const body = document.getElementById('textPreviewBody');
+      if (carousel.placement === 'center') words.insertBefore(mount, body);
+      else if (carousel.placement === 'top' || carousel.placement === 'left') content.insertBefore(mount, words);
+      else content.appendChild(mount);
+
+      if (images.length > 1 && global.createCarousel) {
+        previewCarousel = global.createCarousel(mount, images, {
+          intervalMs: scope === 'welcome' ? draft.welcome.intervalMs : draft.prizes.intervalMs,
+          showDots: true,
+          showArrows: false,
+          showCaptions: false,
+          altFallback: 'Photograph',
         });
         return;
       }
@@ -1851,6 +1972,11 @@
           if (target) target.value = plate.value;
         }
 
+        const carousel = event.target.closest('[data-carousel]');
+        if (carousel) {
+          renderCarouselControls(carousel.dataset.carousel.split('.')[0]);
+        }
+
         if (event.target.id === 'prizeSlideMs') {
           document.getElementById('prizeSlideValue').textContent = `${(Number(event.target.value) / 1000).toFixed(1)}s`;
         }
@@ -1858,7 +1984,11 @@
         renderTextPreview();
       });
 
-      textPanel.addEventListener('change', renderTextPreview);
+      textPanel.addEventListener('change', (event) => {
+        const carousel = event.target.closest('[data-carousel]');
+        if (carousel) renderCarouselControls(carousel.dataset.carousel.split('.')[0]);
+        renderTextPreview();
+      });
 
       textPanel.addEventListener('click', (event) => {
         const tab = event.target.closest('[data-text-tab]');
@@ -1879,6 +2009,14 @@
         if (preset) {
           const scope = preset.dataset.textPreset;
           writeTextStyle(scope, { ...readTextStyle(scope), ...TEXT_PRESETS[preset.dataset.size] });
+          renderTextPreview();
+          return;
+        }
+
+        const carouselReset = event.target.closest('[data-carousel-reset]');
+        if (carouselReset) {
+          const scope = carouselReset.dataset.carouselReset;
+          writeCarousel(scope, CAROUSEL_DEFAULTS[scope]);
           renderTextPreview();
           return;
         }
@@ -1910,6 +2048,7 @@
       elements.resetTextBtn.addEventListener('click', () => {
         if (!global.confirm('Put the text styling and the prize photographs back to their defaults?')) return;
         TEXT_SCOPES.forEach((scope) => writeTextStyle(scope, TEXT_DEFAULTS));
+        Object.keys(CAROUSEL_DEFAULTS).forEach((scope) => writeCarousel(scope, CAROUSEL_DEFAULTS[scope]));
         document.getElementById('prizeImageMode').value = PRIZE_MEDIA_DEFAULTS.imageMode;
         document.getElementById('prizeImageShape').value = PRIZE_MEDIA_DEFAULTS.shape;
         document.getElementById('prizeAutoplay').checked = PRIZE_MEDIA_DEFAULTS.autoplay;

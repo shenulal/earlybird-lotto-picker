@@ -1932,17 +1932,19 @@ body[data-logo-position='top-right'] {
 }
 
 .welcome-media .carousel {
-  aspect-ratio: 1;
-  /* The dots hang below the circle, so this must not clip them. */
+  /* CHANGED: the shape is the organiser's now. It was a circle and stays one
+     until they say otherwise — see the shared shape rules further down. */
+  aspect-ratio: var(--carousel-aspect, 1);
+  /* The dots hang below the frame, so this must not clip them. */
   overflow: visible;
   background: none;
 }
 
 .welcome-media .carousel-track {
   /* Positioned, so the slides are clipped by this rather than by the carousel,
-     and the circle is what they are clipped to. */
+     and the shape is what they are clipped to. */
   position: relative;
-  border-radius: 50%;
+  border-radius: var(--carousel-corner, 50%);
   overflow: hidden;
   /* A hairline ring, a wider soft halo and a drop shadow: what lifts a circle
      off a dark backdrop without putting a panel behind it. */
@@ -2141,6 +2143,146 @@ body[data-logo-position='top-right'] {
   text-align: var(--text-align, start);
   color: var(--text-color, var(--ink-soft));
   opacity: var(--text-opacity, 1);
+}
+
+/* --------------------------------------- NEW: carousel shape and placement
+
+   Two questions the organiser now answers for the welcome screen and the prize
+   screen separately: what shape the photographs are cut to, and where they sit
+   against the words.
+
+   The shape is two values — a ratio and a corner — set on the frame and read by
+   each screen's own carousel rules, so a screen keeps whatever else makes it
+   look like itself. The selectors name the two frames rather than matching
+   [data-shape] anywhere, because the board carries that attribute too and
+   means something of its own by it.                                         */
+
+.welcome-media[data-shape='rectangle'],
+.welcome-media[data-shape='rounded'],
+.welcome-media[data-shape='oval'],
+.prize-media[data-shape='rectangle'],
+.prize-media[data-shape='rounded'],
+.prize-media[data-shape='oval'] {
+  --carousel-aspect: 4 / 3;
+}
+
+.welcome-media[data-aspect='wide'],
+.prize-media[data-aspect='wide'] {
+  --carousel-aspect: 16 / 9;
+}
+
+.welcome-media[data-aspect='classic'],
+.prize-media[data-aspect='classic'] {
+  --carousel-aspect: 3 / 2;
+}
+
+/* A circle and a square are square whatever ratio is chosen — which is why the
+   console hides the ratio control for them rather than letting it lie. */
+.welcome-media[data-shape='square'],
+.welcome-media[data-shape='circle'],
+.prize-media[data-shape='square'],
+.prize-media[data-shape='circle'] {
+  --carousel-aspect: 1;
+}
+
+.welcome-media[data-shape='rectangle'],
+.welcome-media[data-shape='square'],
+.prize-media[data-shape='rectangle'],
+.prize-media[data-shape='square'] {
+  --carousel-corner: 0px;
+}
+
+/* The one shape with a radius of its own to set. */
+.welcome-media[data-shape='rounded'],
+.prize-media[data-shape='rounded'] {
+  --carousel-corner: var(--carousel-radius, 18px);
+}
+
+.welcome-media[data-shape='oval'],
+.welcome-media[data-shape='circle'],
+.prize-media[data-shape='oval'],
+.prize-media[data-shape='circle'] {
+  --carousel-corner: 50%;
+}
+
+/* The prize screen's frame, which until now was whatever the carousel did by
+   default. The card already clips its own corners, so the shape is set on the
+   carousel itself. */
+.prize-media .carousel {
+  aspect-ratio: var(--carousel-aspect, 4 / 3);
+  border-radius: var(--carousel-corner, 0);
+  overflow: hidden;
+}
+
+/* A shape with corners of its own needs room to show them, or the card clips
+   them flat against its own edge. */
+.prize[data-carousel-placement] > .prize-media:not([data-shape='rectangle']) {
+  padding: clamp(14px, 1.6vw, 22px) clamp(14px, 1.6vw, 22px) 0;
+}
+
+.prize[data-carousel-placement='bottom'] > .prize-media:not([data-shape='rectangle']) {
+  padding: 0 clamp(14px, 1.6vw, 22px) clamp(14px, 1.6vw, 22px);
+}
+
+/* Whatever the shape, the photograph fills it from the centre rather than
+   being squashed into it. */
+.carousel-slide img {
+  object-fit: cover;
+}
+
+/* --- where it sits ---------------------------------------------------- */
+
+/* Top, centre and bottom are a matter of where the element was put, which the
+   page does when it renders. Only the two side-by-side arrangements need a
+   layout of their own — and only above the width where two columns fit, so on
+   a phone they become the picture first and the words under it, which is what
+   a reader scrolling a narrow screen wants in any case. */
+@media (min-width: 861px) {
+  .welcome[data-carousel-placement='left'],
+  .welcome[data-carousel-placement='right'] {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+    gap: clamp(24px, 3vw, 56px);
+  }
+
+  .welcome[data-carousel-placement='left'] > .welcome-media { grid-column: 1; grid-row: 1; }
+  .welcome[data-carousel-placement='left'] > .welcome-intro { grid-column: 2; grid-row: 1; }
+  .welcome[data-carousel-placement='right'] > .welcome-media { grid-column: 2; grid-row: 1; }
+  .welcome[data-carousel-placement='right'] > .welcome-intro { grid-column: 1; grid-row: 1; }
+
+  /* Beside the words the photographs no longer need the height they take when
+     they are the focal point above or below them. */
+  .welcome[data-carousel-placement='left'] > .welcome-media,
+  .welcome[data-carousel-placement='right'] > .welcome-media {
+    width: 100%;
+  }
+
+  /* Text set beside a picture reads from its own edge, not from the middle. */
+  .welcome[data-carousel-placement='left'] > .welcome-intro,
+  .welcome[data-carousel-placement='right'] > .welcome-intro {
+    justify-items: start;
+    text-align: start;
+  }
+
+  .prize[data-carousel-placement='left'],
+  .prize[data-carousel-placement='right'] {
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  .prize[data-carousel-placement='right'] { flex-direction: row-reverse; }
+
+  .prize[data-carousel-placement='left'] > .prize-media,
+  .prize[data-carousel-placement='right'] > .prize-media {
+    flex: 0 0 42%;
+    align-self: center;
+  }
+
+  .prize[data-carousel-placement='left'] > .prize-body,
+  .prize[data-carousel-placement='right'] > .prize-body {
+    flex: 1 1 auto;
+    margin-block: auto;
+  }
 }
 
 /* ------------------------------------------------------------ carousel */

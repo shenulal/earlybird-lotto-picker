@@ -857,6 +857,56 @@
                 <span class="field-hint">How far the backdrop reaches past the words. It grows with the text size, so this stays in proportion whatever size you set.</span>
               </label>
             </div>
+
+            <!-- NEW: the frame this screen's photographs are cut to, and where
+                 they sit against the words. -->
+            <div class="card">
+              <div class="card-head">
+                <h2 class="card-title">Carousel settings</h2>
+                <div class="card-actions">
+                  <button type="button" class="btn btn-ghost btn-small" data-carousel-reset="welcome">Reset to default</button>
+                </div>
+              </div>
+              <p class="field-hint">The shape the guest photographs are cut to, and where the carousel sits against the heading and the message. Photographs are always cropped from the centre to fill the shape, never stretched into it.</p>
+
+              <div class="grid-2">
+                <label class="field">
+                  <span class="field-label">Carousel shape</span>
+                  <select data-carousel="welcome.shape">
+                    <option value="rectangle">Rectangle — square corners</option>
+                    <option value="rounded">Rounded rectangle</option>
+                    <option value="square">Square — 1:1</option>
+                    <option value="oval">Oval</option>
+                    <option value="circle">Circle — 1:1</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span class="field-label">Carousel placement</span>
+                  <select data-carousel="welcome.placement">
+                    <option value="top">Top — above the words</option>
+                    <option value="center">Centre — between heading and message</option>
+                    <option value="bottom">Bottom — below the words</option>
+                    <option value="left">Left — beside the words</option>
+                    <option value="right">Right — beside the words</option>
+                  </select>
+                  <span class="field-hint">Left and right stack on a phone, picture first.</span>
+                </label>
+              </div>
+
+              <label class="field" data-carousel-aspect-field="welcome">
+                <span class="field-label">Frame proportions</span>
+                <select data-carousel="welcome.aspect">
+                  <option value="standard">Standard — 4:3</option>
+                  <option value="wide">Wide — 16:9</option>
+                  <option value="classic">Classic — 3:2</option>
+                </select>
+              </label>
+
+              <label class="field" data-carousel-radius-field="welcome">
+                <span class="field-label">Corner radius <output class="field-value" data-carousel-value="welcome.radius">18px</output></span>
+                <input type="range" data-carousel="welcome.radius" min="0" max="80" step="1">
+              </label>
+            </div>
             </div>
 
             <div data-text-pane="prizes" hidden>
@@ -973,6 +1023,56 @@
                   <option value="large">Large</option>
                 </select>
                 <span class="field-hint">How far the backdrop reaches past the words. It grows with the text size, so this stays in proportion whatever size you set.</span>
+              </label>
+            </div>
+
+            <!-- NEW: the frame this screen's photographs are cut to, and where
+                 they sit against the words. -->
+            <div class="card">
+              <div class="card-head">
+                <h2 class="card-title">Carousel settings</h2>
+                <div class="card-actions">
+                  <button type="button" class="btn btn-ghost btn-small" data-carousel-reset="prizes">Reset to default</button>
+                </div>
+              </div>
+              <p class="field-hint">The shape a prize's photographs are cut to, and where the carousel sits against the heading and the message. Photographs are always cropped from the centre to fill the shape, never stretched into it.</p>
+
+              <div class="grid-2">
+                <label class="field">
+                  <span class="field-label">Carousel shape</span>
+                  <select data-carousel="prizes.shape">
+                    <option value="rectangle">Rectangle — square corners</option>
+                    <option value="rounded">Rounded rectangle</option>
+                    <option value="square">Square — 1:1</option>
+                    <option value="oval">Oval</option>
+                    <option value="circle">Circle — 1:1</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span class="field-label">Carousel placement</span>
+                  <select data-carousel="prizes.placement">
+                    <option value="top">Top — above the words</option>
+                    <option value="center">Centre — between heading and message</option>
+                    <option value="bottom">Bottom — below the words</option>
+                    <option value="left">Left — beside the words</option>
+                    <option value="right">Right — beside the words</option>
+                  </select>
+                  <span class="field-hint">Left and right stack on a phone, picture first.</span>
+                </label>
+              </div>
+
+              <label class="field" data-carousel-aspect-field="prizes">
+                <span class="field-label">Frame proportions</span>
+                <select data-carousel="prizes.aspect">
+                  <option value="standard">Standard — 4:3</option>
+                  <option value="wide">Wide — 16:9</option>
+                  <option value="classic">Classic — 3:2</option>
+                </select>
+              </label>
+
+              <label class="field" data-carousel-radius-field="prizes">
+                <span class="field-label">Corner radius <output class="field-value" data-carousel-value="prizes.radius">18px</output></span>
+                <input type="range" data-carousel="prizes.radius" min="0" max="80" step="1">
               </label>
             </div>
             </div>
@@ -1160,9 +1260,11 @@
                   <div class="text-preview-backdrop" id="textPreviewBackdrop"></div>
                   <div class="text-preview-overlay" id="textPreviewOverlay"></div>
                   <div class="text-preview-content" id="textPreviewContent">
-                    <p class="text-preview-eyebrow" id="textPreviewEyebrow">Welcome</p>
-                    <h3 class="text-preview-heading" id="textPreviewHeading">Our guest of honour</h3>
-                    <p class="text-preview-body" id="textPreviewBody"></p>
+                    <div class="text-preview-words" id="textPreviewWords">
+                      <p class="text-preview-eyebrow" id="textPreviewEyebrow">Welcome</p>
+                      <h3 class="text-preview-heading" id="textPreviewHeading">Our guest of honour</h3>
+                      <p class="text-preview-body" id="textPreviewBody"></p>
+                    </div>
                     <div class="text-preview-media" id="textPreviewMedia" hidden></div>
                   </div>
                 </div>

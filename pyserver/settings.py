@@ -114,6 +114,27 @@ PRIZE_DRAW_ORDERS = ("highest-first", "lowest-first")
 PRIZE_ANNOUNCE_MODES = ("before", "after")
 WELCOME_PLACEMENTS = ("overlay", "panel")
 
+# NEW: the shape a screen's photographs are cut to, and where they sit. These
+# are the carousel's own placements — WELCOME_PLACEMENTS above is a different
+# question entirely, about how the welcome screen itself is shown.
+CAROUSEL_SHAPES = ("rectangle", "rounded", "square", "oval", "circle")
+CAROUSEL_ASPECTS = ("standard", "wide", "classic")
+CAROUSEL_PLACEMENTS = ("top", "center", "bottom", "left", "right")
+
+WELCOME_CAROUSEL_DEFAULTS = {
+    "shape": "circle",
+    "aspect": "standard",
+    "radius": 18,
+    "placement": "bottom",
+}
+
+PRIZE_CAROUSEL_DEFAULTS = {
+    "shape": "rectangle",
+    "aspect": "standard",
+    "radius": 18,
+    "placement": "top",
+}
+
 MAX_WELCOME_IMAGES = 20
 MAX_PRIZES = 20
 MAX_PRIZE_IMAGES = 12
@@ -183,6 +204,7 @@ CLAMPS = {
     "textLineHeight": (0, 300),
     "textLetterSpacing": (-20, 100),
     "textBackdropOpacity": (0, 100),
+    "carouselRadius": (0, 80),
     "prizeSlideMs": (1000, 20000),
     "reelWidth": (0, 2400),
     "reelHeight": (0, 420),
@@ -383,6 +405,9 @@ def _normalize_prizes(raw: Any) -> Dict[str, Any]:
         "announceMode": _as_choice(source.get("announceMode"), PRIZE_ANNOUNCE_MODES, "before"),
         "showCaptions": _as_bool(source.get("showCaptions"), True),
         "intervalMs": _clamp("prizeIntervalMs", source.get("intervalMs"), 5000),
+        # NEW: the frame a prize's photographs are cut to on the prize screen,
+        # and where they sit against its name. The board has its own, below.
+        "carousel": _normalize_carousel(source.get("carousel"), PRIZE_CAROUSEL_DEFAULTS),
         # NEW: what the board does with a prize that has several photographs —
         # one still, or all of them turning.
         "board": {
@@ -394,6 +419,24 @@ def _normalize_prizes(raw: Any) -> Dict[str, Any]:
             "shape": _as_choice(board.get("shape"), PRIZE_IMAGE_SHAPES, "rounded"),
         },
         "items": unique,
+    }
+
+
+def _normalize_carousel(raw: Any, defaults: Dict[str, Any]) -> Dict[str, Any]:
+    """NEW: one screen's carousel frame.
+
+    The defaults are passed in rather than fixed, because they differ: the
+    welcome screen's photographs have been a circle below the message since it
+    was redesigned, and a prize's have been a plain frame above its name. Both
+    stay exactly as they are until an organiser says otherwise.
+    """
+    source = raw if isinstance(raw, dict) else {}
+
+    return {
+        "shape": _as_choice(source.get("shape"), CAROUSEL_SHAPES, defaults["shape"]),
+        "aspect": _as_choice(source.get("aspect"), CAROUSEL_ASPECTS, defaults["aspect"]),
+        "radius": _clamp("carouselRadius", source.get("radius"), defaults["radius"]),
+        "placement": _as_choice(source.get("placement"), CAROUSEL_PLACEMENTS, defaults["placement"]),
     }
 
 
@@ -412,6 +455,7 @@ def _normalize_welcome(raw: Any) -> Dict[str, Any]:
         "message": _as_text(source.get("message"), "", 400),
         "showCaptions": _as_bool(source.get("showCaptions"), True),
         "intervalMs": _clamp("welcomeIntervalMs", source.get("intervalMs"), 5000),
+        "carousel": _normalize_carousel(source.get("carousel"), WELCOME_CAROUSEL_DEFAULTS),
         "images": images,
     }
 

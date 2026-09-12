@@ -600,6 +600,31 @@ The preview draws the plate on the uploaded backdrop at its current darkening,
 which is the whole point — whether something can be read is not a question the
 numbers answer, only the picture does.
 
+### Carousel shape and placement
+
+The welcome screen and the prize screen each decide, on their own, what shape
+their photographs are cut to and where the carousel sits against the words.
+
+**Shape** is rectangle, rounded rectangle (with a radius of its own to set),
+square, oval or circle. Rectangle, rounded and oval also take a set of
+proportions — 4:3, 16:9 or 3:2 — while a square and a circle are square
+whatever else is chosen, which is why the console stops offering the choice for
+them rather than letting it sit there doing nothing. Every shape crops from the
+centre with `object-fit: cover`, so a photograph is never stretched to fill one.
+
+**Placement** is top, centre, bottom, left or right. Centre means between the
+heading and the message — the prize's name and what it is, on a prize card.
+Left and right set the carousel beside the words on a wide screen and stack it
+above them on a phone, where there is no room to set anything beside anything
+else. The element is moved rather than reordered in CSS, so the order a screen
+reader hears is the order the room sees.
+
+The defaults are what each screen already looked like, not one value for both:
+the welcome photographs have been a circle below the message since that screen
+was redesigned, and a prize's a plain 4:3 frame above its name. Neither moves
+until an organiser says so, and each has a reset of its own that leaves the
+other — and that screen's type settings — alone.
+
 ### Prize photographs on the board
 
 **Prize photographs on the board** decides what happens when a prize has more
@@ -735,6 +760,11 @@ commit where there is one, and otherwise a hash of the served files themselves.
 | `text.*.align` | `auto`, `left`, `center` or `right` |
 | `text.*.lineHeight` | Percentage, 0–300; zero leaves the screen's own |
 | `text.*.letterSpacing` | Hundredths of an em, −20 to 100; zero leaves it normal |
+| `welcome.carousel` / `prizes.carousel` | The frame each screen cuts its photographs to, and where it sits. One block each, independent |
+| `*.carousel.shape` | `rectangle`, `rounded`, `square`, `oval` or `circle` |
+| `*.carousel.aspect` | `standard` 4:3, `wide` 16:9 or `classic` 3:2. Ignored by the two square shapes |
+| `*.carousel.radius` | Corner radius in pixels, 0–80. Used by `rounded` only |
+| `*.carousel.placement` | `top`, `center`, `bottom`, `left` or `right`. The last two stack on a phone, picture first |
 | `prizes.board.imageMode` | `single` shows the first photograph, `carousel` shows each in turn |
 | `prizes.board.autoplay`, `.slideMs` | Whether the carousel advances on its own, and how long each photograph holds (1000–20000) |
 | `prizes.board.transition` | `fade` or `slide` |

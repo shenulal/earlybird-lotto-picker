@@ -830,6 +830,14 @@ input:focus-visible,
 }
 
 /* The plate, on each block of the sample exactly as the screens draw it. */
+.text-preview-words {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 26px;
+  min-width: 0;
+}
+
 .text-preview-eyebrow,
 .text-preview-heading,
 .text-preview-body {
@@ -882,6 +890,76 @@ input:focus-visible,
 }
 
 .text-preview[data-width='mobile'] .text-preview-media { width: 156px; }
+
+/* NEW: on the welcome and prize tabs the carousel is the screen's, not the
+   board's small frame beside a prize name, so it is given the room it will
+   really have and takes the shape and proportions chosen for it. */
+.text-preview-content[data-carousel-placement] .text-preview-media {
+  width: min(52%, 420px);
+  aspect-ratio: var(--carousel-aspect, 4 / 3);
+  border-radius: var(--carousel-corner, 0);
+}
+
+.text-preview-media[data-shape='rectangle'],
+.text-preview-media[data-shape='rounded'],
+.text-preview-media[data-shape='oval'] { --carousel-aspect: 4 / 3; }
+
+.text-preview-media[data-aspect='wide'] { --carousel-aspect: 16 / 9; }
+.text-preview-media[data-aspect='classic'] { --carousel-aspect: 3 / 2; }
+
+.text-preview-media[data-shape='square'],
+.text-preview-media[data-shape='circle'] { --carousel-aspect: 1; }
+
+.text-preview-media[data-shape='rectangle'],
+.text-preview-media[data-shape='square'] { --carousel-corner: 0px; }
+
+.text-preview-media[data-shape='rounded'] { --carousel-corner: var(--carousel-radius, 18px); }
+
+.text-preview-media[data-shape='oval'],
+.text-preview-media[data-shape='circle'] { --carousel-corner: 50%; }
+
+/* Beside the words rather than above or below them.
+
+   A grid rather than a row, because the sample's three lines are siblings here
+   and a row would deal them into three cells of their own. The picture takes
+   one column and spans it; every line of text stacks in the other. */
+.text-preview-content[data-carousel-placement='left'],
+.text-preview-content[data-carousel-placement='right'] {
+  flex-direction: row;
+  align-items: center;
+  gap: 48px;
+  text-align: start;
+}
+
+.text-preview-content[data-carousel-placement='left'] > .text-preview-media,
+.text-preview-content[data-carousel-placement='right'] > .text-preview-media {
+  flex: 0 0 42%;
+  width: auto;
+}
+
+.text-preview-content[data-carousel-placement='left'] > .text-preview-words,
+.text-preview-content[data-carousel-placement='right'] > .text-preview-words {
+  flex: 1 1 auto;
+  align-items: flex-start;
+}
+
+/* A phone has no room to set anything beside anything else, so the preview
+   stacks exactly as the screens do — the picture first, the words under it. */
+.text-preview[data-width='mobile'] .text-preview-content[data-carousel-placement='left'],
+.text-preview[data-width='mobile'] .text-preview-content[data-carousel-placement='right'] {
+  flex-direction: column;
+  text-align: center;
+}
+
+.text-preview[data-width='mobile'] .text-preview-content[data-carousel-placement] > .text-preview-words {
+  align-items: center;
+}
+
+.text-preview[data-width='mobile'] .text-preview-content[data-carousel-placement='left'] > .text-preview-media,
+.text-preview[data-width='mobile'] .text-preview-content[data-carousel-placement='right'] > .text-preview-media {
+  order: -1;
+  width: min(72%, 420px);
+}
 
 .text-preview-media[data-shape='circle'] { aspect-ratio: 1; border-radius: 50%; }
 .text-preview-media[data-shape='oval'] { aspect-ratio: 4 / 5; border-radius: 50%; }

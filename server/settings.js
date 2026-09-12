@@ -103,6 +103,46 @@ const PRIZE_DRAW_ORDERS = Object.freeze(['highest-first', 'lowest-first']);
 const PRIZE_ANNOUNCE_MODES = Object.freeze(['before', 'after']);
 const WELCOME_PLACEMENTS = Object.freeze(['overlay', 'panel']);
 
+/* NEW: the shape a screen's photographs are cut to, and where they sit.
+   Note these are the carousel's own placements — WELCOME_PLACEMENTS above is a
+   different question entirely, about how the welcome screen itself is shown. */
+const CAROUSEL_SHAPES = Object.freeze(['rectangle', 'rounded', 'square', 'oval', 'circle']);
+const CAROUSEL_ASPECTS = Object.freeze(['standard', 'wide', 'classic']);
+const CAROUSEL_PLACEMENTS = Object.freeze(['top', 'center', 'bottom', 'left', 'right']);
+
+/**
+ * One screen's carousel frame.
+ *
+ * The defaults are passed in rather than fixed, because they differ: the
+ * welcome screen's photographs have been a circle below the message since it
+ * was redesigned, and a prize's have been a plain frame above its name. Both
+ * stay exactly as they are until an organiser says otherwise.
+ */
+function normalizeCarousel(input, defaults) {
+  const source = input && typeof input === 'object' ? input : {};
+
+  return {
+    shape: asChoice(source.shape, CAROUSEL_SHAPES, defaults.shape),
+    aspect: asChoice(source.aspect, CAROUSEL_ASPECTS, defaults.aspect),
+    radius: clamp('carouselRadius', source.radius, defaults.radius),
+    placement: asChoice(source.placement, CAROUSEL_PLACEMENTS, defaults.placement),
+  };
+}
+
+const WELCOME_CAROUSEL_DEFAULTS = Object.freeze({
+  shape: 'circle',
+  aspect: 'standard',
+  radius: 18,
+  placement: 'bottom',
+});
+
+const PRIZE_CAROUSEL_DEFAULTS = Object.freeze({
+  shape: 'rectangle',
+  aspect: 'standard',
+  radius: 18,
+  placement: 'top',
+});
+
 const MAX_WELCOME_IMAGES = 20;
 const MAX_PRIZES = 20;
 const MAX_PRIZE_IMAGES = 12;
@@ -165,6 +205,7 @@ const CLAMPS = Object.freeze({
   textLineHeight: [0, 300],
   textLetterSpacing: [-20, 100],
   textBackdropOpacity: [0, 100],
+  carouselRadius: [0, 80],
   prizeSlideMs: [1000, 20000],
   reelWidth: [0, 2400],
   reelHeight: [0, 420],
@@ -342,6 +383,9 @@ function normalizePrizes(input) {
     announceMode: asChoice(source.announceMode, PRIZE_ANNOUNCE_MODES, 'before'),
     showCaptions: asBoolean(source.showCaptions, true),
     intervalMs: clamp('prizeIntervalMs', source.intervalMs, 5000),
+    /* NEW: the frame a prize's photographs are cut to on the prize screen,
+       and where they sit against its name. The board has its own, below. */
+    carousel: normalizeCarousel(source.carousel, PRIZE_CAROUSEL_DEFAULTS),
     /* NEW: what the board does with a prize that has several photographs —
        one still, or all of them turning. */
     board: (() => {
@@ -391,6 +435,7 @@ function normalizeWelcome(input) {
     message: asText(source.message, '', 400),
     showCaptions: asBoolean(source.showCaptions, true),
     intervalMs: clamp('welcomeIntervalMs', source.intervalMs, 5000),
+    carousel: normalizeCarousel(source.carousel, WELCOME_CAROUSEL_DEFAULTS),
     images,
   };
 }

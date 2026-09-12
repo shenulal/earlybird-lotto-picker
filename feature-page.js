@@ -46,8 +46,19 @@
     message.textContent = welcome.message;
     message.hidden = !welcome.message;
 
+    // NEW: the frame the photographs are cut to, and where they sit against
+    // the words. Moving the element rather than reordering it with CSS keeps
+    // the reading order and the visual order the same thing, which is what a
+    // screen reader and a projector both need.
+    const media = document.getElementById('welcomeMedia');
+    placeCarousel(media, welcome.carousel, {
+      container: card,
+      text: document.querySelector('.welcome-intro'),
+      centreBefore: document.getElementById('welcomeMessage'),
+    });
+
     carousels.push(
-      global.createCarousel(document.getElementById('welcomeMedia'), welcome.images, {
+      global.createCarousel(media, welcome.images, {
         intervalMs: welcome.intervalMs,
         showCaptions: welcome.showCaptions,
         altFallback: welcome.title,
@@ -60,6 +71,32 @@
     // With no photo the message takes the full width rather than leaving a
     // gap where the carousel would have been.
     card.classList.toggle('is-textonly', welcome.images.length === 0);
+  }
+
+  /**
+   * NEW: puts one carousel where the organiser asked for it.
+   *
+   * Top and bottom are the two ends of the block it shares with the text.
+   * Centre drops it into the middle of that text, before whichever element is
+   * named. Left and right leave it a sibling and hand the arrangement to CSS,
+   * which is the only one of the five that has to change again on a phone.
+   */
+  function placeCarousel(media, carousel, where) {
+    const { container, text, centreBefore } = where;
+    const placement = (carousel && carousel.placement) || 'top';
+
+    container.dataset.carouselPlacement = placement;
+    media.dataset.shape = (carousel && carousel.shape) || 'rectangle';
+    media.dataset.aspect = (carousel && carousel.aspect) || 'standard';
+    media.style.setProperty('--carousel-radius', `${(carousel && carousel.radius) || 0}px`);
+
+    if (placement === 'center' && centreBefore && centreBefore.parentElement) {
+      centreBefore.parentElement.insertBefore(media, centreBefore);
+      return;
+    }
+
+    if (placement === 'bottom') container.appendChild(media);
+    else container.insertBefore(media, text);
   }
 
   function renderPrizes(settings) {
@@ -97,7 +134,18 @@
     prizes.items.forEach((prize) => {
       const mount = document.getElementById(`prize-media-${prize.id}`);
       if (!mount) return;
-      if (prize.images.length === 0) mount.closest('.prize').classList.add('is-textonly');
+
+      const card = mount.closest('.prize');
+      if (prize.images.length === 0) card.classList.add('is-textonly');
+
+      // NEW: the same frame and placement question as the welcome screen, asked
+      // once per card. Centre means between the prize's name and what it is.
+      placeCarousel(mount, prizes.carousel, {
+        container: card,
+        text: card.querySelector('.prize-body'),
+        centreBefore: card.querySelector('.prize-description'),
+      });
+
       carousels.push(
         global.createCarousel(mount, prize.images, {
           intervalMs: prizes.intervalMs,
