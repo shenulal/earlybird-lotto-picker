@@ -680,6 +680,13 @@
                 <input type="range" id="controlRadius" min="0" max="999" step="1">
                 <span class="field-hint">0 is a square corner; the far end is a full pill.</span>
               </label>
+
+              <!-- Whether the board offers a new draw at all. Who may use it is
+                   a separate permission, under Settings. -->
+              <label class="switch">
+                <input type="checkbox" id="showNewDrawButton">
+                <span><strong>Show the "New draw" button</strong><small>When enabled, the "New draw" button is visible on the drawboard for starting a new draw. When disabled it stays hidden, along with its N shortcut, so a projected board cannot be reset from the floor. You can always start a new draw from this console.</small></span>
+              </label>
             </div>
           </div>
 
@@ -705,7 +712,7 @@
                     <div class="board-preview-controls" id="boardPreviewControls">
                       <span class="board-preview-button is-start">Start</span>
                       <span class="board-preview-button">Stop</span>
-                      <span class="board-preview-button">New draw</span>
+                      <span class="board-preview-button" id="boardPreviewNewDraw">New draw</span>
                     </div>
                   </div>
                 </div>
@@ -1526,12 +1533,6 @@
               <label class="switch">
                 <input type="checkbox" name="ui.showStats">
                 <span><strong>Show the prize counters on the board</strong></span>
-              </label>
-              <!-- NEW: whether the board offers a new draw at all. Who may use
-                   it is the separate permission below. -->
-              <label class="switch">
-                <input type="checkbox" name="ui.showNewDrawButton">
-                <span><strong>Show the "New draw" button on the drawboard</strong><small>Off removes it and its N shortcut, so a projected board cannot be reset from the floor.</small></span>
               </label>
             </div>
           </div>

@@ -695,9 +695,13 @@ function normalizeAppSettings(input) {
       // NEW: on by default, so a board configured before this existed keeps
       // showing the event name exactly as it did.
       showEventName: asBoolean(ui.showEventName, true),
-      // NEW: whether the board offers "New draw" at all. On by default, for
-      // the same reason. Who may *use* it is draw.allowResetFromBoard.
-      showNewDrawButton: asBoolean(ui.showNewDrawButton, true),
+      // CHANGED: whether the board offers "New draw" at all, and off unless it
+      // is asked for. A projected board is in a room full of people, and the
+      // button clears every winner drawn so far; the safe default is the one
+      // where nobody can do that by walking up to the screen. An organiser
+      // always has it in the console. Who may *use* it, once it is shown, is
+      // the separate question draw.allowResetFromBoard answers.
+      showNewDrawButton: asBoolean(ui.showNewDrawButton, false),
       showOrganizationName: asBoolean(ui.showOrganizationName, true),
       showWinnersPanel: asBoolean(ui.showWinnersPanel, false),
       showStats: asBoolean(ui.showStats, false),

@@ -736,7 +736,8 @@ def normalize_app_settings(raw: Any) -> Dict[str, Any]:
             "showEventName": _as_bool(ui.get("showEventName"), True),
             # NEW: whether the board offers "New draw" at all. On by default,
             # for the same reason. Who may *use* it is draw.allowResetFromBoard.
-            "showNewDrawButton": _as_bool(ui.get("showNewDrawButton"), True),
+            # CHANGED: off unless asked for — see server/settings.js.
+            "showNewDrawButton": _as_bool(ui.get("showNewDrawButton"), False),
             "showOrganizationName": _as_bool(ui.get("showOrganizationName"), True),
             "showWinnersPanel": _as_bool(ui.get("showWinnersPanel"), False),
             "showStats": _as_bool(ui.get("showStats"), False),

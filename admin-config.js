@@ -42,6 +42,9 @@
     overlayOpacity: 45,
     reel: { width: 0, height: 0, fontSize: 0 },
     controls: { minWidth: 0, height: 0, fontSize: 0, paddingX: 0, radius: 999 },
+    // Off unless asked for: the button clears every winner drawn so far, and a
+    // projected board stands in a room full of people.
+    showNewDrawButton: false,
   };
 
   const BACKGROUND_MAX_BYTES = 10 * 1024 * 1024;
@@ -271,6 +274,8 @@
       saveLayoutBtn: document.getElementById('saveLayoutBtn'),
       revertLayoutBtn: document.getElementById('revertLayoutBtn'),
       resetLayoutBtn: document.getElementById('resetLayoutBtn'),
+      showNewDrawButton: document.getElementById('showNewDrawButton'),
+      boardPreviewNewDraw: document.getElementById('boardPreviewNewDraw'),
       boardPreview: document.getElementById('boardPreview'),
       boardPreviewBackdrop: document.getElementById('boardPreviewBackdrop'),
       boardPreviewOverlay: document.getElementById('boardPreviewOverlay'),
@@ -1622,6 +1627,8 @@
         layoutInput(`${slider.id}Value`).textContent = describeSize(value, slider.zeroIsAValue);
       });
 
+      elements.showNewDrawButton.checked = Boolean(ui.showNewDrawButton);
+
       renderBoardPreview();
     }
 
@@ -1645,7 +1652,12 @@
             overlayOpacity: Number(elements.overlayOpacity.value),
           },
         },
-        ui: { ...settings.ui, reel, controls },
+        ui: {
+          ...settings.ui,
+          reel,
+          controls,
+          showNewDrawButton: elements.showNewDrawButton.checked,
+        },
       };
     }
 
@@ -1696,6 +1708,11 @@
       set('--preview-control-padding', controls.paddingX || auto.ctlPad);
       set('--preview-control-radius', controls.radius);
       preview.style.setProperty('--preview-accent', draft.ui.primaryColor);
+
+      // Hidden means gone, not greyed: the row of buttons closes up around it,
+      // here and on the board, because [hidden] takes the element out of the
+      // layout entirely.
+      elements.boardPreviewNewDraw.hidden = !draft.ui.showNewDrawButton;
     }
 
     function applyLayoutValues(values) {
@@ -1709,6 +1726,9 @@
         );
       });
       elements.overlayValue.textContent = `${elements.overlayOpacity.value}%`;
+      if (values.showNewDrawButton !== undefined) {
+        elements.showNewDrawButton.checked = Boolean(values.showNewDrawButton);
+      }
       renderBoardPreview();
     }
 
@@ -2112,6 +2132,8 @@
           renderBoardPreview();
         }
       });
+
+      elements.showNewDrawButton.addEventListener('change', renderBoardPreview);
 
       elements.saveLayoutBtn.addEventListener('click', () => context.save(collectLayout(), 'Board layout saved.'));
       elements.revertLayoutBtn.addEventListener('click', renderLayout);

@@ -536,6 +536,18 @@ lowering it shows more of the image, and at 0% the photograph is left exactly as
 uploaded. The slider says what it is at, the preview shows what it does, and
 there is a reset beside it.
 
+**Show the "New draw" button** decides whether the board offers a new draw at
+all, and is **off unless it is asked for**. The button clears every winner
+drawn so far, and a projected board stands in a room full of people; the safe
+default is the one where nobody can do that by walking up to the screen. Off
+takes the button out of the layout entirely — the remaining controls close up
+around it rather than leaving a gap — and disables its **N** shortcut with it.
+
+This is a setting about the public board and nothing else. An organiser signed
+in to the console always has **Reset draw** under Overview, whatever the board
+is showing. Who may use the button once it *is* shown is a separate question,
+answered by `draw.allowResetFromBoard` under Settings.
+
 **Sizes** are in pixels, with Small / Medium / Large presets that simply fill
 the sliders — the numbers are what is stored, so a preset is a quick way to
 reach a set of them rather than a fourth thing to keep in step. A slider left
@@ -747,7 +759,7 @@ commit where there is one, and otherwise a hash of the served files themselves.
 | `animation.confettiPalette` | Up to 12 hex colours for the confetti |
 | `animation.celebration` | Which celebration fires: `classic`, `streamers`, `stars`, `balloons`, `snow`, `money`, `mix` or `none` |
 | `ui.showEventName` | Show the event name on the board. Off gives the header back to the draw |
-| `ui.showNewDrawButton` | Offer "New draw" on the board at all. Off removes the button and its N shortcut |
+| `ui.showNewDrawButton` | Offer "New draw" on the board at all. **Off by default**: the button clears every winner drawn so far, and a projected board stands in a room full of people. Off removes the button and its N shortcut; an organiser still has **Reset draw** in the console |
 | `ui.reel.width` / `.height` / `.fontSize` | The draw reel's measurements in pixels. Zero means the board sizes that dimension to the screen, as it does unconfigured |
 | `ui.controls.minWidth` / `.height` / `.fontSize` / `.paddingX` | The buttons' measurements in pixels; zero is again "leave it to the board" |
 | `ui.controls.radius` | Corner radius in pixels. Unlike the rest, zero is a real choice — a square corner — so this defaults to 999 |
