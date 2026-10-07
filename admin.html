@@ -47,27 +47,37 @@
         </span>
       </div>
 
+      <!-- CHANGED: grouped in the order an organiser works — load the entries,
+           build the content, set the look, prepare the draw itself — with the
+           things changed least often (templates, rules, sign-in) last, and
+           Settings directly above Account. -->
       <nav class="nav" aria-label="Console sections">
         <button type="button" class="nav-item is-active" data-panel="overview">Overview</button>
+
+        <p class="nav-group">Entries</p>
         <button type="button" class="nav-item" data-panel="participants">Participants</button>
         <button type="button" class="nav-item" data-panel="fields">Fields</button>
         <button type="button" class="nav-item" data-panel="display">Display</button>
-        <button type="button" class="nav-item" data-panel="branding">Branding</button>
-        <button type="button" class="nav-item" data-panel="welcome">Welcome</button>
+
+        <p class="nav-group">Content</p>
         <button type="button" class="nav-item" data-panel="prizes">Prizes</button>
-        <!-- NEW -->
-        <!-- NEW -->
-        <button type="button" class="nav-item" data-panel="layout">Board layout</button>
-        <!-- NEW -->
-        <button type="button" class="nav-item" data-panel="text">Text &amp; media</button>
+        <button type="button" class="nav-item" data-panel="welcome">Welcome</button>
         <button type="button" class="nav-item" data-panel="channels">Channels</button>
-        <!-- NEW: the event features. -->
+
+        <p class="nav-group">Look</p>
+        <button type="button" class="nav-item" data-panel="branding">Branding</button>
+        <button type="button" class="nav-item" data-panel="layout">Board layout</button>
+        <button type="button" class="nav-item" data-panel="text">Text &amp; media</button>
+        <button type="button" class="nav-item" data-panel="wording">Wording</button>
+
+        <p class="nav-group">The draw</p>
         <button type="button" class="nav-item" data-panel="sound">Sound</button>
         <button type="button" class="nav-item" data-panel="countdown">Countdown</button>
-        <button type="button" class="nav-item" data-panel="settings">Settings</button>
         <button type="button" class="nav-item" data-panel="certificate">Certificate</button>
+
+        <p class="nav-group">Setup</p>
         <button type="button" class="nav-item" data-panel="templates">Templates</button>
-        <button type="button" class="nav-item" data-panel="wording">Wording</button>
+        <button type="button" class="nav-item" data-panel="settings">Settings</button>
         <button type="button" class="nav-item" data-panel="account">Account</button>
       </nav>
 

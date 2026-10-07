@@ -2654,3 +2654,15 @@ input[type='datetime-local'] {
 #panel-templates .checkbox-row + .form-actions {
   margin-top: 18px;
 }
+
+/* CHANGED: the console's sections, labelled in groups. Set like the
+   "Open a screen" heading below them, so the sidebar reads as one system. */
+.nav-group {
+  margin: 14px 0 4px;
+  padding-inline: 12px;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--c-text-faint);
+}

@@ -53,24 +53,26 @@ record stays on the server.
 
 Behind a sign-in.
 
+Sections are grouped in the sidebar as **Entries**, **Content**, **Look**, **The draw** and **Setup**, in the order an event is prepared.
+
 | Section | What it does |
 |---|---|
 | **Overview** | Live counters, data-health warnings, results table, CSV export, undo last draw, reset draw, strike off a winner as not present and restore one |
 | **Participants** | Upload the entry list or link a Google Sheet, with a column preview; download a template, export, or delete |
-| **Board layout** | How big the reel and the buttons are, and how far the backdrop is darkened — judged against a live preview of the board |
-| **Text & media** | How the words are set on each screen — face, size, weight, colour, opacity, alignment, line height, letter spacing — and how a prize's photographs are shown on the board, with a live preview |
-| **Channels** | Social links and their QR codes: style, position, size, display mode, with a live preview |
-| **Sound** | Every sound cue — source, volume, delay, fades, length, start point, looping — your own uploaded tracks, sound packs, previews |
-| **Countdown** | When the draw starts, the words, full screen or banner, units, which screens, and whether the draw waits for zero |
 | **Fields** | Rename columns, mark sensitive ones, choose the identifier and what appears in the export |
 | **Display** | Choose exactly which fields appear while spinning, on the announcement, on the winner card and in the winners list, and how long the announcement is held before the card — with a rehearsal of the reveal |
-| **Branding** | Upload the logo and backdrop, with size and resolution validated on the server |
-| **Welcome** | Greet a chief guest with a message and a carousel of photos |
 | **Prizes** | Build the prize list, each with its own photo carousel |
-| **Settings** | Prize count, draw behaviour, the "winner not present" redraw, colours, alignment, language, animation timings |
+| **Welcome** | Greet a chief guest with a message and a carousel of photos |
+| **Channels** | Social links and their QR codes: style, position, size, display mode, with a live preview |
+| **Branding** | Upload the logo and backdrop, with size and resolution validated on the server |
+| **Board layout** | How big the reel and the buttons are, and how far the backdrop is darkened — judged against a live preview of the board |
+| **Text & media** | How the words are set on each screen — face, size, weight, colour, opacity, alignment, line height, letter spacing — and how a prize's photographs are shown on the board, with a live preview |
+| **Wording** | Every string on the draw board |
+| **Sound** | Every sound cue — source, volume, delay, fades, length, start point, looping — your own uploaded tracks, sound packs, previews |
+| **Countdown** | When the draw starts, the words, full screen or banner, units, which screens, and whether the draw waits for zero |
 | **Certificate** | The printable draw certificate: wording, what it includes, columns, signatures, paper — with a live preview |
 | **Templates** | Save the configuration, apply a saved one in whole or in part, export and import as a file |
-| **Wording** | Every string on the draw board |
+| **Settings** | Prize count, draw behaviour, the "winner not present" redraw, colours, alignment, language, animation timings |
 | **Account** | Change the username and password |
 
 ---
