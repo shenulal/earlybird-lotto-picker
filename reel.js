@@ -10,9 +10,11 @@
  *    than by holding the reel at full speed and making the operator wait.
  *  - The deceleration starts at exactly the speed the tape was already
  *    travelling, so there is no jolt at the hand-over.
- *  - The board can name the entry the tape will finish on, so once the server
- *    has drawn, the reel comes to rest on the actual winner instead of a
- *    stranger who is then replaced.
+ *  - The tape never commits to an entry before the server has drawn. Stop
+ *    eases it down to a gentle roll; only once the winner is named does it
+ *    choose a resting place, one still out of sight below the window, and
+ *    glide onto it. The entry the room watches come to rest is the winner, so
+ *    nothing is ever swapped in view and the reel never speeds up again.
  *
  * The tape is virtual: entries have an index that only goes up, and a handful
  * of list items are recycled underneath it. Only `transform` is animated, so
@@ -24,8 +26,13 @@
   const SPIN_UP_MS = 420;
   const MIN_SETTLE_MS = 950;
   const MAX_SETTLE_MS = 2600;
-  // Far enough that the slowdown reads as one movement rather than a stumble.
-  const MIN_SETTLE_ITEMS = 4;
+  // While the draw is still in flight the tape eases towards this pace: slow
+  // enough to read as stopping, fast enough that nothing looks chosen yet.
+  const CRAWL_MS_PER_ITEM = 180;
+  const BRAKE_EASE_MS = 260;
+  // The landing entry must start wholly below the window — the first slot
+  // that can be (re)written without anyone seeing it change.
+  const LANDING_LEAD_ITEMS = 2;
   // One entry fills the window; the others cover the soft edges above and
   // below it. Keeping this small lets the landing entry be composed late,
   // which is what gives a slow draw call time to arrive.
@@ -69,7 +76,9 @@
     let frameId = null;
     let lastFrameAt = 0;
     let spinStartedAt = 0;
+    let crawl = 0;
     let settle = null;
+    let stopping = null; // { stoppedAt, minimumMs, resolve } once Stop is pressed.
     let landingEntry = null;
     let stepTimerId = null;
 
@@ -123,7 +132,13 @@
       velocity = 0;
       frameId = null;
       settle = null;
-      global.setTimeout(landed.resolve, LANDED_HOLD_MS);
+      resolveStop();
+    }
+
+    function resolveStop() {
+      const { resolve } = stopping;
+      stopping = null;
+      global.setTimeout(resolve, LANDED_HOLD_MS);
     }
 
     function frame(now) {
@@ -138,12 +153,19 @@
       } else if (phase === 'cruise') {
         velocity = cruise;
         travelled += velocity * elapsed;
+      } else if (phase === 'brake') {
+        // Eases towards the crawl from whatever speed Stop caught it at.
+        velocity = crawl + (velocity - crawl) * Math.exp(-elapsed / BRAKE_EASE_MS);
+        travelled += velocity * elapsed;
       } else if (phase === 'settle') {
-        const progress = Math.min(1, (now - settle.startedAt) / settle.duration);
-        const remaining = 1 - progress;
-        travelled = settle.from + settle.distance * (1 - remaining * remaining * remaining);
-        velocity = ((3 * settle.distance) / settle.duration) * remaining * remaining;
-        if (progress >= 1) {
+        // A cubic that leaves at the tape's current speed and arrives at rest
+        // exactly on the landing entry. The duration is kept where the speed
+        // only ever falls, so the tape cannot surge before it stops.
+        const u = Math.min(1, (now - settle.startedAt) / settle.duration);
+        const { distance: d, launch: a } = settle;
+        travelled = settle.from + a * (u * u * u - 2 * u * u + u) + d * (3 * u * u - 2 * u * u * u);
+        velocity = (a * (3 * u * u - 4 * u + 1) + d * (6 * u - 6 * u * u)) / settle.duration;
+        if (u >= 1) {
           finishSettle();
           return;
         }
@@ -160,11 +182,13 @@
       // A floor on the period keeps a mis-set speed from asking for travel no
       // display can resolve.
       cruise = itemHeight / Math.max(24, Number(msPerItem) || 60);
+      crawl = Math.min(cruise, itemHeight / CRAWL_MS_PER_ITEM);
 
       base = 0;
       travelled = 0;
       velocity = 0;
       settle = null;
+      stopping = null;
       landingEntry = null;
       windowEl.classList.remove('is-landed');
 
@@ -193,60 +217,94 @@
     }
 
     /**
-     * Begins the slowdown and resolves once the tape has landed and held.
+     * Begins the slowdown and resolves once the tape has landed on the winner
+     * and held.
      *
-     * `minimumMs` is what is left of the configured minimum roll. The tape
-     * takes at least that long to stop, which honours the setting without
-     * making the operator wait for their own keypress to register.
+     * The tape eases off at once, so Stop is felt on the keypress, but it does
+     * not pick where to stop until `land()` names the winner. `minimumMs` is
+     * what is left of the configured minimum roll; the slowdown takes at least
+     * that long, which honours the setting without making the operator wait.
      */
     function settleTo(minimumMs) {
+      if (stopping) return Promise.resolve();
+      if (phase !== 'static' && phase !== 'spin' && phase !== 'cruise') return Promise.resolve();
+
+      const done = new Promise((resolve) => {
+        stopping = {
+          stoppedAt: global.performance.now(),
+          minimumMs: Number(minimumMs) || 0,
+          resolve,
+        };
+      });
+
       if (phase === 'static') {
+        // Nothing travels here, so stopping on a stand-in would read as a
+        // result. The window clears instead, and the next entry in it is the
+        // winner.
         global.clearInterval(stepTimerId);
         stepTimerId = null;
+        nodes[0].innerHTML = '';
+      } else {
+        phase = 'brake';
+      }
+      if (landingEntry) planLanding();
+      return done;
+    }
+
+    /**
+     * Chooses the resting place once the winner is known, and starts the
+     * final glide onto it.
+     *
+     * The entry is placed at least LANDING_LEAD_ITEMS ahead, so it is composed
+     * — or rewritten — while still out of sight, and then travels into the
+     * window as the winner from the moment anyone can see it.
+     */
+    function planLanding() {
+      if (phase === 'static') {
         phase = 'idle';
+        nodes[0].innerHTML = renderItem(landingEntry);
         windowEl.classList.add('is-landed');
-        return new Promise((resolve) => global.setTimeout(resolve, LANDED_HOLD_MS));
+        resolveStop();
+        return;
       }
 
-      if (phase !== 'spin' && phase !== 'cruise') return Promise.resolve();
+      const now = global.performance.now();
+      const speed = Math.max(velocity, 0.001);
+      const waited = now - stopping.stoppedAt;
+      const target = clamp(stopping.minimumMs - waited, MIN_SETTLE_MS, MAX_SETTLE_MS);
 
-      const target = clamp(Number(minimumMs) || 0, MIN_SETTLE_MS, MAX_SETTLE_MS);
-      // An ease-out over distance D in time T leaves the tape 3D/T at the
-      // start, so this is the distance whose slowdown begins at exactly the
-      // speed it is already travelling.
-      const wanted = (velocity * target) / 3;
-      const items = Math.max(MIN_SETTLE_ITEMS, Math.round(wanted / itemHeight));
-      const toBoundary = (base + 1) * itemHeight - travelled;
-      const distance = toBoundary + items * itemHeight;
+      // A glide over D that leaves at the current speed can take anywhere
+      // from 1.5·D/v to 3·D/v and still only slow down. Pick the nearest
+      // entry far enough out for the target to sit in that range.
+      const reach = travelled + (speed * target) / 3;
+      const finalIndex = Math.max(base + LANDING_LEAD_ITEMS, Math.ceil(reach / itemHeight));
+      const distance = finalIndex * itemHeight - travelled;
+      const duration = clamp(target, (1.5 * distance) / speed, (3 * distance) / speed);
 
       settle = {
         from: travelled,
         distance,
-        duration: clamp((3 * distance) / Math.max(velocity, 0.001), MIN_SETTLE_MS, MAX_SETTLE_MS),
-        startedAt: global.performance.now(),
-        finalIndex: base + 1 + items,
-        resolve: null,
+        duration,
+        launch: speed * duration,
+        startedAt: now,
+        finalIndex,
       };
       phase = 'settle';
 
-      return new Promise((resolve) => {
-        settle.resolve = resolve;
-      });
+      const node = nodes.find((candidate) => Number(candidate.dataset.index) === finalIndex);
+      if (node) node.innerHTML = renderItem(landingEntry);
     }
 
     /**
-     * Names the entry the tape should finish on.
+     * Names the entry the tape will finish on.
      *
-     * Called as soon as the server has drawn. If that entry is still ahead of
-     * the window it is simply composed in place; if it has already been
-     * composed it is rewritten, which is invisible behind the blur and worth
-     * far more than landing on someone who did not win.
+     * Called as soon as the server has drawn. Until then the tape only rolls
+     * slowly; from here it comes to rest on this entry and no other.
      */
     function land(entry) {
+      if (!entry || landingEntry) return;
       landingEntry = entry;
-      if (!settle) return;
-      const node = nodes.find((candidate) => Number(candidate.dataset.index) === settle.finalIndex);
-      if (node) node.innerHTML = renderItem(entry);
+      if (stopping && (phase === 'brake' || phase === 'static')) planLanding();
     }
 
     function destroy() {
@@ -255,6 +313,7 @@
       frameId = null;
       stepTimerId = null;
       settle = null;
+      stopping = null;
       phase = 'idle';
     }
 
