@@ -4,6 +4,7 @@ Mirrors ``server/settings.js`` field for field, so one ``appsettings.json``
 works under either runtime.
 """
 
+import hashlib
 import math
 import os
 import re
@@ -763,6 +764,42 @@ def save_settings_file(settings_file: Dict[str, Any]) -> None:
     )
 
 
+_environment_credential_cache: Dict[str, Any] = {}
+
+
+def environment_credential() -> Optional[Dict[str, Any]]:
+    """FIX: the credential ``ADMIN_USERNAME``/``ADMIN_PASSWORD`` describe, or None.
+
+    It used to be hashed with a new random salt on every call. The session key
+    is derived from the salt, so each worker process signed cookies with a
+    different key and signed the organiser out whenever another worker answered.
+    The salt now comes from the values themselves, so every worker and every
+    call agree, and the hash is computed once per process. It is never stored,
+    so a fixed salt exposes nothing a random one would protect.
+    """
+    username = os.environ.get("ADMIN_USERNAME")
+    password = os.environ.get("ADMIN_PASSWORD")
+    if not username or not password:
+        return None
+
+    key = f"{username}\u0000{password}"
+    cached = _environment_credential_cache.get("entry")
+    if cached and cached[0] == key:
+        return dict(cached[1])
+
+    salt = hashlib.sha256(f"pickora-environment-credential\u0000{key}".encode("utf-8")).hexdigest()[:32]
+    credential = hash_password(password, salt)
+    credential.update({"username": username, "source": "environment", "isDefaultPassword": False})
+    _environment_credential_cache["entry"] = (key, credential)
+    return dict(credential)
+
+
+def active_admin_credential(settings_file: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """The credential sign-in is checked against, environment first."""
+    resolved = settings_file if settings_file is not None else load_settings_file()
+    return environment_credential() or resolved.get("adminAuth") or {}
+
+
 def ensure_admin_credentials() -> Dict[str, Any]:
     """Return the credential record, bootstrapping it on first run.
 
@@ -770,13 +807,10 @@ def ensure_admin_credentials() -> Dict[str, Any]:
     so a deployment can override whatever is committed.
     """
     settings_file = load_settings_file()
-    env_username = os.environ.get("ADMIN_USERNAME")
-    env_password = os.environ.get("ADMIN_PASSWORD")
+    from_environment = environment_credential()
 
-    if env_username and env_password:
-        credential = hash_password(env_password)
-        credential.update({"username": env_username, "source": "environment", "isDefaultPassword": False})
-        return {"settingsFile": {**settings_file, "adminAuth": credential}, "created": False, "usingDefaults": False}
+    if from_environment:
+        return {"settingsFile": {**settings_file, "adminAuth": from_environment}, "created": False, "usingDefaults": False}
 
     existing = settings_file.get("adminAuth")
     if existing and existing.get("hash"):

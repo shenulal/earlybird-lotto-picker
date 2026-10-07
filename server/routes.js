@@ -16,6 +16,7 @@ const {
   loadSettingsFile,
   saveSettingsFile,
   ensureAdminCredentials,
+  activeAdminCredential,
   MAX_WELCOME_IMAGES,
   MAX_PRIZE_IMAGES,
 } = require('./settings');
@@ -30,8 +31,8 @@ function currentSession(req) {
 
   // The signing key is derived from the stored credential, so it has to be
   // loaded to verify — cheap, since the snapshot is already in memory.
-  const { adminAuth } = loadSettingsFile();
-  return auth.readSessionToken(token, adminAuth);
+  // CHANGED: the same credential sign-in used, environment first.
+  return auth.readSessionToken(token, activeAdminCredential());
 }
 
 function requireAuth(req, res, next) {
@@ -100,10 +101,13 @@ function createApiRouter() {
   });
 
   router.get('/health', async (_req, res) => {
-    const usingKv = !store.driver.servesBlobsAsFiles;
+    const usingKv = store.driver.remote;
     const health = {
       ok: true,
       storage: store.driver.name,
+      // NEW: which event this instance serves, so a domain can be checked
+      // against the tenant it was meant to reach.
+      tenant: process.env.PICKORA_TENANT || null,
       writable: null,
       // What is actually running. On Vercel these come from the build, so this
       // answers "did my last push deploy?" without guessing from the page.
@@ -120,6 +124,7 @@ function createApiRouter() {
         UPSTASH_REDIS_REST_TOKEN: Boolean(process.env.UPSTASH_REDIS_REST_TOKEN),
         ADMIN_USERNAME: Boolean(process.env.ADMIN_USERNAME),
         ADMIN_PASSWORD: Boolean(process.env.ADMIN_PASSWORD),
+        PICKORA_DATA_DIR: Boolean(process.env.PICKORA_DATA_DIR),
       },
     };
 
@@ -134,7 +139,8 @@ function createApiRouter() {
       if (!usingKv) {
         health.hint =
           'This host cannot write files. Add a KV / Upstash Redis store and set ' +
-          'KV_REST_API_URL and KV_REST_API_TOKEN, then redeploy.';
+          'KV_REST_API_URL and KV_REST_API_TOKEN, then redeploy — or, in a container, ' +
+          'mount a writable volume and point PICKORA_DATA_DIR at it.';
       }
     }
 
@@ -312,7 +318,9 @@ function createApiRouter() {
 
   router.get('/admin/overview', requireAuth, (_req, res) => {
     try {
-      const { appSettings, adminAuth } = loadSettingsFile();
+      const settingsFile = loadSettingsFile();
+      const { appSettings } = settingsFile;
+      const adminAuth = activeAdminCredential(settingsFile);
       const source = draw.readTickets(appSettings);
       const state = draw.loadDrawState();
 
@@ -368,7 +376,9 @@ function createApiRouter() {
 
     try {
       const settingsFile = loadSettingsFile();
-      const credential = settingsFile.adminAuth;
+      // FIX: read the stored record alone, this never saw an environment
+      // credential, so the refusal below could not fire.
+      const credential = activeAdminCredential(settingsFile);
 
       if (credential && credential.source === 'environment') {
         return res.status(409).json({

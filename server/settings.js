@@ -2,6 +2,7 @@
 
 const { PATHS } = require('./paths');
 const { readJson, writeJson, readBundledJson } = require('./store');
+const crypto = require('node:crypto');
 const { hashPassword } = require('./auth');
 const schema = require('./schema');
 const ticketStore = require('./tickets');
@@ -725,19 +726,55 @@ function saveSettingsFile(settingsFile) {
   writeJson(PATHS.settings, { appSettings: settingsFile.appSettings, adminAuth: settingsFile.adminAuth });
 }
 
+let environmentCredentialCache = null;
+
+/**
+ * FIX: the credential ADMIN_USERNAME / ADMIN_PASSWORD describe, or null.
+ *
+ * It used to be hashed afresh, with a new random salt, on every sign-in. The
+ * session key is derived from the salt, so a cookie signed at sign-in never
+ * matched the key the next request checked it with, and the console signed
+ * the organiser straight back out — on any deployment configured through the
+ * environment without SESSION_SECRET. The salt is now derived from the values
+ * themselves, so every request and every instance computes the same credential,
+ * and it is computed once per process rather than once per request. It is never
+ * stored, so a fixed salt exposes nothing a random one would protect.
+ */
+function environmentCredential() {
+  const username = process.env.ADMIN_USERNAME;
+  const password = process.env.ADMIN_PASSWORD;
+  if (!username || !password) return null;
+
+  const key = `${username}\u0000${password}`;
+  if (environmentCredentialCache && environmentCredentialCache.key === key) {
+    return environmentCredentialCache.credential;
+  }
+
+  const salt = crypto.createHash('sha256').update(`pickora-environment-credential\u0000${key}`).digest('hex').slice(0, 32);
+  const credential = Object.freeze({
+    ...hashPassword(password, salt),
+    username,
+    source: 'environment',
+    isDefaultPassword: false,
+  });
+  environmentCredentialCache = { key, credential };
+  return credential;
+}
+
+/** The credential sign-in is checked against, and sessions are signed with. */
+function activeAdminCredential(settingsFile = loadSettingsFile()) {
+  return environmentCredential() || settingsFile.adminAuth || null;
+}
+
 // Credentials live alongside the settings. Environment variables win when
 // present so a deployment can override whatever is committed.
 function ensureAdminCredentials() {
   const settingsFile = loadSettingsFile();
-  const envUsername = process.env.ADMIN_USERNAME;
-  const envPassword = process.env.ADMIN_PASSWORD;
+  const fromEnvironment = environmentCredential();
 
-  if (envUsername && envPassword) {
+  if (fromEnvironment) {
     return {
-      settingsFile: {
-        ...settingsFile,
-        adminAuth: { ...hashPassword(envPassword), username: envUsername, source: 'environment', isDefaultPassword: false },
-      },
+      settingsFile: { ...settingsFile, adminAuth: fromEnvironment },
       created: false,
       usingDefaults: false,
     };
@@ -789,4 +826,5 @@ module.exports = {
   loadSettingsFile,
   saveSettingsFile,
   ensureAdminCredentials,
+  activeAdminCredential,
 };

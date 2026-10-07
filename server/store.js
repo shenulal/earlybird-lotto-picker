@@ -39,17 +39,26 @@ const DOCUMENT_BY_FILE = Object.freeze(
 
 /* ============================ filesystem driver ========================== */
 
+// CHANGED: true unless PICKORA_DATA_DIR moved the data out of the application
+// directory — the usual layout in a container, where the data is a volume.
+const dataBesideApp = PATHS.data === PATHS.root;
+
 const fsDriver = {
   name: 'filesystem',
-  // Blobs are ordinary files under assets/, so the static handler serves them.
-  servesBlobsAsFiles: true,
+  remote: false,
+  // Blobs are ordinary files under assets/, so the static handler serves them —
+  // but only while assets/ sits inside the directory it serves. A separate
+  // data directory is read back through the store like any other.
+  servesBlobsAsFiles: dataBesideApp,
+  // An empty data volume is a fresh tenant: it starts from the committed copies.
+  seedsFromBundle: !dataBesideApp,
   // A backdrop chosen from a camera roll is the largest thing here.
   maxBlobBytes: 10 * 1024 * 1024,
 
   async loadDocuments() {
     return Object.fromEntries(
       Object.entries(DOCUMENTS).map(([key, file]) => {
-        const target = path.join(PATHS.root, file);
+        const target = path.join(PATHS.data, file);
         try {
           return [key, JSON.parse(fs.readFileSync(target, 'utf8'))];
         } catch (error) {
@@ -63,10 +72,12 @@ const fsDriver = {
   },
 
   async saveDocument(key, value) {
-    const target = path.join(PATHS.root, DOCUMENTS[key]);
+    const target = path.join(PATHS.data, DOCUMENTS[key]);
     const temp = `${target}.tmp-${process.pid}-${Date.now()}`;
 
     try {
+      // A fresh data volume may not have its directory yet.
+      fs.mkdirSync(PATHS.data, { recursive: true });
       // Written through a temp file in the same directory so a crash mid-write
       // cannot leave a half-written document behind.
       fs.writeFileSync(temp, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
@@ -82,7 +93,7 @@ const fsDriver = {
   },
 
   async saveBlob(name, buffer) {
-    const directory = path.join(PATHS.root, 'assets');
+    const directory = path.join(PATHS.data, 'assets');
     try {
       fs.mkdirSync(directory, { recursive: true });
       fs.writeFileSync(path.join(directory, name), buffer);
@@ -93,7 +104,7 @@ const fsDriver = {
 
   async readBlob(name) {
     try {
-      return fs.readFileSync(path.join(PATHS.root, 'assets', name));
+      return fs.readFileSync(path.join(PATHS.data, 'assets', name));
     } catch (_error) {
       return null;
     }
@@ -101,7 +112,7 @@ const fsDriver = {
 
   async deleteBlob(name) {
     try {
-      fs.unlinkSync(path.join(PATHS.root, 'assets', name));
+      fs.unlinkSync(path.join(PATHS.data, 'assets', name));
     } catch (_error) {
       /* already gone */
     }
@@ -111,9 +122,9 @@ const fsDriver = {
 function describeWriteFailure(file, error) {
   if (['EROFS', 'EACCES', 'EPERM'].includes(error.code)) {
     return new StorageError(
-      `Cannot write ${file} — the application directory is read-only. ` +
+      `Cannot write ${file} — ${PATHS.data} is read-only. ` +
         'Set KV_REST_API_URL and KV_REST_API_TOKEN to store data in a key-value store instead, ' +
-        'or run Pickora on a host with a writable filesystem.',
+        'or point PICKORA_DATA_DIR at a writable directory, such as a mounted volume.',
       error
     );
   }
@@ -122,7 +133,26 @@ function describeWriteFailure(file, error) {
 
 /* =============================== KV driver =============================== */
 
-const KV_PREFIX = 'pickora';
+const TENANT = /^[a-z0-9][a-z0-9-]{0,62}$/;
+
+/**
+ * NEW: PICKORA_TENANT namespaces every key, so several deployments — one per
+ * event — can share a single store without reading each other's data. Unset,
+ * the prefix is the one Pickora has always used, so an existing deployment
+ * keeps finding its event.
+ */
+function kvPrefix() {
+  const tenant = String(process.env.PICKORA_TENANT || '').trim().toLowerCase();
+  if (!tenant) return 'pickora';
+  if (!TENANT.test(tenant)) {
+    throw new StorageError(
+      `PICKORA_TENANT "${tenant}" is not usable — use lower-case letters, digits and hyphens, up to 63 characters.`
+    );
+  }
+  return `pickora:${tenant}`;
+}
+
+const KV_PREFIX = kvPrefix();
 
 /**
  * Speaks the Upstash REST dialect, which Vercel KV also serves. Plain HTTP,
@@ -154,7 +184,9 @@ function createKvDriver(baseUrl, token) {
 
   return {
     name: 'key-value store',
+    remote: true,
     servesBlobsAsFiles: false,
+    seedsFromBundle: true,
     // Values travel as base64 inside a JSON request, so large uploads are
     // refused rather than silently failing at the store's own limit.
     maxBlobBytes: 2 * 1024 * 1024,
@@ -242,7 +274,7 @@ async function hydrate({ force = false } = {}) {
   hydration = driver
     .loadDocuments()
     .then((documents) => {
-      snapshot.documents = driver.servesBlobsAsFiles ? documents : seedFromBundle(documents);
+      snapshot.documents = driver.seedsFromBundle ? seedFromBundle(documents) : documents;
       snapshot.loaded = true;
       snapshot.dirty.clear();
     })
@@ -304,8 +336,9 @@ function readBundledJson(filePath, fallback = null) {
  */
 async function probeWritable() {
   if (driver === fsDriver) {
-    const probe = path.join(PATHS.root, '.pickora-write-probe');
+    const probe = path.join(PATHS.data, '.pickora-write-probe');
     try {
+      fs.mkdirSync(PATHS.data, { recursive: true });
       fs.writeFileSync(probe, 'ok');
       fs.unlinkSync(probe);
     } catch (error) {

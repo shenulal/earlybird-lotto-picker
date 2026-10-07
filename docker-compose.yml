@@ -1,0 +1,53 @@
+# Several events at once, on one host.
+#
+# Each tenant is its own container with its own volume, so one event can never
+# see another's entries, winners, uploads or organiser password. Caddy sits in
+# front, picks the container by domain and obtains HTTPS certificates for each.
+#
+# Add a tenant: copy a service block below, give it a new name, volume and env
+# file, then add its domain to deploy/Caddyfile. See README → "Running several
+# events at once".
+#
+#   cp deploy/tenants/example.env deploy/tenants/alpha.env      # then edit it
+#   docker compose up -d --build
+
+x-pickora: &pickora
+  build: .
+  image: pickora:latest
+  restart: unless-stopped
+  expose:
+    - "3000"
+
+services:
+  alpha:
+    <<: *pickora
+    env_file: deploy/tenants/alpha.env
+    volumes:
+      - alpha-data:/data
+
+  beta:
+    <<: *pickora
+    env_file: deploy/tenants/beta.env
+    volumes:
+      - beta-data:/data
+
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    env_file: deploy/proxy.env
+    depends_on:
+      - alpha
+      - beta
+
+volumes:
+  alpha-data:
+  beta-data:
+  caddy-data:
+  caddy-config:

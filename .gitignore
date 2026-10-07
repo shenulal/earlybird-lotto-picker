@@ -69,3 +69,8 @@ windows/port.txt
 
 # Vercel
 .vercel
+
+# Per-tenant secrets for docker compose. The *.example files are committed.
+deploy/tenants/*.env
+!deploy/tenants/example.env
+deploy/proxy.env

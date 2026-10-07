@@ -12,6 +12,7 @@ from .auth import LoginThrottle, hash_password, verify_password
 from .settings import (
     MAX_PRIZE_IMAGES,
     MAX_WELCOME_IMAGES,
+    active_admin_credential,
     ensure_admin_credentials,
     load_settings_file,
     normalize_app_settings,
@@ -232,7 +233,7 @@ def post_logout():
 def get_overview():
     settings_file = load_settings_file()
     app_settings = settings_file["appSettings"]
-    credential = settings_file.get("adminAuth") or {}
+    credential = active_admin_credential(settings_file)
     source = draw.read_tickets(app_settings)
     state = draw.load_draw_state()
 
@@ -283,7 +284,9 @@ def post_password():
         return jsonify({"ok": False, "error": f"Choose a password of at least {MIN_PASSWORD_LENGTH} characters."}), 400
 
     settings_file = load_settings_file()
-    credential = settings_file.get("adminAuth") or {}
+    # FIX: the stored record alone never carries an environment credential, so
+    # the refusal below could not fire.
+    credential = active_admin_credential(settings_file)
 
     if credential.get("source") == "environment":
         return (

@@ -176,6 +176,116 @@ this: leave the variables unset and it uses the filesystem.
 
 ---
 
+## Running several events at once
+
+Each event — each *tenant* — runs as its own instance of Pickora with its own
+storage, its own organiser password and its own domain. Nothing is shared
+between them: one event's entries, winners, uploads and sign-ins are invisible
+to every other. There are two ways to host this, and they can be mixed.
+
+| | Docker containers | Vercel projects |
+|---|---|---|
+| Where it runs | Any container host: a VPS, Railway, Fly.io, Render, AWS ECS / Lightsail, Google Cloud Run (with a volume) | Vercel |
+| One tenant is | A container plus a volume | A Vercel project |
+| Data lives in | The tenant's `/data` volume | One shared Upstash store, kept apart by `PICKORA_TENANT` |
+| Uploads up to | 10 MB | 2 MB |
+| Domains | Any domain, including ones bought on Vercel, pointed at the host | Added per project in Vercel |
+
+> **Vercel does not run Docker containers.** A domain registered or managed in
+> Vercel can still serve a container: point its DNS at the container host
+> (see below). The app itself then runs on that host, not on Vercel.
+
+### Tenant settings
+
+| Variable | Purpose |
+|---|---|
+| `PICKORA_TENANT` | Short name for the event — lower-case letters, digits and hyphens. Namespaces the key-value store and is reported by `/api/health`, so you can check a domain reaches the right event. |
+| `ADMIN_USERNAME` / `ADMIN_PASSWORD` | The tenant's organiser sign-in. **Required in Docker**: a container without both refuses to start rather than serve the default `admin` / `pickora`. On Vercel, always set both. |
+| `SESSION_SECRET` | Recommended: a different random value per tenant (`openssl rand -hex 32`), so tenants never share a cookie-signing key even if they share a password. |
+| `PICKORA_DATA_DIR` | Where the filesystem driver keeps the event's documents and uploads. Defaults to the application directory; the Docker image sets it to `/data`. |
+
+A new tenant starts from `appsettings.sample.json` with no entries. The
+`appsettings.json` and `tickets.json` in this repository are never copied into
+the image, so one event's settings and its hashed password never reach another.
+
+### Docker: one container per event
+
+```bash
+docker build -t pickora .
+
+docker run -d --name pickora-alpha -p 3001:3000 \
+  -v pickora-alpha:/data \
+  -e PICKORA_TENANT=alpha -e ADMIN_USERNAME=organiser -e ADMIN_PASSWORD='…' \
+  pickora
+
+docker run -d --name pickora-beta -p 3002:3000 \
+  -v pickora-beta:/data \
+  -e PICKORA_TENANT=beta -e ADMIN_USERNAME=organiser -e ADMIN_PASSWORD='…' \
+  pickora
+```
+
+The image runs as an unprivileged user and cannot write to its own code: the
+only writable place is `/data`. Keep each tenant's volume for as long as you
+want its results; `docker volume rm` archives nothing, so export the winners
+CSV first.
+
+#### Several events behind one host, each on its own domain
+
+`docker-compose.yml` runs two sample tenants, `alpha` and `beta`, behind
+[Caddy](https://caddyserver.com), which routes by domain and obtains an HTTPS
+certificate for each one automatically.
+
+1. Point each event's domain at the host's public IP — an `A` record, or a
+   `CNAME` for a subdomain. For a domain managed in Vercel, add the record under
+   **Domains → *your domain* → DNS Records**.
+2. Create the environment files (they are git-ignored):
+
+   ```bash
+   cp deploy/proxy.env.example deploy/proxy.env              # domains + certificate email
+   cp deploy/tenants/example.env deploy/tenants/alpha.env    # one per tenant
+   cp deploy/tenants/example.env deploy/tenants/beta.env
+   ```
+
+3. Start everything:
+
+   ```bash
+   docker compose up -d --build
+   ```
+
+4. Check each domain: `https://<domain>/api/health` should show `"ok": true` and
+   that tenant's name.
+
+**Adding a tenant** takes three edits: a service block and a volume in
+`docker-compose.yml` (copy `alpha`), a site block in `deploy/Caddyfile`, and its
+domain in `deploy/proxy.env`. Then:
+
+```bash
+docker compose up -d            # starts the new tenant; running ones are left alone
+docker compose restart proxy    # Caddy picks up the new site and fetches its certificate
+```
+
+**Removing a tenant:** export its winners, then `docker compose rm -sf <name>`
+and `docker volume rm <project>_<name>-data`.
+
+### Vercel: one project per event
+
+Import this repository into Vercel once for each event, so each event is its
+own project with its own domain and environment variables:
+
+1. Create one Upstash Redis store and connect it to every project. The projects
+   share the store; `PICKORA_TENANT` keeps their keys apart.
+2. In each project set `PICKORA_TENANT`, `ADMIN_USERNAME` and `ADMIN_PASSWORD`.
+3. Add the event's domain to that project under **Settings → Domains**.
+
+Leave `PICKORA_TENANT` unset on a deployment that already holds an event: unset
+means the original key prefix, so the existing data stays where it is. Setting
+it later starts that deployment from an empty event.
+
+A push to the repository redeploys every project, so all events always run the
+same code.
+
+---
+
 ## Online and offline
 
 Run locally, Pickora works entirely on the event PC and never calls out to the
@@ -219,9 +329,12 @@ export SESSION_SECRET='a-random-64-char-string'
 ```
 
 When both admin variables are set they take precedence over the file, and no
-credential material is committed to the repository. `SESSION_SECRET` keeps
-sign-ins valid across restarts; without it a random secret is generated per
-process and everyone is signed out on redeploy.
+credential material is committed to the repository. The password cannot then be
+changed from the console — change the variable and redeploy.
+
+`SESSION_SECRET` is optional. Without it the signing key is derived from the
+admin credential, so sign-ins survive restarts and every instance agrees; set it
+only if you want to rotate sessions independently of the password.
 
 ---
 
@@ -911,6 +1024,9 @@ pickora/
 ├── server.js                             # local entry point (no dependencies)
 ├── api/index.js                          # serverless entry point (Vercel)
 ├── vercel.json                           # routes every request to the function
+├── Dockerfile / .dockerignore            # one container per event
+├── docker-compose.yml                    # several events behind one proxy
+├── deploy/                               # Caddyfile and per-tenant env templates
 │   └── server/                           # app, micro (http shim), paths, store,
 │                                         # auth, schema, settings, tickets,
 │                                         # draw, images, routes

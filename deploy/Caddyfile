@@ -1,0 +1,18 @@
+# One site block per tenant: the domain on the left, its container on the right.
+# Domains come from deploy/proxy.env so the same file serves staging and live.
+# Point each domain's DNS (an A record, or a CNAME for a subdomain) at this host
+# first — Caddy cannot obtain a certificate for a domain that does not resolve here.
+
+{
+	email {$CERT_EMAIL}
+}
+
+{$ALPHA_DOMAIN} {
+	encode gzip
+	reverse_proxy alpha:3000
+}
+
+{$BETA_DOMAIN} {
+	encode gzip
+	reverse_proxy beta:3000
+}

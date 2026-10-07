@@ -1,0 +1,42 @@
+# Secrets: tenant credentials reach a container through its environment, never the image
+.env
+.env.*
+**/*.env
+
+# Source control and tooling
+.git
+.gitignore
+.vercel
+.vscode
+.idea
+.playwright-mcp
+node_modules
+**/__pycache__
+*.log
+
+# Container files themselves
+Dockerfile
+.dockerignore
+docker-compose.yml
+deploy/
+
+# Not used by the Node server the image runs
+pyserver/
+app.py
+requirements.txt
+windows/
+archive/
+tools/
+api/
+vercel.json
+
+# Event data. Never baked into the image: a new tenant starts from
+# appsettings.sample.json with an empty entry list, and everything it saves
+# goes to its own /data volume. appsettings.json also carries the hashed
+# organiser password of the event this repository was last used for.
+appsettings.json
+tickets.json
+winners.json
+assets/
+.pickora-write-probe
+*.tmp-*

@@ -4,8 +4,15 @@ const path = require('path');
 
 const ROOT_DIR = path.resolve(__dirname, '..');
 
+// NEW: where the event's own data lives — the three documents and uploads.
+// Defaults to the application directory, as it always has. A container points
+// it at a mounted volume so the image stays read-only and every tenant keeps
+// its event in its own volume.
+const DATA_DIR = process.env.PICKORA_DATA_DIR ? path.resolve(process.env.PICKORA_DATA_DIR) : ROOT_DIR;
+
 const PATHS = Object.freeze({
   root: ROOT_DIR,
+  data: DATA_DIR,
   settings: path.join(ROOT_DIR, 'appsettings.json'),
   settingsSample: path.join(ROOT_DIR, 'appsettings.sample.json'),
   tickets: path.join(ROOT_DIR, 'tickets.json'),
