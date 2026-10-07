@@ -52,10 +52,11 @@
    *
    * `deal()` supplies the next entry to show and `renderItem(entry)` turns one
    * into markup. `reducedMotion` swaps the travelling tape for values that
-   * step in place.
+   * step in place. `onLanded()` fires the instant the tape comes to rest on
+   * the winner — before the hold — so a sound can land with it.
    */
   function createReel(mount, options) {
-    const { renderItem, deal, reducedMotion = false } = options;
+    const { renderItem, deal, reducedMotion = false, onLanded = () => {} } = options;
 
     mount.innerHTML = `
       <div class="reel-window">
@@ -132,6 +133,7 @@
       velocity = 0;
       frameId = null;
       settle = null;
+      onLanded();
       resolveStop();
     }
 
@@ -264,6 +266,7 @@
         phase = 'idle';
         nodes[0].innerHTML = renderItem(landingEntry);
         windowEl.classList.add('is-landed');
+        onLanded();
         resolveStop();
         return;
       }

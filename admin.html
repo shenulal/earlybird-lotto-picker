@@ -61,7 +61,12 @@
         <!-- NEW -->
         <button type="button" class="nav-item" data-panel="text">Text &amp; media</button>
         <button type="button" class="nav-item" data-panel="channels">Channels</button>
+        <!-- NEW: the event features. -->
+        <button type="button" class="nav-item" data-panel="sound">Sound</button>
+        <button type="button" class="nav-item" data-panel="countdown">Countdown</button>
         <button type="button" class="nav-item" data-panel="settings">Settings</button>
+        <button type="button" class="nav-item" data-panel="certificate">Certificate</button>
+        <button type="button" class="nav-item" data-panel="templates">Templates</button>
         <button type="button" class="nav-item" data-panel="wording">Wording</button>
         <button type="button" class="nav-item" data-panel="account">Account</button>
       </nav>
@@ -116,6 +121,21 @@
             <table class="table" id="winnersTable">
               <thead id="winnersHead"></thead>
               <tbody id="winnersBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- NEW: winners struck off as not present. Restoring puts one back,
+             while their prize is still open. -->
+        <div class="card" id="absentCard" hidden>
+          <div class="card-head">
+            <h2 class="card-title">Not present</h2>
+            <p class="field-hint">Winners struck off with <strong>Not present</strong>. Their prize opened again and was the next one drawn.</p>
+          </div>
+          <div class="table-scroll">
+            <table class="table">
+              <thead id="absentHead"></thead>
+              <tbody id="absentBody"></tbody>
             </table>
           </div>
         </div>
@@ -1386,6 +1406,197 @@
           <button type="button" class="btn btn-primary" id="saveChannelsBtn">Save channels</button>
         </div>
       </section>
+      <!-- ------------------------------------------------------- sound -->
+      <section class="panel" id="panel-sound" aria-labelledby="soundHeading" hidden>
+        <header class="panel-head">
+          <div>
+            <h1 id="soundHeading">Sound</h1>
+            <p class="panel-lede">Music and sound effects for each moment of the draw. Use the built-in sounds — generated in the browser, so they work offline — or upload your own tracks. Every cue has its own volume, timing and fades.</p>
+          </div>
+        </header>
+
+        <div class="card">
+          <h2 class="card-title">Sound on the public screens</h2>
+          <div class="switches">
+            <label class="switch">
+              <input type="checkbox" id="soundEnabled">
+              <span><strong>Play sound</strong><small>Off silences every cue on every screen. Browsers only allow sound after someone clicks or presses a key, so press any key on the board once it is open.</small></span>
+            </label>
+            <label class="switch">
+              <input type="checkbox" id="soundShowMute">
+              <span><strong>Show a speaker button on the screens</strong><small>Lets whoever is at the screen mute it there, without changing this setting. <kbd>S</kbd> does the same.</small></span>
+            </label>
+          </div>
+          <div class="grid-2">
+            <label class="field">
+              <span class="field-label">Master volume <output class="field-value" id="soundVolumeValue">80%</output></span>
+              <input type="range" id="soundVolume" min="0" max="100" step="1">
+            </label>
+            <div class="field">
+              <span class="field-label">Sound pack</span>
+              <span class="inline-actions">
+                <select id="soundPack"></select>
+                <button type="button" class="btn btn-ghost" id="soundPackApply">Apply to all cues</button>
+              </span>
+              <span class="field-hint">Sets every cue to a matching built-in sound in one go. Volumes and timings stay as they are; adjust any cue afterwards.</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2 class="card-title">Your tracks</h2>
+            <div class="card-actions">
+              <span class="pill" id="trackCountPill">0 tracks</span>
+              <label class="btn btn-ghost" for="trackInput">Upload audio</label>
+              <input type="file" id="trackInput" class="sr-only" accept="audio/*,.mp3,.m4a,.aac,.ogg,.oga,.opus,.wav,.flac,.webm">
+            </div>
+          </div>
+          <p class="field-hint">MP3, M4A, AAC, OGG, WAV, FLAC or WebM, up to <span data-upload-limit>8 MB</span> each on this deployment. Once uploaded, a track can be chosen for any cue below. Only upload music you have the rights to play at the event.</p>
+          <div class="track-list" id="trackList"></div>
+        </div>
+
+        <div class="cue-list" id="soundCues"></div>
+
+        <div class="panel-foot">
+          <button type="button" class="btn btn-ghost" id="revertSoundBtn">Revert</button>
+          <button type="button" class="btn btn-primary" id="saveSoundBtn">Save sound</button>
+        </div>
+      </section>
+
+      <!-- --------------------------------------------------- countdown -->
+      <section class="panel" id="panel-countdown" aria-labelledby="countdownHeading" hidden>
+        <header class="panel-head">
+          <div>
+            <h1 id="countdownHeading">Countdown</h1>
+            <p class="panel-lede">A countdown to the start of the draw, on the screens you choose. Every screen counts against the server's clock, so they all reach zero together.</p>
+          </div>
+        </header>
+
+        <div class="layout-grid">
+          <div class="layout-controls">
+            <div class="card">
+              <h2 class="card-title">When</h2>
+              <div class="switches">
+                <label class="switch">
+                  <input type="checkbox" id="countdownEnabled">
+                  <span><strong>Show the countdown</strong></span>
+                </label>
+              </div>
+              <label class="field">
+                <span class="field-label">The draw starts at</span>
+                <input type="datetime-local" id="countdownTarget" step="1">
+                <span class="field-hint" id="countdownZone">In this computer's time zone.</span>
+              </label>
+              <div class="inline-actions" role="group" aria-label="Quick times">
+                <button type="button" class="btn btn-ghost btn-small" data-countdown-in="5">In 5 min</button>
+                <button type="button" class="btn btn-ghost btn-small" data-countdown-in="15">In 15 min</button>
+                <button type="button" class="btn btn-ghost btn-small" data-countdown-in="30">In 30 min</button>
+                <button type="button" class="btn btn-ghost btn-small" data-countdown-in="60">In 1 hour</button>
+              </div>
+              <div class="switches">
+                <label class="switch">
+                  <input type="checkbox" id="countdownLock">
+                  <span><strong>Hold the draw until the countdown ends</strong><small>Start is disabled on the board until zero. A signed-in organiser can still draw early.</small></span>
+                </label>
+              </div>
+            </div>
+
+            <div class="card">
+              <h2 class="card-title">Words</h2>
+              <div class="grid-2">
+                <label class="field">
+                  <span class="field-label">Heading</span>
+                  <input type="text" id="countdownTitle" maxlength="120">
+                </label>
+                <label class="field">
+                  <span class="field-label">Line beneath it</span>
+                  <input type="text" id="countdownSubtitle" maxlength="200" placeholder="Optional">
+                </label>
+                <label class="field">
+                  <span class="field-label">Message at zero</span>
+                  <input type="text" id="countdownComplete" maxlength="160">
+                </label>
+                <label class="field">
+                  <span class="field-label">Keep that message up for (seconds)</span>
+                  <input type="number" id="countdownHold" min="0" max="3600">
+                  <span class="field-hint">0 keeps it until the first draw starts.</span>
+                </label>
+                <label class="field">
+                  <span class="field-label">"Days" label</span>
+                  <input type="text" id="countdownLabelDays" maxlength="24">
+                </label>
+                <label class="field">
+                  <span class="field-label">"Hours" label</span>
+                  <input type="text" id="countdownLabelHours" maxlength="24">
+                </label>
+                <label class="field">
+                  <span class="field-label">"Minutes" label</span>
+                  <input type="text" id="countdownLabelMinutes" maxlength="24">
+                </label>
+                <label class="field">
+                  <span class="field-label">"Seconds" label</span>
+                  <input type="text" id="countdownLabelSeconds" maxlength="24">
+                </label>
+              </div>
+            </div>
+
+            <div class="card">
+              <h2 class="card-title">Look</h2>
+              <div class="grid-2">
+                <label class="field">
+                  <span class="field-label">Style</span>
+                  <select id="countdownStyle">
+                    <option value="overlay">Full screen — takes over the screen until zero</option>
+                    <option value="banner">Banner — a strip across the screen</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span class="field-label">Banner position</span>
+                  <select id="countdownPosition">
+                    <option value="top">Top</option>
+                    <option value="bottom">Bottom</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span class="field-label">Units</span>
+                  <select id="countdownUnits">
+                    <option value="auto">Automatic — only what is needed</option>
+                    <option value="dhms">Days, hours, minutes, seconds</option>
+                    <option value="hms">Hours, minutes, seconds</option>
+                    <option value="ms">Minutes and seconds</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span class="field-label">Final stretch (seconds)</span>
+                  <input type="number" id="countdownFinal" min="0" max="60">
+                  <span class="field-hint">The last seconds pulse, and tick if the countdown tick sound is on.</span>
+                </label>
+              </div>
+              <fieldset class="field checkbox-row">
+                <legend class="field-label">Show it on</legend>
+                <label><input type="checkbox" id="countdownOnBoard"> Draw board</label>
+                <label><input type="checkbox" id="countdownOnWelcome"> Welcome screen</label>
+                <label><input type="checkbox" id="countdownOnPrizes"> Prize screen</label>
+              </fieldset>
+            </div>
+          </div>
+
+          <div class="layout-preview-column">
+            <div class="card layout-preview-card">
+              <h2 class="card-title">Preview</h2>
+              <div class="countdown-preview" id="countdownPreview"></div>
+              <p class="field-hint" id="countdownStatus"></p>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-foot">
+          <button type="button" class="btn btn-ghost" id="revertCountdownBtn">Revert</button>
+          <button type="button" class="btn btn-primary" id="saveCountdownBtn">Save countdown</button>
+        </div>
+      </section>
+
       <!-- ---------------------------------------------------- settings -->
       <section class="panel" id="panel-settings" aria-labelledby="settingsHeading" hidden>
         <header class="panel-head">
@@ -1461,6 +1672,58 @@
               <label class="switch">
                 <input type="checkbox" name="draw.allowResetFromBoard">
                 <span><strong>Allow "New draw" on the board without signing in</strong><small>The button is always available to a signed-in organiser. Turn this on for a board that nobody else can reach.</small></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- NEW: the "winner not present" redraw. -->
+          <div class="card">
+            <h2 class="card-title">Winner not present</h2>
+            <p class="field-hint">When a winner is called and does not come forward, strike them off and draw their prize again. The struck-off entry is kept in the results, the export and the certificate.</p>
+            <div class="switches">
+              <label class="switch">
+                <input type="checkbox" name="redraw.enabled">
+                <span><strong>Allow redrawing for a winner who is not present</strong><small>Adds <em>Not present</em> to each result on the Overview, and — if allowed below — to the winner card on the board.</small></span>
+              </label>
+              <label class="switch">
+                <input type="checkbox" name="redraw.showOnBoard">
+                <span><strong>Show the "Not present" button on the board's winner card</strong><small>The operator can also press <kbd>A</kbd>.</small></span>
+              </label>
+              <label class="switch">
+                <input type="checkbox" name="redraw.requireSignIn">
+                <span><strong>Require an organiser sign-in to use it on the board</strong><small>Recommended. Without it, anyone at the screen could strike a winner off.</small></span>
+              </label>
+              <label class="switch">
+                <input type="checkbox" name="redraw.confirmOnBoard">
+                <span><strong>Ask for confirmation on the board</strong></span>
+              </label>
+              <label class="switch">
+                <input type="checkbox" name="redraw.autoRedraw">
+                <span><strong>Spin again straight away</strong><small>Off goes back to the prize and waits for Start.</small></span>
+              </label>
+              <label class="switch">
+                <input type="checkbox" name="redraw.returnToPool">
+                <span><strong>Return the absent entry to the pool</strong><small>Off keeps them out of every later draw.</small></span>
+              </label>
+              <label class="switch">
+                <input type="checkbox" name="redraw.showInPanel">
+                <span><strong>List absent entries in the board's winners panel</strong></span>
+              </label>
+              <label class="switch">
+                <input type="checkbox" name="redraw.includeInExport">
+                <span><strong>Include absent entries in the results export</strong><small>Adds a Status column to the CSV.</small></span>
+              </label>
+            </div>
+            <div class="grid-2">
+              <label class="field">
+                <span class="field-label">Redraws allowed per prize</span>
+                <input type="number" name="redraw.maxPerPrize" min="0" max="50">
+                <span class="field-hint">0 means no limit.</span>
+              </label>
+              <label class="field">
+                <span class="field-label">"Not present" message on screen (ms)</span>
+                <input type="number" name="redraw.noticeMs" min="0" max="15000" step="100">
+                <span class="field-hint">How long the board shows the message before moving on. The words are under Wording.</span>
               </label>
             </div>
           </div>
@@ -1550,6 +1813,196 @@
       </section>
 
 
+      <!-- ------------------------------------------------- certificate -->
+      <section class="panel" id="panel-certificate" aria-labelledby="certificateHeading" hidden>
+        <header class="panel-head">
+          <div>
+            <h1 id="certificateHeading">Draw certificate</h1>
+            <p class="panel-lede">A printable record of the draw: who won what and when, from how many entries, with a fingerprint of the entry list so the result can be checked later. Open it and print, or save it as PDF from the print dialog.</p>
+          </div>
+          <a class="btn btn-primary" id="openCertificateBtn" href="/certificate" target="pickora-certificate">Open certificate ↗</a>
+        </header>
+
+        <div class="layout-grid">
+          <div class="layout-controls">
+            <div class="card">
+              <h2 class="card-title">Wording</h2>
+              <div class="switches">
+                <label class="switch">
+                  <input type="checkbox" id="certEnabled">
+                  <span><strong>Offer the certificate</strong><small>Off hides it from this console.</small></span>
+                </label>
+              </div>
+              <div class="grid-2">
+                <label class="field">
+                  <span class="field-label">Title</span>
+                  <input type="text" id="certTitle" maxlength="120">
+                </label>
+                <label class="field">
+                  <span class="field-label">Subtitle</span>
+                  <input type="text" id="certSubtitle" maxlength="160">
+                </label>
+                <label class="field">
+                  <span class="field-label">Venue</span>
+                  <input type="text" id="certVenue" maxlength="160" placeholder="Optional">
+                </label>
+                <label class="field">
+                  <span class="field-label">Reference prefix</span>
+                  <input type="text" id="certPrefix" maxlength="12" spellcheck="false">
+                  <span class="field-hint">The certificate number is this, the draw date and a code from the results.</span>
+                </label>
+              </div>
+              <label class="field">
+                <span class="field-label">Statement</span>
+                <textarea id="certStatement" rows="4" maxlength="1200"></textarea>
+                <span class="field-hint">These are filled in: <code>{event}</code>, <code>{organization}</code>, <code>{date}</code>, <code>{venue}</code>, <code>{winners}</code>, <code>{entries}</code>, <code>{prizes}</code>.</span>
+              </label>
+              <label class="field">
+                <span class="field-label">How the winners were chosen</span>
+                <textarea id="certMethod" rows="3" maxlength="1200"></textarea>
+              </label>
+              <label class="field">
+                <span class="field-label">Footnote</span>
+                <input type="text" id="certFooter" maxlength="400" placeholder="Optional — a permit number, a contact address">
+              </label>
+            </div>
+
+            <div class="card">
+              <h2 class="card-title">What it includes</h2>
+              <div class="switches">
+                <label class="switch"><input type="checkbox" id="certShowLogo"><span><strong>Event logo</strong></span></label>
+                <label class="switch"><input type="checkbox" id="certShowOrganization"><span><strong>Organisation name</strong></span></label>
+                <label class="switch"><input type="checkbox" id="certShowPrizes"><span><strong>Prize names</strong></span></label>
+                <label class="switch"><input type="checkbox" id="certShowAbsent"><span><strong>Winners marked not present</strong></span></label>
+                <label class="switch"><input type="checkbox" id="certShowEntries"><span><strong>Number of entries</strong></span></label>
+                <label class="switch"><input type="checkbox" id="certShowTimestamps"><span><strong>Time of each draw</strong></span></label>
+                <label class="switch"><input type="checkbox" id="certShowMethod"><span><strong>How the winners were chosen</strong></span></label>
+                <label class="switch"><input type="checkbox" id="certShowFingerprint"><span><strong>Entry-list and results fingerprints</strong><small>SHA-256 hashes. Anyone with the original entry list can recompute the first.</small></span></label>
+                <label class="switch"><input type="checkbox" id="certMask"><span><strong>Mask sensitive fields</strong><small>Columns marked sensitive under Fields show only their last four characters.</small></span></label>
+              </div>
+              <fieldset class="field checkbox-row" id="certFields">
+                <legend class="field-label">Columns printed for each winner</legend>
+              </fieldset>
+            </div>
+
+            <div class="card">
+              <div class="card-head">
+                <h2 class="card-title">Signatures</h2>
+                <div class="card-actions">
+                  <button type="button" class="btn btn-ghost btn-small" id="addSignatoryBtn">Add a signature line</button>
+                </div>
+              </div>
+              <div class="signatory-list" id="signatoryList"></div>
+            </div>
+
+            <div class="card">
+              <h2 class="card-title">Page</h2>
+              <div class="grid-2">
+                <label class="field">
+                  <span class="field-label">Paper</span>
+                  <select id="certPaper">
+                    <option value="A4">A4</option>
+                    <option value="Letter">US Letter</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span class="field-label">Orientation</span>
+                  <select id="certOrientation">
+                    <option value="portrait">Portrait</option>
+                    <option value="landscape">Landscape</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span class="field-label">Accent colour</span>
+                  <span class="color-field">
+                    <input type="color" id="certAccent" value="#b08d3c">
+                    <input type="text" id="certAccentText" maxlength="9" spellcheck="false" placeholder="Empty uses a dark gold">
+                  </span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="layout-preview-column">
+            <div class="card layout-preview-card">
+              <h2 class="card-title">Preview</h2>
+              <p class="field-hint">Live, as you edit. Save to keep the changes.</p>
+              <div class="certificate-frame">
+                <iframe id="certificatePreview" title="Certificate preview" src="about:blank"></iframe>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-foot">
+          <button type="button" class="btn btn-ghost" id="revertCertificateBtn">Revert</button>
+          <button type="button" class="btn btn-primary" id="saveCertificateBtn">Save certificate</button>
+        </div>
+      </section>
+
+      <!-- --------------------------------------------------- templates -->
+      <section class="panel" id="panel-templates" aria-labelledby="templatesHeading" hidden>
+        <header class="panel-head">
+          <div>
+            <h1 id="templatesHeading">Templates</h1>
+            <p class="panel-lede">Save this event's configuration and start the next one from it — all of it, or only the parts you choose. Templates can be exported as a file and imported into another Pickora.</p>
+          </div>
+        </header>
+
+        <div class="card">
+          <h2 class="card-title">Save the current configuration</h2>
+          <div class="grid-2">
+            <label class="field">
+              <span class="field-label">Name</span>
+              <input type="text" id="templateName" maxlength="80" placeholder="Annual gala — house style">
+            </label>
+            <label class="field">
+              <span class="field-label">Description</span>
+              <input type="text" id="templateDescription" maxlength="300" placeholder="Optional">
+            </label>
+          </div>
+          <fieldset class="field checkbox-row" id="templateSections">
+            <legend class="field-label">Parts to include</legend>
+          </fieldset>
+          <div class="form-actions">
+            <button type="button" class="btn btn-primary" id="saveTemplateBtn">Save as template</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2 class="card-title">Templates</h2>
+            <div class="card-actions">
+              <span class="pill" id="templateCountPill">0 templates</span>
+            </div>
+          </div>
+          <div class="template-list" id="templateList"></div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <h2 class="card-title">Import a template</h2>
+            <p class="field-hint">A <code>.json</code> file exported from Pickora. Files embedded in it — logos, photos, tracks — are checked and stored here.</p>
+            <label class="field">
+              <span class="field-label">Name it (optional)</span>
+              <input type="text" id="templateImportName" maxlength="80" placeholder="Keeps the name in the file">
+            </label>
+            <div class="form-actions">
+              <label class="btn btn-ghost" for="templateImportInput">Choose file and import</label>
+              <input type="file" id="templateImportInput" class="sr-only" accept=".json,application/json">
+            </div>
+          </div>
+          <div class="card">
+            <h2 class="card-title">Export the current configuration</h2>
+            <p class="field-hint">Every part of this event's setup as one file, without saving it as a template first. <strong>With files</strong> includes the uploaded images and tracks, so the file works on another Pickora.</p>
+            <div class="form-actions">
+              <a class="btn btn-ghost" id="exportCurrentBtn" href="/api/admin/templates/current/export" download>Export</a>
+              <a class="btn btn-ghost" id="exportCurrentFilesBtn" href="/api/admin/templates/current/export?embed=1" download>Export with files</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- ----------------------------------------------------- wording -->
       <section class="panel" id="panel-wording" aria-labelledby="wordingHeading" hidden>
         <header class="panel-head">
@@ -1620,6 +2073,15 @@
        carousel, so the two cannot drift apart. -->
   <script src="carousel.js" defer></script>
   <script src="admin-config.js" defer></script>
+  <!-- NEW: the event features. The console previews sound with the same
+       engine the screens use, so a preview is exactly what the room hears. -->
+  <script src="sound-presets.js" defer></script>
+  <script src="sound.js" defer></script>
+  <script src="admin-features.js" defer></script>
+  <script src="admin-sound.js" defer></script>
+  <script src="admin-countdown.js" defer></script>
+  <script src="admin-certificate.js" defer></script>
+  <script src="admin-templates.js" defer></script>
   <script src="admin.js" defer></script>
 </body>
 </html>

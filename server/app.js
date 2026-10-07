@@ -103,6 +103,9 @@ function createApp() {
   app.get('/admin', (req, res) => sendPage(req, res, 'admin.html'));
   app.get('/welcome', (req, res) => sendPage(req, res, 'welcome.html'));
   app.get('/prizes', (req, res) => sendPage(req, res, 'prizes.html'));
+  // NEW: the printable draw certificate. The page itself holds nothing; its
+  // data comes from an endpoint only a signed-in organiser can call.
+  app.get('/certificate', (req, res) => sendPage(req, res, 'certificate.html'));
 
   // CHANGED: pages go through the stamper rather than the static handler, so
   // the markup they serve always points at this build's assets.

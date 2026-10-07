@@ -4,6 +4,8 @@ const { PATHS } = require('./paths');
 const { readJson, writeJson, readBundledJson } = require('./store');
 const crypto = require('node:crypto');
 const { hashPassword } = require('./auth');
+const { clampNumber, asBoolean, asChoice, asText, asColor } = require('./coerce');
+const features = require('./features');
 const schema = require('./schema');
 const ticketStore = require('./tickets');
 
@@ -187,6 +189,13 @@ const DEFAULT_COPY = Object.freeze({
   prizesBack: 'Back to the draw',
   newDrawButton: 'New draw',
   newDrawConfirm: 'Clear the current draw and start over?',
+  // NEW: the "winner not present" redraw and the sound toggle.
+  notPresentButton: 'Not present',
+  notPresentConfirm: 'Mark this winner as not present and draw this prize again?',
+  notPresentNotice: 'Not present — this prize will be drawn again',
+  notPresentTag: 'Not present',
+  soundToggle: 'Sound',
+  countdownLocked: 'The draw opens when the countdown ends.',
   footer: 'Pickora · by Shenu',
   loading: 'Preparing the draw…',
 });
@@ -229,37 +238,7 @@ const CLAMPS = Object.freeze({
 });
 
 function clamp(key, value, fallback) {
-  // FIX: Number() turns null, '' and [] into 0, where Python's float() refuses
-  // them and falls back. The two backends have to agree, and for a setting like
-  // the announcement delay the difference is not cosmetic — zero is a real
-  // instruction ("no announcement"), so a missing value must never read as one.
-  const numeric =
-    typeof value === 'number' ||
-    typeof value === 'boolean' ||
-    (typeof value === 'string' && value.trim() !== '');
-  if (!numeric) return fallback;
-
-  const number = Number(value);
-  if (!Number.isFinite(number)) return fallback;
-  const [min, max] = CLAMPS[key];
-  return Math.min(max, Math.max(min, Math.round(number)));
-}
-
-function asBoolean(value, fallback) {
-  if (typeof value === 'boolean') return value;
-  if (value === 'true') return true;
-  if (value === 'false') return false;
-  return fallback;
-}
-
-function asChoice(value, choices, fallback) {
-  return choices.includes(value) ? value : fallback;
-}
-
-function asText(value, fallback, maxLength = 200) {
-  if (typeof value !== 'string') return fallback;
-  const trimmed = value.trim();
-  return trimmed ? trimmed.slice(0, maxLength) : fallback;
+  return clampNumber(value, CLAMPS[key], fallback);
 }
 
 function asAssetPath(value) {
@@ -302,13 +281,6 @@ function normalizeCopy(input) {
     (accumulator, key) => ({ ...accumulator, [key]: asText(source[key], DEFAULT_COPY[key], 160) }),
     {}
   );
-}
-
-/** NEW: a hex colour, or empty for "whatever the screen already uses". */
-function asColor(value, fallback) {
-  if (typeof value !== 'string') return fallback;
-  const trimmed = value.trim();
-  return /^#[0-9a-f]{3,8}$/i.test(trimmed) ? trimmed : fallback;
 }
 
 function normalizePalette(input) {
@@ -677,6 +649,12 @@ function normalizeAppSettings(input) {
     welcome: normalizeWelcome(source.welcome),
     prizes: normalizePrizes(source.prizes),
     copy: normalizeCopy(source.copy),
+
+    // NEW: the event features. Each one is off, or inert, until configured.
+    sound: features.normalizeSound(source.sound),
+    redraw: features.normalizeRedraw(source.redraw),
+    countdown: features.normalizeCountdown(source.countdown),
+    certificate: features.normalizeCertificate(source.certificate, data),
 
     ui: {
       // NEW: sizes for the two things the room looks at. Zero is "as the

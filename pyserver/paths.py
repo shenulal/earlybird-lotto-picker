@@ -8,6 +8,9 @@ SETTINGS_PATH = ROOT_DIR / "appsettings.json"
 SETTINGS_SAMPLE_PATH = ROOT_DIR / "appsettings.sample.json"
 TICKETS_PATH = ROOT_DIR / "tickets.json"
 DRAW_STATE_PATH = ROOT_DIR / "winners.json"
+# NEW: saved event templates, and the starting points that ship with the app.
+TEMPLATES_PATH = ROOT_DIR / "templates.json"
+TEMPLATE_PRESETS_PATH = ROOT_DIR / "template-presets.json"
 
 # appsettings.json holds the hashed admin credentials, winners.json the contact
 # details of everyone drawn so far and tickets.json those of everyone entered;
@@ -20,12 +23,15 @@ PROTECTED_FILES = (
     # could be downloaded by anyone who guessed the URL. The board never needs
     # it: it reads entries through /api/pool, which strips non-display fields.
     "tickets.json",
+    # NEW: saved templates can carry contact details in their certificate
+    # settings and the organiser's own wording; they are console-only.
+    "templates.json",
     "package.json",
     "package-lock.json",
     "requirements.txt",
 )
 
-PROTECTED_DIRS = ("server", "pyserver", "windows", ".git", "node_modules", ".playwright-mcp")
+PROTECTED_DIRS = ("server", "pyserver", "windows", "tests", "deploy", ".git", "node_modules", ".playwright-mcp")
 
 
 def is_protected_path(request_path: str) -> bool:

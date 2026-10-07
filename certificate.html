@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>Certificate of Draw — Pickora</title>
+  <link rel="icon" href="pickora-icon.png" type="image/png">
+  <link rel="stylesheet" href="fonts/fonts.css">
+  <style>
+    /* A printed document, not a screen: ink on paper, one accent colour, and
+       type that survives a photocopier. Everything sized in points and
+       millimetres so the page prints the same on any printer. */
+    :root {
+      --accent: #b08d3c;
+      --ink: #1b1d24;
+      --ink-soft: #4b5060;
+      --rule: #d9d6cc;
+      --paper: #fffdf8;
+      --desk: #e9e6df;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      background: var(--desk);
+      color: var(--ink);
+      font-family: 'Lato', 'Segoe UI', system-ui, sans-serif;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      padding: 12px 16px;
+      background: rgba(233, 230, 223, 0.92);
+      backdrop-filter: blur(6px);
+    }
+
+    .toolbar button {
+      padding: 9px 18px;
+      border: 1px solid var(--ink);
+      border-radius: 999px;
+      background: var(--ink);
+      color: var(--paper);
+      font: 600 13px/1 inherit;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+    }
+
+    .toolbar button.secondary {
+      background: transparent;
+      color: var(--ink);
+    }
+
+    .sheet {
+      width: min(100% - 32px, 210mm);
+      min-height: 297mm;
+      margin: 8px auto 32px;
+      padding: 18mm 18mm 16mm;
+      background: var(--paper);
+      box-shadow: 0 10px 40px rgba(27, 29, 36, 0.14);
+      position: relative;
+    }
+
+    .sheet[data-paper='Letter'] { width: min(100% - 32px, 8.5in); min-height: 11in; }
+    .sheet[data-orientation='landscape'] { width: min(100% - 32px, 297mm); min-height: 210mm; }
+    .sheet[data-paper='Letter'][data-orientation='landscape'] { width: min(100% - 32px, 11in); min-height: 8.5in; }
+
+    /* A thin double frame in the accent colour. */
+    .sheet::before {
+      content: '';
+      position: absolute;
+      inset: 7mm;
+      border: 0.8pt solid var(--accent);
+      outline: 0.3pt solid var(--accent);
+      outline-offset: -2.2mm;
+      pointer-events: none;
+    }
+
+    .head {
+      display: grid;
+      justify-items: center;
+      gap: 3mm;
+      text-align: center;
+      margin-bottom: 8mm;
+    }
+
+    .head img {
+      max-height: 22mm;
+      max-width: 60mm;
+      object-fit: contain;
+    }
+
+    .organisation {
+      margin: 0;
+      font-size: 9pt;
+      letter-spacing: 0.24em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+    }
+
+    h1 {
+      margin: 0;
+      font-family: 'Bebas Neue', 'Lato', sans-serif;
+      font-weight: 400;
+      font-size: 34pt;
+      letter-spacing: 0.06em;
+      color: var(--accent);
+      line-height: 1;
+    }
+
+    .subtitle {
+      margin: 0;
+      font-size: 11pt;
+      color: var(--ink-soft);
+    }
+
+    .meta {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(38mm, 1fr));
+      gap: 3mm 6mm;
+      padding: 4mm 0;
+      margin-bottom: 6mm;
+      border-block: 0.6pt solid var(--rule);
+    }
+
+    .meta dt {
+      font-size: 7.5pt;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+    }
+
+    .meta dd {
+      margin: 1mm 0 0;
+      font-size: 10.5pt;
+      font-weight: 700;
+    }
+
+    .statement {
+      margin: 0 0 6mm;
+      font-size: 11pt;
+      line-height: 1.55;
+    }
+
+    h2 {
+      margin: 7mm 0 2.5mm;
+      font-size: 8.5pt;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 9.5pt;
+    }
+
+    th {
+      text-align: start;
+      font-size: 7.5pt;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+      padding: 2mm 2mm 1.5mm;
+      border-bottom: 0.8pt solid var(--ink);
+    }
+
+    td {
+      padding: 2.2mm 2mm;
+      border-bottom: 0.4pt solid var(--rule);
+      vertical-align: top;
+    }
+
+    tr { break-inside: avoid; }
+
+    td.rank {
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    td.rank small {
+      display: block;
+      font-weight: 400;
+      color: var(--ink-soft);
+    }
+
+    .absent td { color: var(--ink-soft); }
+
+    .empty {
+      padding: 6mm 0;
+      text-align: center;
+      color: var(--ink-soft);
+      font-style: italic;
+    }
+
+    .method {
+      margin: 0;
+      font-size: 9pt;
+      line-height: 1.5;
+      color: var(--ink-soft);
+    }
+
+    .hashes {
+      display: grid;
+      gap: 2mm;
+      font-size: 8pt;
+    }
+
+    .hashes code {
+      display: block;
+      margin-top: 0.8mm;
+      font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+      font-size: 7.6pt;
+      word-break: break-all;
+      color: var(--ink);
+    }
+
+    .hashes .warning {
+      color: #a3341f;
+      font-weight: 700;
+    }
+
+    .signatures {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(52mm, 1fr));
+      gap: 10mm 12mm;
+      margin-top: 14mm;
+      break-inside: avoid;
+    }
+
+    .signature {
+      display: grid;
+      gap: 1.5mm;
+    }
+
+    /* The line to sign on, with the name and role written beneath it. */
+    .signature-line {
+      height: 14mm;
+      border-bottom: 0.8pt solid var(--ink);
+    }
+
+    .signature p {
+      margin: 0;
+      font-size: 8.5pt;
+      line-height: 1.35;
+      color: var(--ink-soft);
+    }
+
+    .signature strong {
+      display: block;
+      color: var(--ink);
+    }
+
+    .footnote {
+      margin: 18mm 0 0;
+      font-size: 8pt;
+      color: var(--ink-soft);
+      text-align: center;
+    }
+
+    .notice {
+      max-width: 520px;
+      margin: 18vh auto;
+      padding: 24px;
+      text-align: center;
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    .notice a { color: inherit; font-weight: 700; }
+
+    /* In the console's preview the page is scaled to fit and has no toolbar. */
+    body.is-preview { background: transparent; }
+    body.is-preview .toolbar { display: none; }
+    body.is-preview .sheet { margin: 0 auto; box-shadow: 0 4px 18px rgba(27, 29, 36, 0.12); }
+
+    @media print {
+      html, body { background: none; }
+      .toolbar { display: none; }
+      .sheet {
+        width: auto;
+        min-height: 0;
+        margin: 0;
+        padding: 10mm 12mm;
+        box-shadow: none;
+      }
+      .sheet::before { inset: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <button type="button" class="secondary" id="refreshBtn">Refresh</button>
+    <button type="button" id="printBtn">Print or save as PDF</button>
+  </div>
+  <main id="certificate" aria-live="polite">
+    <p class="notice">Preparing the certificate…</p>
+  </main>
+  <script src="certificate.js" defer></script>
+</body>
+</html>

@@ -65,6 +65,8 @@
 
   const state = { overview: null, pendingUpload: null, chosenIdentifier: null, sourceChosen: false };
   let configEditors = null;
+  // NEW: the panels for sound, the countdown, the certificate and templates.
+  let featurePanels = null;
 
   /* ------------------------------------------------------------- utilities */
 
@@ -245,6 +247,8 @@
         <tr>
           ${columns
             .map((column) => {
+              // NEW: a column may render its own markup, such as an action.
+              if (column.html) return `<td class="${column.className || ''}">${column.html(row)}</td>`;
               const value = column.format ? column.format(row[column.key]) : row[column.key];
               return `<td class="${column.className || ''}">${escapeHtml(value) || '&mdash;'}</td>`;
             })
@@ -255,11 +259,23 @@
   }
 
   function renderWinners(winners, appSettings) {
-    const columns = resultColumns(appSettings);
+    // NEW: with the redraw switched on, each result can be struck off here.
+    const columns = appSettings.redraw.enabled
+      ? [
+          ...resultColumns(appSettings),
+          {
+            key: 'drawIndex',
+            label: '',
+            className: 'actions',
+            html: (row) =>
+              `<button type="button" class="btn btn-ghost btn-small" data-absent="${escapeHtml(row.drawIndex)}">Not present</button>`,
+          },
+        ]
+      : resultColumns(appSettings);
     const rows = winners
       .slice()
       .reverse()
-      .map((winner) => ({ prizeNumber: winner.prizeNumber, drawnAt: winner.drawnAt, ...winner.record }));
+      .map((winner) => ({ ...winner.record, prizeNumber: winner.prizeNumber, drawnAt: winner.drawnAt, drawIndex: winner.drawIndex }));
 
     renderTableHead(elements.winnersHead, columns);
     renderTable(elements.winnersBody, rows, columns, 'No draws yet.');
@@ -354,6 +370,7 @@
     renderUploadLimits(overview.limits);
     fillSettingsForm(overview.appSettings);
     if (configEditors) configEditors.render();
+    if (featurePanels) featurePanels.render();
     elements.undoBtn.disabled = overview.winners.length === 0;
   }
 
@@ -638,6 +655,9 @@
     'animation.confettiStartDelay',
     'draw.minimumRollMs',
     'draw.stopResponseMs',
+    // NEW: the "winner not present" redraw.
+    'redraw.maxPerPrize',
+    'redraw.noticeMs',
   ];
   const SETTINGS_BOOLEAN_FIELDS = [
     'display.autoStopWhenPrizesExhausted',
@@ -648,6 +668,15 @@
     'draw.publicDrawEnabled',
     'draw.requireAuthForDraw',
     'draw.allowResetFromBoard',
+    // NEW: the "winner not present" redraw.
+    'redraw.enabled',
+    'redraw.showOnBoard',
+    'redraw.requireSignIn',
+    'redraw.confirmOnBoard',
+    'redraw.returnToPool',
+    'redraw.autoRedraw',
+    'redraw.showInPanel',
+    'redraw.includeInExport',
   ];
 
   function field(name) {
@@ -715,6 +744,9 @@
         fillSettingsForm(result.appSettings);
         state.overview = { ...state.overview, appSettings: result.appSettings };
         elements.brandEvent.textContent = result.appSettings.eventName;
+        // The redraw switch changes what the results table offers.
+        renderWinners(state.overview.winners, result.appSettings);
+        if (featurePanels) featurePanels.render();
       } catch (error) {
         toast(error.message, 'error');
       }
@@ -782,6 +814,7 @@
       const result = await api.saveSettings(appSettings);
       state.overview = { ...state.overview, appSettings: result.appSettings };
       if (configEditors) configEditors.render();
+      if (featurePanels) featurePanels.render();
       fillSettingsForm(result.appSettings);
       elements.brandEvent.textContent = result.appSettings.eventName;
       if (!options.quiet) toast(message);
@@ -807,9 +840,14 @@
       applySettings(appSettings) {
         state.overview = { ...state.overview, appSettings };
         if (configEditors) configEditors.render();
+        if (featurePanels) featurePanels.render();
       },
       save: saveConfiguration,
       toast,
+      // NEW: for the feature panels — the whole overview, and a way to
+      // reload it after an action that changes the results.
+      getOverview: () => state.overview,
+      reload: loadOverview,
     };
   }
 
@@ -847,6 +885,11 @@
 
     configEditors = global.createConfigEditors(createEditorContext());
     configEditors.bind();
+
+    if (global.PickoraConsoleFeatures) {
+      featurePanels = global.PickoraConsoleFeatures.create(createEditorContext());
+      featurePanels.bind();
+    }
 
     try {
       const session = await api.getSession();

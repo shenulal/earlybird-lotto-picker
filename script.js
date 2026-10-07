@@ -28,6 +28,10 @@
   // out of the configured delay rather than added to it.
   const ANNOUNCEMENT_EXIT_MS = 300;
 
+  // NEW: how often an open board picks up the organiser's sound, countdown
+  // and redraw settings without a reload.
+  const LIVE_SETTINGS_MS = 20000;
+
   const prefersReducedMotion = global.matchMedia('(prefers-reduced-motion: reduce)');
 
   const elements = {
@@ -57,7 +61,7 @@
     footer: document.getElementById('boardFooter'),
     notice: document.getElementById('notice'),
     confettiCanvas: document.getElementById('confettiCanvas'),
-
+    menu: document.querySelector('.board-menu'),
   };
 
   const state = {
@@ -65,6 +69,9 @@
     labels: {},
     pool: [],
     winners: [],
+    // NEW: winners struck off as not present, as the board may show them.
+    absent: [],
+    authenticated: false,
     stats: null,
     status: STATUS.IDLE,
     canReset: false,
@@ -77,6 +84,9 @@
   let confetti = null;
   let reel = null;
   let prizeCarousel = null;
+  // NEW: the sound engine and the countdown, created once.
+  let sound = null;
+  let countdown = null;
 
   // NEW: every timer belonging to the reveal currently on the stage. A second
   // draw, a reset, or anything else that takes the stage cancels them, so a
@@ -219,8 +229,9 @@
     elements.footer.hidden = !settings.copy.footer;
   }
 
-  function applySettings(settings, session = {}) {
+  function applySettings(settings, session = {}, serverTime = null) {
     state.settings = settings;
+    state.authenticated = Boolean(session.authenticated);
     // Offered only to someone allowed to use it, so a viewer cannot clear the
     // results in the middle of an event.
     state.canReset = Boolean(session.authenticated) || settings.draw.allowResetFromBoard;
@@ -253,6 +264,37 @@
 
     confetti = global.createConfetti(elements.confettiCanvas, { palette: settings.animation.confettiPalette });
 
+    applyLiveSettings(settings, serverTime);
+  }
+
+  /**
+   * NEW: the parts of the settings an open board takes on the fly — sound,
+   * the countdown, the redraw — without disturbing whatever is on the stage.
+   */
+  function applyLiveSettings(settings, serverTime) {
+    if (!sound) {
+      sound = global.createPickoraSound({ page: 'board' });
+      sound.mountButton(elements.menu);
+    }
+    sound.update(settings.sound, settings.copy);
+    sound.startAmbient();
+
+    if (!countdown) {
+      countdown = global.createPickoraCountdown({ page: 'board', sound, onChange: () => setStatus(state.status) });
+    }
+    countdown.update(settings.countdown, serverTime);
+  }
+
+  async function refreshLiveSettings() {
+    try {
+      const response = await api.getSettings();
+      const next = response.appSettings;
+      state.settings = { ...state.settings, sound: next.sound, countdown: next.countdown, redraw: next.redraw, copy: next.copy };
+      state.authenticated = Boolean(response.session && response.session.authenticated);
+      applyLiveSettings(state.settings, response.serverTime);
+    } catch (_error) {
+      /* the next poll tries again; nothing on stage depends on this */
+    }
   }
 
   function setWinnersPanel(isOpen) {
@@ -270,19 +312,27 @@
   }
 
   function renderWinners() {
-    if (state.winners.length === 0) {
+    // CHANGED: winners struck off as not present are listed too, tagged, in
+    // the order things happened — when the organiser wants them shown.
+    const entries = [
+      ...state.winners,
+      ...(state.settings.redraw && state.settings.redraw.showInPanel ? state.absent : []),
+    ].sort((a, b) => Number(a.drawIndex) - Number(b.drawIndex));
+
+    if (entries.length === 0) {
       elements.winnersList.innerHTML = `<li class="winners-empty">${escapeHtml(copy('winnersEmpty'))}</li>`;
       return;
     }
 
-    elements.winnersList.innerHTML = state.winners
+    elements.winnersList.innerHTML = entries
       .slice(-state.settings.display.panel.maxEntries)
       .reverse()
       .map(
-        (winner) => `
-        <li class="winner-row">
-          <span class="winner-rank">${escapeHtml(winner.prizeNumber)}</span>
-          ${renderSlot('panel', winner.record)}
+        (entry) => `
+        <li class="winner-row${entry.absentAt ? ' is-absent' : ''}">
+          <span class="winner-rank">${escapeHtml(entry.prizeNumber)}</span>
+          ${renderSlot('panel', entry.record)}
+          ${entry.absentAt ? `<span class="winner-tag">${escapeHtml(copy('notPresentTag'))}</span>` : ''}
         </li>`
       )
       .join('');
@@ -293,7 +343,8 @@
     elements.stage.dataset.status = status;
 
     const isRolling = status === STATUS.ROLLING;
-    elements.startBtn.disabled = isRolling || status === STATUS.REVEALING || status === STATUS.COMPLETE;
+    const isHeld = Boolean(countdown && countdown.isLocked() && !state.authenticated);
+    elements.startBtn.disabled = isRolling || status === STATUS.REVEALING || status === STATUS.COMPLETE || isHeld;
     elements.stopBtn.disabled = !isRolling || state.stopRequested;
   }
 
@@ -369,16 +420,30 @@
     }
   }
 
+  /** NEW: whether the board offers "Not present", and whether it is usable. */
+  function absentControl() {
+    const redraw = state.settings.redraw;
+    if (!redraw || !redraw.enabled || !redraw.showOnBoard) return null;
+    return { locked: redraw.requireSignIn && !state.authenticated };
+  }
+
   function renderWinnerCard(winner, animation, isReplay = false) {
     const eyebrow = isReplay ? copy('lastWinnerEyebrow') : copy('winnerEyebrow');
     const prize = prizeFor(winner.prizeNumber);
     const rank = prize ? prize.label : `${copy('prizeLabel')} ${winner.prizeNumber}`;
+    const control = absentControl();
+    const absentButton = control
+      ? `<button type="button" class="winner-absent" data-draw-index="${escapeHtml(winner.drawIndex)}"
+           data-locked="${control.locked}" title="${control.locked ? 'Sign in on the organiser console to use this' : `${escapeHtml(copy('notPresentButton'))} (A)`}">
+           ${escapeHtml(copy('notPresentButton'))}</button>`
+      : '';
 
     setStage(`
       <div class="winner-card ${animation}">
         <p class="winner-eyebrow">${escapeHtml(eyebrow)} &middot; ${escapeHtml(rank)}</p>
         ${renderSlot('card', winner.record)}
         ${prize ? `<p class="winner-prize">${escapeHtml(prize.name)}</p>` : ''}
+        ${absentButton}
       </div>`);
   }
 
@@ -414,6 +479,13 @@
   function startSlot() {
     if (state.status !== STATUS.IDLE && state.status !== STATUS.ANNOUNCING) return;
 
+    // NEW: the countdown can hold the draw until it reaches zero.
+    if (countdown && countdown.isLocked() && !state.authenticated) {
+      showNotice(copy('countdownLocked'), 'warn');
+      return;
+    }
+    if (countdown) countdown.dismiss(state.authenticated);
+
     if (!state.stats || state.stats.isComplete) {
       renderIdle();
       return;
@@ -439,6 +511,9 @@
     state.rollStartedAt = Date.now();
     setStatus(STATUS.ROLLING);
     startReel();
+    // NEW: the music steps aside and the spin cue takes over.
+    sound.pauseAmbient();
+    sound.play('spin');
   }
 
   /** Hands the reel a fresh shuffle of whoever is still in the draw. */
@@ -450,6 +525,11 @@
       renderItem: (record) => renderSlot('reel', record, 'slot-rolling'),
       deal: () => state.deal(),
       reducedMotion: prefersReducedMotion.matches,
+      // NEW: the landing cue sounds the instant the reel comes to rest.
+      onLanded: () => {
+        sound.stop('spin');
+        sound.play('land');
+      },
     });
     reel.start(state.settings.animation.rollingSpeed);
   }
@@ -489,6 +569,8 @@
       state.stats = result.stats;
       await refreshState();
     } catch (error) {
+      sound.stop('spin');
+      sound.resumeAmbient();
       showNotice(error.message, 'error');
       await refreshState();
       renderIdle();
@@ -517,6 +599,8 @@
 
     const showCard = () => {
       renderWinnerCard(winner, revealAnimation);
+      // NEW: the reveal cue, and the music back once it has finished.
+      sound.play('reveal').then((handle) => sound.resumeAmbient(handle));
       // CHANGED: the reveal fires whichever celebration the organiser chose.
       afterReveal(() => {
         confetti.start({
@@ -571,6 +655,7 @@
     const [stateResponse, poolResponse] = await Promise.all([api.getState(), api.getPool()]);
 
     state.winners = stateResponse.winners;
+    state.absent = stateResponse.absent || [];
     state.stats = poolResponse.stats;
     state.pool = poolResponse.pool;
 
@@ -591,6 +676,54 @@
     document.documentElement.requestFullscreen().catch(() => {
       showNotice('Fullscreen was blocked by the browser.', 'warn');
     });
+  }
+
+  /**
+   * NEW: strikes the winner on the stage off as not present and opens their
+   * prize again — then either waits for Start or spins straight away, as the
+   * organiser chose.
+   */
+  async function markNotPresent() {
+    const control = absentControl();
+    const button = elements.reel.querySelector('.winner-absent');
+    if (!control || !button) return;
+    if (state.status === STATUS.ROLLING || state.status === STATUS.REVEALING) return;
+
+    if (control.locked) {
+      showNotice('Sign in on the organiser console to mark a winner as not present.', 'warn');
+      return;
+    }
+    const { redraw } = state.settings;
+    if (redraw.confirmOnBoard && !global.confirm(copy('notPresentConfirm'))) return;
+
+    button.disabled = true;
+    try {
+      await api.markAbsent(Number(button.dataset.drawIndex));
+      confetti.stop();
+      sound.stop('reveal', 200);
+      sound.pauseAmbient();
+      const sting = await sound.play('absent');
+      renderMessage(copy('notPresentNotice'));
+      await refreshStateQuietly();
+      await new Promise((resolve) => setTimeout(resolve, redraw.noticeMs));
+      sound.resumeAmbient(sting);
+      renderIdle();
+      if (redraw.autoRedraw) startSlot();
+    } catch (error) {
+      showNotice(error.message, 'error');
+      button.disabled = false;
+    }
+  }
+
+  /** Fetches the latest results without re-rendering the stage. */
+  async function refreshStateQuietly() {
+    const [stateResponse, poolResponse] = await Promise.all([api.getState(), api.getPool()]);
+    state.winners = stateResponse.winners;
+    state.absent = stateResponse.absent || [];
+    state.stats = poolResponse.stats;
+    state.pool = poolResponse.pool;
+    renderStats();
+    renderWinners();
   }
 
   /** Clears every recorded winner so the next Start begins a fresh draw. */
@@ -631,6 +764,11 @@
     elements.fullscreenBtn.addEventListener('click', toggleFullscreen);
     elements.winnersToggle.addEventListener('click', () => setWinnersPanel(elements.winnersPanel.hidden));
     elements.newDrawBtn.addEventListener('click', startNewDraw);
+    // NEW: the "Not present" button lives on the winner card, which is
+    // rebuilt with every reveal, so it is handled by delegation.
+    elements.reel.addEventListener('click', (event) => {
+      if (event.target.closest('.winner-absent')) markNotPresent();
+    });
 
     document.addEventListener('keydown', (event) => {
       if (/^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName) || event.metaKey || event.ctrlKey || event.altKey) return;
@@ -650,6 +788,7 @@
       if (key === 'g') global.location.assign('/welcome');
       if (key === 'p') global.location.assign('/prizes');
       if (key === 'n') startNewDraw();
+      if (key === 'a') markNotPresent();
     });
   }
 
@@ -658,10 +797,11 @@
   async function init() {
     try {
       const settingsResponse = await api.getSettings();
-      applySettings(settingsResponse.appSettings, settingsResponse.session);
+      applySettings(settingsResponse.appSettings, settingsResponse.session, settingsResponse.serverTime);
 
       await refreshState();
       bindControls();
+      setInterval(refreshLiveSettings, LIVE_SETTINGS_MS);
 
       if (state.stats.totalTickets === 0) {
         showNotice('No participants have been uploaded yet. Open the organiser console to add them.', 'warn');

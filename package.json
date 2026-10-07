@@ -1,11 +1,12 @@
 {
   "name": "pickora",
   "version": "1.0.0",
-  "description": "Pickora — a configurable, offline-capable prize draw board for any event, by Shenu",
+  "description": "Pickora \u2014 a configurable, offline-capable prize draw board for any event, by Shenu",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "test": "node --test 'tests/*.test.js'"
   },
   "keywords": [
     "lottery",

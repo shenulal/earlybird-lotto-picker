@@ -27,6 +27,7 @@ requirements.txt
 windows/
 archive/
 tools/
+tests/
 api/
 vercel.json
 
@@ -37,6 +38,7 @@ vercel.json
 appsettings.json
 tickets.json
 winners.json
+templates.json
 assets/
 .pickora-write-probe
 *.tmp-*

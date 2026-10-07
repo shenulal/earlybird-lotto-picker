@@ -10,6 +10,9 @@ const sheets = require('./sheets');
 const { BUILD } = require('./build');
 const ticketStore = require('./tickets');
 const store = require('./store');
+const templates = require('./templates');
+const { countdownLocksDraw } = require('./features');
+const { registerFeatureRoutes, publicDraw } = require('./feature-routes');
 const { StorageError } = store;
 const {
   normalizeAppSettings,
@@ -79,12 +82,20 @@ function mergeSettings(stored, incoming) {
   }, { ...stored });
 }
 
-function exportColumns(appSettings) {
+function exportColumns(appSettings, withStatus = false) {
   return [
     { key: 'prizeNumber', label: 'Prize #' },
     ...appSettings.data.fields.filter((field) => field.includeInExport).map((field) => ({ key: field.key, label: field.label })),
     { key: 'drawnAt', label: 'Drawn At' },
+    // NEW: once anyone has been struck off as not present, the export says
+    // who, so the file is a complete record rather than only the survivors.
+    ...(withStatus ? [{ key: 'status', label: 'Status' }, { key: 'absentAt', label: 'Marked Not Present At' }] : []),
   ];
+}
+
+/** Deletes an uploaded file once neither the event nor a template uses it. */
+function removeIfUnused(src, appSettings) {
+  return templates.removeIfUnused(src, appSettings, normalizeAppSettings);
 }
 
 function createApiRouter() {
@@ -165,7 +176,9 @@ function createApiRouter() {
     // Field metadata the board needs for labels, without export or
     // sensitivity flags that are an organiser concern.
     const publicKeys = schema.publicFieldKeys(appSettings.display);
-    const { data, ...rest } = appSettings;
+    // CHANGED: the certificate's settings — signatories, venue, notes — are
+    // the organiser's document, not the board's, and stay off this response.
+    const { data, certificate: _certificate, ...rest } = appSettings;
 
     res.json({
       ok: true,
@@ -177,6 +190,9 @@ function createApiRouter() {
         },
       },
       session: { authenticated: Boolean(currentSession(req)) },
+      // NEW: the countdown runs against the server's clock, not the screen's,
+      // so every screen in the room reaches zero together.
+      serverTime: new Date().toISOString(),
     });
   });
 
@@ -188,12 +204,14 @@ function createApiRouter() {
       // The reel animates over live records, so only reel fields are sent.
       const reelKeys = [...new Set(appSettings.display.reel.lines.map((line) => line.field))];
 
+      const excluded = appSettings.redraw.returnToPool ? [] : state.absent;
+
       res.json({
         ok: true,
         pool: draw
-          .remainingPool(tickets, state.winners, appSettings.data.identifier)
+          .remainingPool(tickets, state.winners, appSettings.data.identifier, excluded)
           .map((ticket) => schema.projectRecord(ticket, reelKeys)),
-        stats: draw.buildStats(appSettings, tickets, state.winners),
+        stats: draw.statsFor(appSettings, tickets, state),
       });
     } catch (error) {
       sendError(res, error);
@@ -205,12 +223,11 @@ function createApiRouter() {
       const { appSettings } = loadSettingsFile();
       const { tickets } = draw.readTickets(appSettings);
       const state = draw.loadDrawState();
-      const allowedKeys = schema.publicFieldKeys(appSettings.display);
 
       res.json({
         ok: true,
-        winners: state.winners.map((winner) => publicWinner(winner, allowedKeys)),
-        stats: draw.buildStats(appSettings, tickets, state.winners),
+        ...publicDraw(appSettings, state, publicWinner),
+        stats: draw.statsFor(appSettings, tickets, state),
       });
     } catch (error) {
       sendError(res, error);
@@ -227,6 +244,11 @@ function createApiRouter() {
       }
       if (appSettings.draw.requireAuthForDraw && !isAdmin) {
         return res.status(401).json({ ok: false, error: 'Sign in as an organiser to run the draw.' });
+      }
+      // NEW: the countdown can hold the draw until it reaches zero. Enforced
+      // here as well as on the board, so a second tab cannot jump the gun.
+      if (countdownLocksDraw(appSettings.countdown) && !isAdmin) {
+        return res.status(423).json({ ok: false, reason: 'countdown', error: 'The draw opens when the countdown ends.' });
       }
 
       const result = draw.drawWinner(appSettings);
@@ -342,8 +364,13 @@ function createApiRouter() {
           storage: store.driver.name,
           maxUploadBytes: store.maxBlobBytes,
         },
-        stats: draw.buildStats(appSettings, source.tickets, state.winners),
+        stats: draw.statsFor(appSettings, source.tickets, state),
         winners: state.winners,
+        // NEW: winners struck off as not present, and the record of the list
+        // the draw ran against.
+        absent: state.absent,
+        poolFingerprint: state.poolFingerprint,
+        poolSize: state.poolSize,
         startedAt: state.startedAt,
         updatedAt: state.updatedAt,
       });
@@ -525,7 +552,7 @@ function createApiRouter() {
         ticketCount: merged.length,
         issues: incoming.issues,
         appSettings: nextSettings,
-        stats: draw.buildStats(nextSettings, merged, draw.loadDrawState().winners),
+        stats: draw.statsFor(nextSettings, merged, draw.loadDrawState()),
       });
     } catch (error) {
       if (error instanceof StorageError) return sendError(res, error);
@@ -548,7 +575,7 @@ function createApiRouter() {
       ticketStore.saveTickets([]);
       await store.flush();
       const { appSettings } = loadSettingsFile();
-      return res.json({ ok: true, ticketCount: 0, stats: draw.buildStats(appSettings, [], state.winners) });
+      return res.json({ ok: true, ticketCount: 0, stats: draw.statsFor(appSettings, [], state) });
     } catch (error) {
       return sendError(res, error);
     }
@@ -617,7 +644,7 @@ function createApiRouter() {
 
       saveSettingsFile({ ...settingsFile, appSettings });
       await store.flush();
-      if (previous && previous !== asset.src) await images.removeImageAsset(previous);
+      if (previous && previous !== asset.src) await removeIfUnused(previous, appSettings);
 
       return res.json({ ok: true, asset, appSettings });
     } catch (error) {
@@ -644,7 +671,7 @@ function createApiRouter() {
 
       saveSettingsFile({ ...settingsFile, appSettings });
       await store.flush();
-      await images.removeImageAsset(previous);
+      await removeIfUnused(previous, appSettings);
 
       return res.json({ ok: true, appSettings });
     } catch (error) {
@@ -705,8 +732,9 @@ function createApiRouter() {
       saveSettingsFile({ ...settingsFile, appSettings });
       await store.flush();
 
-      // Only delete the file once nothing else references it.
-      if (!remaining.some((image) => image.src === src)) await images.removeImageAsset(src);
+      // Only delete the file once nothing else references it — a prize, or a
+      // saved template.
+      await removeIfUnused(src, appSettings);
 
       return res.json({ ok: true, appSettings });
     } catch (error) {
@@ -762,12 +790,9 @@ function createApiRouter() {
       saveSettingsFile({ ...settingsFile, appSettings });
       await store.flush();
 
-      // Kept while any other prize or the welcome carousel still shows it.
-      const stillUsed = [
-        ...items.flatMap((item) => item.images),
-        ...appSettings.welcome.images,
-      ].some((image) => image.src === src);
-      if (!stillUsed) await images.removeImageAsset(src);
+      // Kept while any other prize, the welcome carousel or a saved template
+      // still shows it.
+      await removeIfUnused(src, appSettings);
 
       return res.json({ ok: true, appSettings });
     } catch (error) {
@@ -802,19 +827,30 @@ function createApiRouter() {
   router.get('/admin/export/winners.csv', requireAuth, (_req, res) => {
     try {
       const { appSettings } = loadSettingsFile();
-      const rows = draw.loadDrawState().winners.map((winner) => ({
-        prizeNumber: winner.prizeNumber,
-        drawnAt: winner.drawnAt,
-        ...winner.record,
+      const state = draw.loadDrawState();
+      const withAbsent = appSettings.redraw.includeInExport && state.absent.length > 0;
+      const entries = withAbsent
+        ? [...state.winners, ...state.absent].sort((a, b) => Number(a.drawIndex) - Number(b.drawIndex))
+        : state.winners;
+
+      const rows = entries.map((entry) => ({
+        ...entry.record,
+        prizeNumber: entry.prizeNumber,
+        drawnAt: entry.drawnAt,
+        status: entry.absentAt ? appSettings.copy.notPresentTag : 'Winner',
+        absentAt: entry.absentAt || '',
       }));
 
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', 'attachment; filename="winners.csv"');
-      res.send(ticketStore.toCsv(rows, exportColumns(appSettings)));
+      res.send(ticketStore.toCsv(rows, exportColumns(appSettings, withAbsent)));
     } catch (error) {
       sendError(res, error);
     }
   });
+
+  // NEW: redraw, sound tracks, the certificate and templates.
+  registerFeatureRoutes(router, { requireAuth, currentSession, sendError, publicWinner });
 
   router.use((_req, res) => res.status(404).json({ ok: false, error: 'Unknown endpoint.' }));
 

@@ -87,6 +87,13 @@
     organiserLink: 'Organiser link',
     footer: 'Footer credit',
     loading: 'Loading message',
+    // NEW: the "winner not present" redraw, the speaker button, the countdown.
+    notPresentButton: '"Not present" button',
+    notPresentConfirm: '"Not present" confirmation',
+    notPresentNotice: '"Not present" message on screen',
+    notPresentTag: '"Not present" tag in lists',
+    soundToggle: 'Speaker button label',
+    countdownLocked: 'Start pressed during the countdown',
   };
 
   function escapeHtml(value) {

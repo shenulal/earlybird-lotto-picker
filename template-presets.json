@@ -1,0 +1,281 @@
+{
+  "templates": [
+    {
+      "id": "builtin-gala-evening",
+      "name": "Gala evening",
+      "description": "Deep navy and gold, stars on every winner, lounge music between draws and a drumroll and fanfare for each one.",
+      "sections": [
+        "look",
+        "animation",
+        "sound",
+        "countdown"
+      ],
+      "settings": {
+        "ui": {
+          "primaryColor": "#e6c46a",
+          "backgroundColor": "radial-gradient(circle at top, #1b2a4a, #070b16)",
+          "showEventName": true,
+          "showOrganizationName": true,
+          "showWinnersPanel": false,
+          "showStats": false,
+          "boardAlignment": "center"
+        },
+        "animation": {
+          "rollingSpeed": 70,
+          "confettiDuration": 9000,
+          "confettiCount": 220,
+          "confettiPalette": [
+            "#e6c46a",
+            "#f7e7b4",
+            "#ffffff",
+            "#b08d3c"
+          ],
+          "winnerAnnouncementDelay": 5000,
+          "confettiStartDelay": 400,
+          "celebration": "stars"
+        },
+        "sound": {
+          "enabled": true,
+          "volume": 80,
+          "showMuteButton": true,
+          "cues": {
+            "ambient": {
+              "enabled": true,
+              "preset": "gala",
+              "volume": 30,
+              "fadeInMs": 2500,
+              "fadeOutMs": 1200
+            },
+            "spin": {
+              "enabled": true,
+              "preset": "drumroll",
+              "volume": 80
+            },
+            "land": {
+              "enabled": true,
+              "preset": "cymbal",
+              "volume": 80
+            },
+            "reveal": {
+              "enabled": true,
+              "preset": "fanfare",
+              "volume": 90
+            },
+            "absent": {
+              "enabled": true,
+              "preset": "descend",
+              "volume": 60
+            },
+            "countdownTick": {
+              "enabled": true,
+              "preset": "wood",
+              "volume": 55
+            },
+            "countdownEnd": {
+              "enabled": true,
+              "preset": "gong",
+              "volume": 90
+            }
+          }
+        },
+        "countdown": {
+          "title": "The grand draw begins in",
+          "completeMessage": "Ladies and gentlemen — the draw is about to begin",
+          "style": "overlay",
+          "units": "auto",
+          "finalSeconds": 10
+        }
+      }
+    },
+    {
+      "id": "builtin-game-show",
+      "name": "Game show",
+      "description": "Bright and loud: arcade sounds, streamer bursts, a fast reel and a banner countdown.",
+      "sections": [
+        "look",
+        "animation",
+        "sound",
+        "countdown"
+      ],
+      "settings": {
+        "ui": {
+          "primaryColor": "#ffde00",
+          "backgroundColor": "radial-gradient(circle at top, #6a00f4, #18003a)",
+          "showStats": true,
+          "boardAlignment": "center"
+        },
+        "animation": {
+          "rollingSpeed": 40,
+          "confettiDuration": 7000,
+          "confettiCount": 300,
+          "confettiPalette": [
+            "#ffde00",
+            "#ff006e",
+            "#00f5d4",
+            "#8338ec",
+            "#ffffff"
+          ],
+          "winnerAnnouncementDelay": 3000,
+          "confettiStartDelay": 200,
+          "celebration": "streamers"
+        },
+        "sound": {
+          "enabled": true,
+          "volume": 85,
+          "showMuteButton": true,
+          "cues": {
+            "ambient": {
+              "enabled": true,
+              "preset": "pulse",
+              "volume": 30
+            },
+            "spin": {
+              "enabled": true,
+              "preset": "arcade",
+              "volume": 75
+            },
+            "land": {
+              "enabled": true,
+              "preset": "thud",
+              "volume": 85
+            },
+            "reveal": {
+              "enabled": true,
+              "preset": "arcade",
+              "volume": 90
+            },
+            "absent": {
+              "enabled": true,
+              "preset": "buzz",
+              "volume": 70
+            },
+            "countdownTick": {
+              "enabled": true,
+              "preset": "beep",
+              "volume": 60
+            },
+            "countdownEnd": {
+              "enabled": true,
+              "preset": "horn",
+              "volume": 95
+            }
+          }
+        },
+        "countdown": {
+          "title": "Get ready!",
+          "completeMessage": "Here we go!",
+          "style": "banner",
+          "position": "top",
+          "units": "ms",
+          "finalSeconds": 10
+        }
+      }
+    },
+    {
+      "id": "builtin-arabic-rtl",
+      "name": "Arabic event (RTL)",
+      "description": "Arabic wording on every screen, right-to-left layout, and an Arabic countdown and certificate. Review the wording with a native speaker before the event.",
+      "sections": [
+        "event",
+        "wording",
+        "countdown",
+        "certificate"
+      ],
+      "settings": {
+        "eventName": "السحب على الجوائز",
+        "locale": "ar-AE",
+        "direction": "rtl",
+        "copy": {
+          "readyTitle": "جاهز للسحب",
+          "readyDetail": "اضغط ابدأ",
+          "winnerEyebrow": "الفائز",
+          "prizeLabel": "الجائزة",
+          "lastWinnerEyebrow": "الفائز السابق",
+          "completeTitle": "تم توزيع جميع الجوائز",
+          "startButton": "ابدأ",
+          "stopButton": "توقف",
+          "winnersHeading": "الفائزون",
+          "winnersEmpty": "لم يتم السحب بعد.",
+          "winnersToggle": "الفائزون",
+          "fullscreenButton": "ملء الشاشة",
+          "organiserLink": "المنظم",
+          "welcomeToggle": "الترحيب",
+          "boardToggle": "لوحة السحب",
+          "prizesToggle": "الجوائز",
+          "upNextLabel": "التالي",
+          "drawPrompt": "اضغط ابدأ للسحب",
+          "prizesBack": "العودة إلى السحب",
+          "newDrawButton": "سحب جديد",
+          "newDrawConfirm": "هل تريد مسح السحب الحالي والبدء من جديد؟",
+          "notPresentButton": "غير حاضر",
+          "notPresentConfirm": "هل تريد تسجيل هذا الفائز كغير حاضر وإعادة السحب على هذه الجائزة؟",
+          "notPresentNotice": "الفائز غير حاضر — سيُعاد السحب على هذه الجائزة",
+          "notPresentTag": "غير حاضر",
+          "soundToggle": "الصوت",
+          "loading": "جارٍ تحضير السحب…"
+        },
+        "countdown": {
+          "title": "يبدأ السحب خلال",
+          "completeMessage": "السحب على وشك البدء",
+          "labels": {
+            "days": "أيام",
+            "hours": "ساعات",
+            "minutes": "دقائق",
+            "seconds": "ثوانٍ"
+          }
+        },
+        "certificate": {
+          "title": "شهادة السحب",
+          "subtitle": "السجل الرسمي للفائزين",
+          "statement": "نشهد بأن السحب على جوائز {event} الذي نظمته {organization} قد أُجري بتاريخ {date}، وقد تم سحب {winners} فائزاً من بين {entries} مشاركة مؤهلة، كما هو مدوّن أدناه.",
+          "methodText": "تم اختيار كل فائز بواسطة خادم Pickora باستخدام مولّد أرقام عشوائية آمن تشفيرياً، بحيث تتساوى فرص جميع المشاركات المتبقية. وقد سُجّلت كل نتيجة لحظة سحبها ولا يمكن تعديلها من اللوحة العامة.",
+          "signatories": [
+            {
+              "name": "",
+              "role": "المنظم"
+            },
+            {
+              "name": "",
+              "role": "الشاهد"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "builtin-quiet-room",
+      "name": "Quiet room",
+      "description": "No sound, no countdown, a calm palette and a gentle snowfall — for boards in lobbies, offices and livestreams.",
+      "sections": [
+        "look",
+        "animation",
+        "sound",
+        "countdown"
+      ],
+      "settings": {
+        "ui": {
+          "primaryColor": "#9be7c4",
+          "backgroundColor": "radial-gradient(circle at top, #1f3b3a, #0b1414)",
+          "boardAlignment": "center"
+        },
+        "animation": {
+          "rollingSpeed": 90,
+          "confettiDuration": 6000,
+          "confettiCount": 90,
+          "confettiPalette": [
+            "#9be7c4",
+            "#ffffff",
+            "#c8f0e0"
+          ],
+          "celebration": "snow"
+        },
+        "sound": {
+          "enabled": false
+        },
+        "countdown": {
+          "enabled": false
+        }
+      }
+    }
+  ]
+}

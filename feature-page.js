@@ -160,14 +160,45 @@
     });
   }
 
+  /* NEW: background music and the countdown belong on these screens too,
+     wherever the organiser has switched them on — and pick up changes from
+     the console without a reload, as the board does. */
+  const LIVE_SETTINGS_MS = 20000;
+  let sound = null;
+  let countdown = null;
+
+  function applyLiveSettings(appSettings, serverTime) {
+    if (!global.createPickoraSound || !global.createPickoraCountdown) return;
+    if (!sound) {
+      sound = global.createPickoraSound({ page });
+      sound.mountButton(document.querySelector('.board-menu'));
+      countdown = global.createPickoraCountdown({ page, sound });
+    }
+    sound.update(appSettings.sound, appSettings.copy);
+    sound.startAmbient();
+    countdown.update(appSettings.countdown, serverTime);
+  }
+
+  async function refreshLiveSettings() {
+    try {
+      const response = await api.getSettings();
+      applyLiveSettings(response.appSettings, response.serverTime);
+    } catch (_error) {
+      /* the next poll tries again */
+    }
+  }
+
   async function init() {
     try {
-      const { appSettings } = await api.getSettings();
+      const { appSettings, serverTime } = await api.getSettings();
       global.applyPickoraTheme(appSettings);
       global.renderPickoraNav(page, appSettings);
 
       if (page === 'welcome') renderWelcome(appSettings);
       else renderPrizes(appSettings);
+
+      applyLiveSettings(appSettings, serverTime);
+      global.setInterval(refreshLiveSettings, LIVE_SETTINGS_MS);
     } catch (error) {
       const empty = document.getElementById(page === 'welcome' ? 'welcomeEmpty' : 'prizesEmpty');
       if (empty) {

@@ -6,9 +6,12 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from flask import Blueprint, Response, jsonify, request, session
 
-from . import draw, images, schema, sheets, tickets as ticket_store
+from . import draw, images, schema, sheets, templates, tickets as ticket_store
 from .build import BUILD
 from .auth import LoginThrottle, hash_password, verify_password
+from .coerce import js_now_iso, js_number
+from .feature_routes import public_draw, register_feature_routes
+from .features import countdown_locks_draw
 from .settings import (
     MAX_PRIZE_IMAGES,
     MAX_WELCOME_IMAGES,
@@ -69,12 +72,20 @@ def merge_settings(stored: Dict[str, Any], incoming: Dict[str, Any]) -> Dict[str
     return merged
 
 
-def export_columns(app_settings: Dict[str, Any]) -> List[Tuple[str, str]]:
+def export_columns(app_settings: Dict[str, Any], with_status: bool = False) -> List[Tuple[str, str]]:
     return [
         ("prizeNumber", "Prize #"),
         *[(f["key"], f["label"]) for f in app_settings["data"]["fields"] if f["includeInExport"]],
         ("drawnAt", "Drawn At"),
+        # NEW: once anyone has been struck off as not present, the export says
+        # who, so the file is a complete record rather than only the survivors.
+        *([("status", "Status"), ("absentAt", "Marked Not Present At")] if with_status else []),
     ]
+
+
+def remove_if_unused(src: Any, app_settings: Dict[str, Any]) -> None:
+    """Deletes an uploaded file once neither the event nor a template uses it."""
+    templates.remove_if_unused(src, app_settings)
 
 
 def body() -> Dict[str, Any]:
@@ -98,8 +109,10 @@ def get_settings():
 
     # Field metadata the board needs for labels, without export or sensitivity
     # flags that are an organiser concern.
+    # CHANGED: the certificate's settings — signatories, venue, notes — are the
+    # organiser's document, not the board's, and stay off this response.
     exposed = {
-        **{key: value for key, value in app_settings.items() if key != "data"},
+        **{key: value for key, value in app_settings.items() if key not in ("data", "certificate")},
         "data": {
             "identifier": data["identifier"],
             "fields": [
@@ -108,7 +121,16 @@ def get_settings():
         },
     }
 
-    return jsonify({"ok": True, "appSettings": exposed, "session": {"authenticated": bool(current_username())}})
+    return jsonify(
+        {
+            "ok": True,
+            "appSettings": exposed,
+            "session": {"authenticated": bool(current_username())},
+            # NEW: the countdown runs against the server's clock, not the
+            # screen's, so every screen in the room reaches zero together.
+            "serverTime": js_now_iso(),
+        }
+    )
 
 
 @api.get("/pool")
@@ -119,12 +141,13 @@ def get_pool():
     # The reel animates over live records, so only reel fields are sent.
     reel_keys = list(dict.fromkeys(line["field"] for line in app_settings["display"]["reel"]["lines"]))
 
-    pool = draw.remaining_pool(source["tickets"], state["winners"], app_settings["data"]["identifier"])
+    excluded = [] if app_settings["redraw"]["returnToPool"] else state["absent"]
+    pool = draw.remaining_pool(source["tickets"], state["winners"], app_settings["data"]["identifier"], excluded)
     return jsonify(
         {
             "ok": True,
             "pool": [schema.project_record(ticket, reel_keys) for ticket in pool],
-            "stats": draw.build_stats(app_settings, source["tickets"], state["winners"]),
+            "stats": draw.stats_for(app_settings, source["tickets"], state),
         }
     )
 
@@ -134,13 +157,12 @@ def get_state():
     app_settings = load_settings_file()["appSettings"]
     source = draw.read_tickets(app_settings)
     state = draw.load_draw_state()
-    allowed = schema.public_field_keys(app_settings["display"])
 
     return jsonify(
         {
             "ok": True,
-            "winners": [public_winner(winner, allowed) for winner in state["winners"]],
-            "stats": draw.build_stats(app_settings, source["tickets"], state["winners"]),
+            **public_draw(app_settings, state, public_winner),
+            "stats": draw.stats_for(app_settings, source["tickets"], state),
         }
     )
 
@@ -154,6 +176,13 @@ def post_draw():
         return jsonify({"ok": False, "error": "Draws are currently paused by the organiser."}), 403
     if app_settings["draw"]["requireAuthForDraw"] and not is_admin:
         return jsonify({"ok": False, "error": "Sign in as an organiser to run the draw."}), 401
+    # NEW: the countdown can hold the draw until it reaches zero. Enforced here
+    # as well as on the board, so a second tab cannot jump the gun.
+    if countdown_locks_draw(app_settings["countdown"]) and not is_admin:
+        return (
+            jsonify({"ok": False, "reason": "countdown", "error": "The draw opens when the countdown ends."}),
+            423,
+        )
 
     result = draw.draw_winner(app_settings)
     if not result["ok"]:
@@ -253,8 +282,13 @@ def get_overview():
                 "sample": source["tickets"][:8],
             },
             "limits": {"storage": "filesystem", "maxUploadBytes": images.MAX_BYTES},
-            "stats": draw.build_stats(app_settings, source["tickets"], state["winners"]),
+            "stats": draw.stats_for(app_settings, source["tickets"], state),
             "winners": state["winners"],
+            # NEW: winners struck off as not present, and the record of the list
+            # the draw ran against.
+            "absent": state["absent"],
+            "poolFingerprint": state["poolFingerprint"],
+            "poolSize": state["poolSize"],
             "startedAt": state["startedAt"],
             "updatedAt": state["updatedAt"],
         }
@@ -453,7 +487,7 @@ def post_tickets():
             "ticketCount": len(merged),
             "issues": issues,
             "appSettings": next_settings,
-            "stats": draw.build_stats(next_settings, merged, draw.load_draw_state()["winners"]),
+            "stats": draw.stats_for(next_settings, merged, draw.load_draw_state()),
         }
     )
 
@@ -479,7 +513,7 @@ def clear_tickets():
 
     ticket_store.save_tickets([])
     app_settings = load_settings_file()["appSettings"]
-    return jsonify({"ok": True, "ticketCount": 0, "stats": draw.build_stats(app_settings, [], state["winners"])})
+    return jsonify({"ok": True, "ticketCount": 0, "stats": draw.stats_for(app_settings, [], state)})
 
 
 @api.get("/admin/export/template.csv")
@@ -553,7 +587,7 @@ def upload_asset(kind: str):
     save_settings_file({**settings_file, "appSettings": app_settings})
 
     if previous and previous != asset["src"]:
-        images.remove_image_asset(previous)
+        remove_if_unused(previous, app_settings)
 
     return jsonify({"ok": True, "asset": asset, "appSettings": app_settings})
 
@@ -575,7 +609,7 @@ def delete_asset(kind: str):
         }
     )
     save_settings_file({**settings_file, "appSettings": app_settings})
-    images.remove_image_asset(previous)
+    remove_if_unused(previous, app_settings)
 
     return jsonify({"ok": True, "appSettings": app_settings})
 
@@ -633,9 +667,9 @@ def delete_welcome_image():
     )
     save_settings_file({**settings_file, "appSettings": app_settings})
 
-    # Only delete the file once nothing else references it.
-    if not any(image["src"] == src for image in remaining):
-        images.remove_image_asset(src)
+    # Only delete the file once nothing else references it — a prize, or a
+    # saved template.
+    remove_if_unused(src, app_settings)
 
     return jsonify({"ok": True, "appSettings": app_settings})
 
@@ -699,13 +733,9 @@ def delete_prize_image(prize_id: str):
     )
     save_settings_file({**settings_file, "appSettings": app_settings})
 
-    # Kept while any other prize or the welcome carousel still shows it.
-    still_used = any(
-        image["src"] == src
-        for image in [*(i for item in items for i in item["images"]), *app_settings["welcome"]["images"]]
-    )
-    if not still_used:
-        images.remove_image_asset(src)
+    # Kept while any other prize, the welcome carousel or a saved template
+    # still shows it.
+    remove_if_unused(src, app_settings)
 
     return jsonify({"ok": True, "appSettings": app_settings})
 
@@ -732,13 +762,31 @@ def post_reset():
 @require_auth
 def export_winners():
     app_settings = load_settings_file()["appSettings"]
+    state = draw.load_draw_state()
+    with_absent = app_settings["redraw"]["includeInExport"] and bool(state["absent"])
+    entries = (
+        sorted([*state["winners"], *state["absent"]], key=lambda entry: js_number(entry.get("drawIndex")))
+        if with_absent
+        else state["winners"]
+    )
+
     rows = [
-        {"prizeNumber": w.get("prizeNumber"), "drawnAt": w.get("drawnAt"), **(w.get("record") or {})}
-        for w in draw.load_draw_state()["winners"]
+        {
+            **(entry.get("record") or {}),
+            "prizeNumber": entry.get("prizeNumber"),
+            "drawnAt": entry.get("drawnAt"),
+            "status": app_settings["copy"]["notPresentTag"] if entry.get("absentAt") else "Winner",
+            "absentAt": entry.get("absentAt") or "",
+        }
+        for entry in entries
     ]
-    csv_text = ticket_store.to_csv(rows, export_columns(app_settings))
+    csv_text = ticket_store.to_csv(rows, export_columns(app_settings, with_absent))
     return Response(
         csv_text,
         mimetype="text/csv; charset=utf-8",
         headers={"Content-Disposition": 'attachment; filename="winners.csv"'},
     )
+
+
+# NEW: redraw, sound tracks, the certificate and templates.
+register_feature_routes(api, require_auth, current_username, public_winner)

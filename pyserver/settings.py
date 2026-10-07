@@ -5,7 +5,6 @@ works under either runtime.
 """
 
 import hashlib
-import math
 import os
 import re
 import secrets
@@ -13,8 +12,9 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
-from . import schema, tickets as ticket_store
+from . import features, schema, tickets as ticket_store
 from .auth import hash_password
+from .coerce import as_boolean, as_choice, as_color, as_text, clamp_number
 from .paths import SETTINGS_PATH, SETTINGS_SAMPLE_PATH
 from .store import read_json, write_json
 
@@ -183,6 +183,13 @@ DEFAULT_COPY = {
     "prizesBack": "Back to the draw",
     "newDrawButton": "New draw",
     "newDrawConfirm": "Clear the current draw and start over?",
+    # NEW: the "winner not present" redraw and the sound toggle.
+    "notPresentButton": "Not present",
+    "notPresentConfirm": "Mark this winner as not present and draw this prize again?",
+    "notPresentNotice": "Not present — this prize will be drawn again",
+    "notPresentTag": "Not present",
+    "soundToggle": "Sound",
+    "countdownLocked": "The draw opens when the countdown ends.",
     "footer": "Pickora · by Shenu",
     "loading": "Preparing the draw…",
 }
@@ -230,42 +237,16 @@ HEX_COLOR = re.compile(r"^#[0-9a-f]{3,8}$", re.I)
 
 
 def _clamp(key: str, value: Any, fallback: int) -> int:
-    # A list converts to neither backend's idea of a number, but float() accepts
-    # a few shapes Number() does not; both are refused here so the two agree.
-    if isinstance(value, (list, dict)) or value is None:
-        return fallback
-    try:
-        number = float(value)
-    except (TypeError, ValueError):
-        return fallback
-    if number != number or number in (float("inf"), float("-inf")):
-        return fallback
-    low, high = CLAMPS[key]
-    # FIX: Python rounds a half to even (2.5 -> 2) and JavaScript rounds it up
-    # (2.5 -> 3). Floor of value-plus-a-half is what Math.round does, including
-    # for negatives, so a hostile half-value lands on the same integer in both.
-    return int(min(high, max(low, math.floor(number + 0.5))))
+    # The shared rules in coerce.py: a missing value is never read as zero, and
+    # a half rounds up as JavaScript's Math.round does.
+    return clamp_number(value, CLAMPS[key], fallback)
 
 
-def _as_bool(value: Any, fallback: bool) -> bool:
-    if isinstance(value, bool):
-        return value
-    if value == "true":
-        return True
-    if value == "false":
-        return False
-    return fallback
-
-
-def _as_choice(value: Any, choices: tuple, fallback: str) -> str:
-    return value if value in choices else fallback
-
-
-def _as_text(value: Any, fallback: str, max_length: int = 200) -> str:
-    if not isinstance(value, str):
-        return fallback
-    trimmed = value.strip()
-    return trimmed[:max_length] if trimmed else fallback
+# CHANGED: the coercions now live in coerce.py, shared with the event features,
+# as server/settings.js shares server/coerce.js.
+_as_bool = as_boolean
+_as_choice = as_choice
+_as_text = as_text
 
 
 def _as_asset_path(value: Any) -> str:
@@ -545,12 +526,8 @@ def _normalize_social(raw: Any) -> Dict[str, Any]:
     }
 
 
-def _as_color(value: Any, fallback: str) -> str:
-    """NEW: a hex colour, or empty for "whatever the screen already uses"."""
-    if not isinstance(value, str):
-        return fallback
-    trimmed = value.strip()
-    return trimmed if HEX_COLOR.match(trimmed) else fallback
+# NEW: a hex colour, or empty for "whatever the screen already uses".
+_as_color = as_color
 
 
 def _normalize_text_style(raw: Any) -> Dict[str, Any]:
@@ -715,6 +692,11 @@ def normalize_app_settings(raw: Any) -> Dict[str, Any]:
         "welcome": _normalize_welcome(source.get("welcome")),
         "prizes": _normalize_prizes(source.get("prizes")),
         "copy": _normalize_copy(source.get("copy")),
+        # NEW: the event features. Each one is off, or inert, until configured.
+        "sound": features.normalize_sound(source.get("sound")),
+        "redraw": features.normalize_redraw(source.get("redraw")),
+        "countdown": features.normalize_countdown(source.get("countdown")),
+        "certificate": features.normalize_certificate(source.get("certificate"), data),
         "ui": {
             # NEW: sizes for the two things the room looks at. Zero is "as the
             # stylesheet has it", which keeps every existing board as it is.

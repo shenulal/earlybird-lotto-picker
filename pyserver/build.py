@@ -38,6 +38,18 @@ HASHED = (
     "feature-page.js",
     "admin.js",
     "admin-config.js",
+    # NEW: sound, the countdown, and the console panels and page for the
+    # event features.
+    "sound-presets.js",
+    "sound.js",
+    "countdown.js",
+    "admin-features.js",
+    "admin-sound.js",
+    "admin-countdown.js",
+    "admin-certificate.js",
+    "admin-templates.js",
+    "certificate.html",
+    "certificate.js",
 )
 
 VERSION_PARAM = "v"

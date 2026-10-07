@@ -34,8 +34,15 @@ The screen the audience sees.
   once `draw.allowResetFromBoard` is on; otherwise it explains what is needed.
   It can also be switched off altogether, for a board nobody should be able to
   reset from the floor
+- **Sound** for every moment of the draw — background music, the spin, the
+  landing, the reveal, a winner not present, the countdown — from built-in
+  sounds or the organiser's own tracks, with a speaker button to mute a screen
+- **Countdown** to the start of the draw, full screen or as a banner, holding
+  the draw until zero if the organiser wants
+- **Not present** on the winner card: strike off a winner who does not come
+  forward and draw their prize again, when the organiser allows it
 - Keyboard: `Space` / `Enter` start and stop, `W` winners panel, `G` guest
-  welcome, `N` new draw, `F` fullscreen
+  welcome, `N` new draw, `A` not present, `S` sound on/off, `F` fullscreen
 - Survives a refresh — the draw state lives on the server, not in the tab
 
 The board holds **no participant data beyond what it is configured to show**.
@@ -48,17 +55,21 @@ Behind a sign-in.
 
 | Section | What it does |
 |---|---|
-| **Overview** | Live counters, data-health warnings, results table, CSV export, undo last draw, reset draw |
+| **Overview** | Live counters, data-health warnings, results table, CSV export, undo last draw, reset draw, strike off a winner as not present and restore one |
 | **Participants** | Upload the entry list or link a Google Sheet, with a column preview; download a template, export, or delete |
 | **Board layout** | How big the reel and the buttons are, and how far the backdrop is darkened — judged against a live preview of the board |
 | **Text & media** | How the words are set on each screen — face, size, weight, colour, opacity, alignment, line height, letter spacing — and how a prize's photographs are shown on the board, with a live preview |
 | **Channels** | Social links and their QR codes: style, position, size, display mode, with a live preview |
+| **Sound** | Every sound cue — source, volume, delay, fades, length, start point, looping — your own uploaded tracks, sound packs, previews |
+| **Countdown** | When the draw starts, the words, full screen or banner, units, which screens, and whether the draw waits for zero |
 | **Fields** | Rename columns, mark sensitive ones, choose the identifier and what appears in the export |
 | **Display** | Choose exactly which fields appear while spinning, on the announcement, on the winner card and in the winners list, and how long the announcement is held before the card — with a rehearsal of the reveal |
 | **Branding** | Upload the logo and backdrop, with size and resolution validated on the server |
 | **Welcome** | Greet a chief guest with a message and a carousel of photos |
 | **Prizes** | Build the prize list, each with its own photo carousel |
-| **Settings** | Prize count, draw behaviour, colours, alignment, language, animation timings |
+| **Settings** | Prize count, draw behaviour, the "winner not present" redraw, colours, alignment, language, animation timings |
+| **Certificate** | The printable draw certificate: wording, what it includes, columns, signatures, paper — with a live preview |
+| **Templates** | Save the configuration, apply a saved one in whole or in part, export and import as a file |
 | **Wording** | Every string on the draw board |
 | **Account** | Change the username and password |
 
@@ -812,6 +823,127 @@ well formed and scanned as nothing at all.
 
 ---
 
+## Sound
+
+Every moment of the draw can have its own sound, configured under **Sound** in
+the console. Sound is **off until it is switched on**, so an event set up
+before this existed stays silent after an update.
+
+| Cue | When it plays |
+|---|---|
+| Background music | Between draws, on the screens chosen — and it can step aside for the draw |
+| While the reel spins | From Start until the reel lands; loops until then |
+| Reel lands | The instant the reel comes to rest on the winner |
+| Winner revealed | When the winner card appears; background music returns once it ends |
+| Winner not present | When a winner is struck off |
+| Countdown tick | Each second of the countdown's final stretch |
+| Countdown ends | When the countdown reaches zero |
+
+Each cue has its own **source** (a built-in sound or one of your tracks),
+**volume**, **delay**, **fade in** and **fade out**, **length** (0 plays the
+whole sound, or until the moment is over), **start point** for an uploaded
+track — to skip an intro — and **loop**. A master switch and master volume sit
+above them, and **sound packs** set every cue to matching built-in sounds in one
+go. **Preview** plays a cue exactly as configured, saved or not.
+
+The built-in sounds are **generated in the browser** with the Web Audio API —
+drumrolls, a brass fanfare, bells, a gong, an air horn and more. Nothing is
+downloaded and nothing needs licensing, so they work on an offline board.
+
+**Your own tracks** — MP3, M4A, AAC, OGG, WAV, FLAC or WebM — are uploaded once
+and can then be chosen for any cue. Each is checked by its content, not its
+name, and stored under a name made from its hash. The size limit is the
+deployment's: 10 MB on a filesystem, 2 MB on a key-value store. Only upload
+music you have the rights to play at the event.
+
+Browsers allow sound only after someone interacts with a page, so **press any
+key or click once on each screen** after opening it; until then the speaker
+button pulses. The speaker button (or `S`) mutes one screen without changing
+the organiser's setting, and can be hidden. Open screens pick up sound changes
+from the console within 20 seconds, without a reload.
+
+## Countdown to the draw
+
+Under **Countdown**: switch it on, pick when the draw starts (or use *In 15
+min*, *In 1 hour*…), and choose the words, the units, a **full-screen** or
+**banner** style, and which screens show it. The time is picked in the
+console's own time zone and stored with its offset, and every screen counts
+against the **server's** clock, so screens whose clocks disagree still reach
+zero together.
+
+With **Hold the draw until the countdown ends**, Start is disabled on the board
+and the server refuses draws until zero — a signed-in organiser can still draw
+early. The last seconds pulse (and tick, if the tick sound is on), and at zero
+the closing message stays up for as long as configured; `0` keeps it until the
+first draw starts.
+
+## Winner not present
+
+When a winner is called and does not come forward, they can be struck off and
+their prize drawn again. Switch it on under **Settings → Winner not present**.
+
+- The Overview gets a **Not present** button on every result, and a list of
+  struck-off entries with **Restore as winner** for a mistake — allowed while
+  their prize is still open and they have not won since.
+- The board's winner card can show **Not present** too (and `A`), signed-in
+  organisers only unless you allow otherwise, with or without a confirmation.
+- The prize opens again and is **the next one drawn** — the room redraws the
+  prize it was watching. *Spin again straight away* skips waiting for Start.
+- A struck-off entry stays **out of later draws** unless *Return the absent
+  entry to the pool* is on. *Redraws allowed per prize* caps how often one
+  prize can be redrawn (0 is no limit).
+- Struck-off entries are kept: in the board's winners panel (tagged), in the
+  CSV export (with a Status column) and on the certificate — each optional.
+
+## Draw certificate
+
+**Certificate** in the console configures a printable record of the draw:
+title, subtitle, venue, a statement with placeholders (`{event}`,
+`{organization}`, `{date}`, `{venue}`, `{winners}`, `{entries}`, `{prizes}`),
+how the winners were chosen, a footnote, signature lines with names and roles,
+which columns are printed for each winner, paper size and orientation, and an
+accent colour. Sensitive columns can be masked to their last four characters.
+
+**Open certificate** shows it at `/certificate`; print it, or save it as PDF
+from the print dialog. Only a signed-in organiser can load it.
+
+Each certificate carries:
+
+- a **reference** made of the prefix, the date of the draw and a code from the
+  results — a reprint of the same results has the same reference;
+- the **entry-list fingerprint**: a SHA-256 of the entry list, recorded the
+  moment the first winner is drawn. Records are written as their fields in key
+  order and sorted, so the hash does not depend on row order, and anyone with
+  the original list can recompute it. If the list has changed since, the
+  certificate says so;
+- a **results fingerprint**: a SHA-256 of every draw in order — who, which
+  prize, when, and whether they were struck off.
+
+## Event templates
+
+**Templates** saves the configuration so the next event can start from it.
+
+- **Save** the current configuration as a template, choosing which parts it
+  holds: event details, logo & backdrop, colours & layout, wording, prizes,
+  welcome screen, social channels, reel & celebration, draw rules, sound,
+  countdown, certificate, fields & display. Templates are made from the
+  **saved** configuration, so save any panel you are editing first.
+- **Apply** a template in whole or in part. Each part replaces the same part of
+  this event and nothing else; the event's own name can be kept. Applying never
+  removes your uploaded tracks, and keeps this event's countdown time.
+- **Export** a template — or the current configuration directly — as a `.json`
+  file. **Export with files** embeds the images and tracks it uses, so it works
+  on another Pickora (another tenant, say). **Import** checks every embedded file
+  against the hash in its name and its actual type, and leaves out any that do
+  not match.
+- Four **built-in** templates are starting points: *Gala evening*, *Game show*,
+  *Arabic event (RTL)* and *Quiet room*. Review the Arabic wording with a native
+  speaker before the event.
+
+Templates are stored per deployment in `templates.json` (or the key-value store),
+never served to a browser. An uploaded file is not deleted while any template
+still uses it.
+
 ## Getting new code to people
 
 Nobody should have to hard-refresh, clear a cache or clear their history to
@@ -930,6 +1062,19 @@ commit where there is one, and otherwise a hash of the served files themselves.
 | `branding.logo.position` | `top-left` / `top-center` / `top-right` / `bottom-left` / `bottom-center` / `bottom-right` / `hidden` |
 | `draw.allowResetFromBoard` | Let anyone use **New draw** on the board; otherwise it is offered only to a signed-in organiser |
 | `ui.showWinnersPanel`, `ui.showStats`, `ui.showOrganizationName` | Board furniture |
+| `sound.enabled`, `sound.volume`, `sound.showMuteButton` | Sound on or off, master volume 0–100, the speaker button on the screens |
+| `sound.library[]` | Uploaded tracks — id, name, file, format, size. Managed by uploads, not typed |
+| `sound.cues.<cue>` | `ambient`, `spin`, `land`, `reveal`, `absent`, `countdownTick`, `countdownEnd`: `enabled`, `source` (`preset`/`track`), `preset`, `track`, `volume` 0–100, `delayMs`, `durationMs` (0 = natural), `fadeInMs`, `fadeOutMs`, `startAtMs`, `loop` |
+| `sound.cues.ambient.screens`, `.pauseDuringDraw` | Which screens play the background music, and whether it steps aside for the draw |
+| `redraw.enabled` | Allow striking off a winner who is not present (off by default) |
+| `redraw.showOnBoard`, `.requireSignIn`, `.confirmOnBoard` | Whether the board's winner card offers it, who may use it there, and whether it asks first |
+| `redraw.autoRedraw`, `.returnToPool`, `.maxPerPrize` | Spin again at once; let the absentee back into later draws; redraws per prize (0 = no limit) |
+| `redraw.noticeMs`, `.showInPanel`, `.includeInExport` | How long the board says "not present"; list absentees in the winners panel and the CSV |
+| `countdown.enabled`, `.targetAt` | Show the countdown, and the moment it reaches zero (ISO 8601 with offset) |
+| `countdown.title`, `.subtitle`, `.completeMessage`, `.labels.*` | Its words |
+| `countdown.style`, `.position`, `.units`, `.screens.*` | `overlay` or `banner`, banner `top`/`bottom`, `auto`/`dhms`/`hms`/`ms`, which screens |
+| `countdown.lockDraw`, `.finalSeconds`, `.completeHoldSeconds` | Hold the draw until zero; the emphasised final stretch; how long the closing message stays (0 = until the first draw) |
+| `certificate.*` | `enabled`, `title`, `subtitle`, `referencePrefix`, `statement`, `methodText`, `venue`, `footerNote`, `show*` toggles, `maskSensitive`, `fields[]`, `signatories[]`, `paper`, `orientation`, `accentColor` |
 
 Every value is validated and clamped server-side, so a bad entry cannot break
 the board mid-event. Unknown fields referenced by a display slot are dropped,
@@ -950,6 +1095,7 @@ Public:
 | `GET` | `/api/state` | Winners so far + counters |
 | `POST` | `/api/draw` | Draw one winner |
 | `POST` | `/api/draw/reset` | Clear the draw from the board (organiser, or when allowed) |
+| `POST` | `/api/draw/absent` | Strike off the winner on the board as not present (when allowed) |
 
 Session:
 
@@ -981,6 +1127,19 @@ Organiser (signed-in only):
 | `POST` | `/api/admin/draw/undo` |
 | `POST` | `/api/admin/draw/reset` |
 | `GET` | `/api/admin/export/winners.csv` |
+| `POST` | `/api/admin/draw/absent` |
+| `POST` | `/api/admin/draw/restore` |
+| `POST` | `/api/admin/sound/tracks` |
+| `PATCH` | `/api/admin/sound/tracks/:id` |
+| `DELETE` | `/api/admin/sound/tracks/:id` |
+| `GET` | `/api/admin/certificate` |
+| `GET` | `/api/admin/templates` |
+| `POST` | `/api/admin/templates` |
+| `POST` | `/api/admin/templates/import` |
+| `PUT` | `/api/admin/templates/:id` |
+| `DELETE` | `/api/admin/templates/:id` |
+| `POST` | `/api/admin/templates/:id/apply` |
+| `GET` | `/api/admin/templates/:id/export` (`current` for the live configuration, `?embed=1` for files) |
 
 ---
 
@@ -990,6 +1149,12 @@ Selection happens **on the server**, using `crypto.randomInt` (Node) or
 `secrets.randbelow` (Python) — both uniform and cryptographically sound. Each
 winner is appended to `winners.json` before the response is sent, so a refresh,
 a crashed browser or a second screen can never lose or duplicate a result.
+
+Each draw records how many entries it chose from, and the first one records a
+fingerprint of the whole entry list (see *Draw certificate*). A winner struck
+off as not present is moved to a separate list rather than deleted; their prize
+is the next one drawn, and every draw keeps its own number, so the record of
+what happened is never rewritten.
 
 Failed sign-ins are throttled to 8 attempts per 15 minutes per address. Session
 cookies are HttpOnly, SameSite=Lax, and marked Secure behind HTTPS, and last
@@ -1013,6 +1178,13 @@ pickora/
 │                                         # board layout, text and media
 ├── api.js                                # shared API client
 ├── confetti.js                           # the celebrations, all seven of them
+├── sound.js / sound-presets.js           # the sound engine and its built-in sounds
+├── countdown.js                          # the countdown, on every public screen
+├── certificate.html / certificate.js     # the printable draw certificate
+├── admin-features.js                     # console registry for the panels below
+│   ├── admin-sound.js / admin-countdown.js
+│   └── admin-certificate.js / admin-templates.js
+├── template-presets.json                 # the built-in templates
 ├── qr.js                                 # QR encoder, level H, no dependency
 ├── social.js                             # the channel block on public pages
 ├── welcome.html / prizes.html            # the two feature screens
@@ -1029,7 +1201,10 @@ pickora/
 ├── deploy/                               # Caddyfile and per-tenant env templates
 │   └── server/                           # app, micro (http shim), paths, store,
 │                                         # auth, schema, settings, tickets,
-│                                         # draw, images, routes
+│                                         # draw, images, routes — and for the
+│                                         # event features: coerce, features,
+│                                         # audio, templates, feature-routes
+├── tests/                                # npm test — node:test, no packages
 ├── app.py                                # Flask entry point
 │   └── pyserver/                         # the same modules in Python
 ├── tickets.json / appsettings.json       # data
@@ -1040,6 +1215,24 @@ pickora/
 ├── archive/                              # the event artwork this replaced
 └── pickora-logo.png / -background.jpg    # bundled placeholder identity
 ```
+
+## Running the tests
+
+```bash
+npm test
+```
+
+Runs the server suite with Node's own test runner — no packages to install. It
+covers the draw (including redraws and the fingerprint), the settings for the
+event features, audio checks, templates, and every new endpoint end to end
+against a real server with a throwaway data directory.
+
+`PICKORA_TEST_URL=http://127.0.0.1:5000 node --test tests/api.test.js` runs the
+endpoint tests against a server already running — the Flask mirror, for
+instance — started with `ADMIN_USERNAME=organiser` and
+`ADMIN_PASSWORD=correct-horse-battery`.
+
+---
 
 ## License
 

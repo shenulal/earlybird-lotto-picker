@@ -31,6 +31,8 @@ const DOCUMENTS = Object.freeze({
   settings: 'appsettings.json',
   tickets: 'tickets.json',
   draw: 'winners.json',
+  // NEW: the organiser's saved event templates.
+  templates: 'templates.json',
 });
 
 const DOCUMENT_BY_FILE = Object.freeze(

@@ -2599,3 +2599,323 @@ body[data-logo-position='top-right'] {
     animation: none !important;
   }
 }
+
+/* ==========================================================================
+   NEW: sound, the countdown, and the "winner not present" redraw
+   ========================================================================== */
+
+/* --- the speaker button, beside the menu on every public page ------------- */
+
+.sound-toggle {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: color var(--fast), border-color var(--fast), background var(--fast);
+}
+
+.sound-toggle svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sound-toggle .sound-cone {
+  fill: currentColor;
+  stroke: none;
+}
+
+.sound-toggle .sound-cross,
+.sound-toggle[data-state='muted'] .sound-wave {
+  display: none;
+}
+
+.sound-toggle[data-state='muted'] .sound-cross {
+  display: inline;
+}
+
+.sound-toggle:hover,
+.sound-toggle:focus-visible {
+  color: var(--accent);
+  border-color: var(--accent-line);
+}
+
+.sound-toggle[data-state='muted'] {
+  color: var(--ink-faint);
+}
+
+/* Sound is on but the browser has not let it play yet: one click anywhere
+   unlocks it, and the button says so. */
+.sound-toggle[data-state='waiting'] {
+  color: var(--accent);
+  border-color: var(--accent-line);
+  animation: sound-waiting 1.6s var(--ease) infinite;
+}
+
+@keyframes sound-waiting {
+  50% {
+    box-shadow: 0 0 0 6px var(--accent-veil);
+  }
+}
+
+/* --- the countdown ------------------------------------------------------- */
+
+.countdown {
+  position: fixed;
+  z-index: 52;
+  color: var(--ink);
+  text-align: center;
+  pointer-events: none;
+}
+
+.countdown[hidden] {
+  display: none;
+}
+
+/* Overlay: the whole screen belongs to the countdown until it is over. */
+.countdown[data-style='overlay'] {
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: clamp(24px, 6vh, 80px) 22px;
+  background:
+    radial-gradient(60% 50% at 50% 46%, var(--accent-veil), transparent 72%),
+    color-mix(in oklab, var(--surface-solid) 92%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+.countdown-inner {
+  display: grid;
+  gap: clamp(10px, 1.6vh, 22px);
+  justify-items: center;
+  max-width: min(100%, 1400px);
+}
+
+.countdown-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-title);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+}
+
+.countdown-subtitle {
+  margin: 0;
+  font-size: var(--text-support);
+  color: var(--ink-soft);
+}
+
+.countdown-subtitle[hidden] {
+  display: none;
+}
+
+.countdown-clock {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(6px, 1.2vw, 22px);
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.countdown-unit {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  min-width: 1.6ch;
+}
+
+.countdown-value {
+  font-family: var(--font-display);
+  font-size: clamp(3.4rem, 1rem + 11vw, 11rem);
+  line-height: 0.92;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-ink);
+  text-shadow: 0 0 60px var(--accent-glow), 0 2px 24px rgba(0, 0, 0, 0.45);
+}
+
+.countdown-label {
+  font-size: var(--text-eyebrow);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.countdown-sep {
+  font-family: var(--font-display);
+  font-size: clamp(2.4rem, 0.6rem + 7vw, 7rem);
+  line-height: 1.1;
+  color: var(--ink-ghost);
+}
+
+.countdown-done {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-headline);
+  line-height: 1;
+  color: var(--accent-ink);
+  text-shadow: 0 0 60px var(--accent-glow);
+}
+
+/* The last stretch: each second lands with a beat. */
+.countdown[data-phase='final'] .countdown-value {
+  animation: countdown-beat 1s var(--ease) infinite;
+}
+
+@keyframes countdown-beat {
+  0% {
+    transform: scale(1.12);
+  }
+  40%,
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Banner: a strip across the top or bottom, leaving the screen in use. */
+.countdown[data-style='banner'] {
+  inset-inline: 0;
+  padding: 10px 22px;
+  background: color-mix(in oklab, var(--surface-solid) 94%, transparent);
+  border-block: 1px solid var(--accent-line);
+  backdrop-filter: blur(8px);
+}
+
+.countdown[data-style='banner'][data-position='top'] {
+  top: 0;
+}
+
+.countdown[data-style='banner'][data-position='bottom'] {
+  bottom: 0;
+}
+
+.countdown[data-style='banner'] .countdown-inner {
+  grid-auto-flow: column;
+  align-items: center;
+  justify-content: center;
+  margin-inline: auto;
+}
+
+.countdown[data-style='banner'] .countdown-value {
+  font-size: clamp(1.8rem, 1rem + 2.4vw, 3.2rem);
+}
+
+.countdown[data-style='banner'] .countdown-sep {
+  font-size: clamp(1.4rem, 0.8rem + 1.8vw, 2.6rem);
+  line-height: 1;
+}
+
+.countdown[data-style='banner'] .countdown-done {
+  font-size: clamp(1.6rem, 1rem + 2vw, 2.8rem);
+}
+
+.countdown[data-style='banner'] .countdown-subtitle {
+  display: none;
+}
+
+/* A banner along the top pushes down what lives there — the menu, a logo in
+   a top corner, and the header — rather than covering them. */
+/* countdown.js measures the banner and sets --countdown-banner-height; the
+   fallback only covers the first frame. */
+body.has-countdown-banner-top .board-menu {
+  top: calc(var(--menu-top) + var(--countdown-banner-height, 96px));
+}
+
+body.has-countdown-banner-top[data-logo-position^='top'] .board-logo,
+body.has-countdown-banner-top .board-header {
+  transform: translateY(var(--countdown-banner-height, 96px));
+}
+
+/* On a narrow screen the heading sits above the clock, which stays on one
+   line. */
+@media (max-width: 640px) {
+  .countdown[data-style='banner'] .countdown-inner {
+    grid-auto-flow: row;
+    gap: 4px;
+  }
+
+  .countdown[data-style='banner'] .countdown-clock {
+    flex-wrap: nowrap;
+  }
+
+  .countdown[data-style='banner'] .countdown-value {
+    font-size: clamp(1.5rem, 1rem + 3vw, 2rem);
+  }
+
+  .countdown[data-style='banner'] .countdown-title {
+    font-size: 0.8rem;
+  }
+}
+
+/* --- the winner card's "Not present" control ------------------------------ */
+
+.winner-absent {
+  justify-self: center;
+  margin-top: clamp(16px, 2.6vh, 30px);
+  padding: 8px 18px;
+  border: 1px solid var(--hairline-bright);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink-soft);
+  font: 600 var(--text-eyebrow) / 1 var(--font-body);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color var(--fast), border-color var(--fast), background var(--fast), opacity var(--fast);
+}
+
+.winner-absent:hover,
+.winner-absent:focus-visible {
+  color: var(--negative);
+  border-color: color-mix(in oklab, var(--negative) 60%, transparent);
+  background: color-mix(in oklab, var(--negative) 12%, var(--surface));
+}
+
+.winner-absent[data-locked='true'] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.winner-absent:disabled {
+  opacity: 0.4;
+  cursor: progress;
+}
+
+/* Struck off as not present: kept in the list, but set back. */
+.winner-row.is-absent {
+  opacity: 0.55;
+}
+
+.winner-row.is-absent .slot-line {
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in oklab, var(--negative) 70%, transparent);
+}
+
+.winner-tag {
+  align-self: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--negative) 18%, transparent);
+  color: var(--negative);
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .countdown[data-phase='final'] .countdown-value,
+  .sound-toggle[data-state='waiting'] {
+    animation: none;
+  }
+}

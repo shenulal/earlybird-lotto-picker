@@ -44,6 +44,8 @@
     getState: () => request('/api/state'),
     drawWinner: () => request('/api/draw', { method: 'POST', body: {} }),
     resetFromBoard: () => request('/api/draw/reset', { method: 'POST', body: {} }),
+    // NEW: the board's "Not present" control.
+    markAbsent: (drawIndex) => request('/api/draw/absent', { method: 'POST', body: { drawIndex } }),
 
     getSession: () => request('/api/auth/session'),
     login: (username, password) => request('/api/auth/login', { method: 'POST', body: { username, password } }),
@@ -65,5 +67,20 @@
     undoLastDraw: () => request('/api/admin/draw/undo', { method: 'POST', body: {} }),
     resetDraw: () => request('/api/admin/draw/reset', { method: 'POST', body: {} }),
     winnersCsvUrl: '/api/admin/export/winners.csv',
+
+    // NEW: redraw management, the sound library, the certificate, templates.
+    adminMarkAbsent: (drawIndex) => request('/api/admin/draw/absent', { method: 'POST', body: { drawIndex } }),
+    adminRestoreAbsent: (drawIndex) => request('/api/admin/draw/restore', { method: 'POST', body: { drawIndex } }),
+    uploadTrack: (payload) => request('/api/admin/sound/tracks', { method: 'POST', body: payload }),
+    renameTrack: (id, name) => request(`/api/admin/sound/tracks/${encodeURIComponent(id)}`, { method: 'PATCH', body: { name } }),
+    deleteTrack: (id) => request(`/api/admin/sound/tracks/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    getCertificate: () => request('/api/admin/certificate'),
+    listTemplates: () => request('/api/admin/templates'),
+    createTemplate: (payload) => request('/api/admin/templates', { method: 'POST', body: payload }),
+    updateTemplate: (id, payload) => request(`/api/admin/templates/${encodeURIComponent(id)}`, { method: 'PUT', body: payload }),
+    deleteTemplate: (id) => request(`/api/admin/templates/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    applyTemplate: (id, payload) => request(`/api/admin/templates/${encodeURIComponent(id)}/apply`, { method: 'POST', body: payload }),
+    importTemplate: (payload) => request('/api/admin/templates/import', { method: 'POST', body: payload }),
+    templateExportUrl: (id, embed) => `/api/admin/templates/${encodeURIComponent(id)}/export${embed ? '?embed=1' : ''}`,
   };
 })(window);

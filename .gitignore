@@ -74,3 +74,6 @@ windows/port.txt
 deploy/tenants/*.env
 !deploy/tenants/example.env
 deploy/proxy.env
+
+# Saved event templates — runtime data, like the draw state
+templates.json

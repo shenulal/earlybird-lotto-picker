@@ -35,6 +35,14 @@ const MIME_TYPES = Object.freeze({
   '.csv': 'text/csv; charset=utf-8',
   '.txt': 'text/plain; charset=utf-8',
   '.pdf': 'application/pdf',
+  // NEW: uploaded sound cues.
+  '.mp3': 'audio/mpeg',
+  '.ogg': 'audio/ogg',
+  '.wav': 'audio/wav',
+  '.m4a': 'audio/mp4',
+  '.aac': 'audio/aac',
+  '.flac': 'audio/flac',
+  '.webm': 'audio/webm',
 });
 
 function contentTypeFor(filePath) {

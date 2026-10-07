@@ -17,6 +17,9 @@ const PATHS = Object.freeze({
   settingsSample: path.join(ROOT_DIR, 'appsettings.sample.json'),
   tickets: path.join(ROOT_DIR, 'tickets.json'),
   drawState: path.join(ROOT_DIR, 'winners.json'),
+  // NEW: saved event templates, and the starting points that ship with the app.
+  templates: path.join(ROOT_DIR, 'templates.json'),
+  templatePresets: path.join(ROOT_DIR, 'template-presets.json'),
 });
 
 // Files that must never be reachable through the static file middleware.
@@ -31,12 +34,15 @@ const PROTECTED_FILES = Object.freeze([
   // could be downloaded by anyone who guessed the URL. The board never needs
   // it: it reads entries through /api/pool, which strips non-display fields.
   'tickets.json',
+  // NEW: saved templates can carry contact details in their certificate
+  // settings and the organiser's own wording; they are console-only.
+  'templates.json',
   'package.json',
   'package-lock.json',
   'requirements.txt',
 ]);
 
-const PROTECTED_DIRS = Object.freeze(['server', 'pyserver', 'windows', '.git', 'node_modules', '.playwright-mcp']);
+const PROTECTED_DIRS = Object.freeze(['server', 'pyserver', 'windows', 'tests', 'deploy', '.git', 'node_modules', '.playwright-mcp']);
 
 function isProtectedPath(requestPath) {
   const normalized = String(requestPath || '')

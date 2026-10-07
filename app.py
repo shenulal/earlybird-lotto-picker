@@ -21,6 +21,19 @@ app.permanent_session_lifetime = timedelta(seconds=SESSION_TTL_SECONDS)
 app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax")
 app.register_blueprint(api, url_prefix="/api")
 
+# NEW: uploaded sound cues. Python's own table guesses some of these
+# differently per platform (audio/x-wav, audio/x-flac, or nothing for .m4a), so
+# they are named here as server/micro.js names them.
+AUDIO_TYPES = {
+    ".mp3": "audio/mpeg",
+    ".ogg": "audio/ogg",
+    ".wav": "audio/wav",
+    ".m4a": "audio/mp4",
+    ".aac": "audio/aac",
+    ".flac": "audio/flac",
+    ".webm": "audio/webm",
+}
+
 
 @app.after_request
 def apply_security_headers(response):
@@ -74,6 +87,13 @@ def prizes_page():
     return send_page("prizes.html")
 
 
+# NEW: the printable draw certificate. The page itself holds nothing; its data
+# comes from an endpoint only a signed-in organiser can call.
+@app.get("/certificate")
+def certificate_page():
+    return send_page("certificate.html")
+
+
 @app.get("/<path:filename>")
 def serve_static(filename: str):
     # appsettings.json carries the hashed admin credentials and winners.json the
@@ -83,6 +103,10 @@ def serve_static(filename: str):
 
     target = (ROOT_DIR / filename).resolve()
     if not target.is_file() or ROOT_DIR not in target.parents:
+        # NEW: an uploaded file that is gone is gone — a deleted track or photo
+        # answers 404, as Node's asset route does, rather than with the board.
+        if filename.startswith("assets/"):
+            abort(404)
         return send_page("index.html")
 
     # Pages go through the stamper, so their markup points at this build.
@@ -93,8 +117,10 @@ def serve_static(filename: str):
     # as the browser likes — a new build asks for a different URL, so the old
     # entry can never be served in its place. Anything asked for without one is
     # revalidated, because there is no telling which build the asker meant.
+    mimetype = AUDIO_TYPES.get(os.path.splitext(filename)[1].lower())
+
     if request.args.get(VERSION_PARAM) == BUILD:
-        response = send_from_directory(ROOT_DIR, filename)
+        response = send_from_directory(ROOT_DIR, filename, mimetype=mimetype)
         response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
         return response
 
@@ -102,7 +128,7 @@ def serve_static(filename: str):
     if lowered.endswith((".woff2", ".woff", ".ttf", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico")):
         return send_from_directory(ROOT_DIR, filename, max_age=604800)
 
-    response = send_from_directory(ROOT_DIR, filename)
+    response = send_from_directory(ROOT_DIR, filename, mimetype=mimetype)
     response.headers["Cache-Control"] = "no-cache"
     return response
 
