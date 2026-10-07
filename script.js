@@ -473,8 +473,14 @@
     const settling = reel.settle(state.settings.draw.minimumRollMs - elapsed);
 
     const drawing = api.drawWinner();
-    // Handled by the await below; this branch only feeds the reel.
-    drawing.then((result) => reel && reel.land(result.winner.record)).catch(() => {});
+    // The reel rolls on gently until both the draw is in and the organiser's
+    // response time has passed, then settles on the winner. Failure is handled
+    // by the await below; this branch only feeds the reel.
+    const responseMs = Math.max(0, Number(state.settings.draw.stopResponseMs) || 0);
+    const responded = new Promise((resolve) => setTimeout(resolve, responseMs));
+    Promise.all([drawing, responded])
+      .then(([result]) => reel && reel.land(result.winner.record))
+      .catch(() => {});
 
     try {
       const [result] = await Promise.all([drawing, settling]);

@@ -637,6 +637,7 @@
     'animation.confettiCount',
     'animation.confettiStartDelay',
     'draw.minimumRollMs',
+    'draw.stopResponseMs',
   ];
   const SETTINGS_BOOLEAN_FIELDS = [
     'display.autoStopWhenPrizesExhausted',

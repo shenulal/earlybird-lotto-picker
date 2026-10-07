@@ -200,6 +200,9 @@ const CLAMPS = Object.freeze({
   winnerAnnouncementDelay: [0, 30000],
   confettiStartDelay: [0, 15000],
   minimumRollMs: [0, 30000],
+  // How long the reel keeps rolling after Stop before it settles on the
+  // winner. Zero settles the moment the draw is made.
+  stopResponseMs: [0, 10000],
   logoMaxHeight: [24, 480],
   overlayOpacity: [0, 100],
   /* NEW: the board's own measurements. Zero everywhere means "leave it to the
@@ -658,6 +661,7 @@ function normalizeAppSettings(input) {
       requireAuthForDraw: asBoolean(draw.requireAuthForDraw, false),
       allowResetFromBoard: asBoolean(draw.allowResetFromBoard, false),
       minimumRollMs: clamp('minimumRollMs', draw.minimumRollMs, 1200),
+      stopResponseMs: clamp('stopResponseMs', draw.stopResponseMs, 0),
     },
 
     branding: normalizeBranding(source.branding),

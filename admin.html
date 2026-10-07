@@ -1439,6 +1439,11 @@
                 <span class="field-label">Reel speed (ms per ticket)</span>
                 <input type="number" name="animation.rollingSpeed" min="10" max="1000">
               </label>
+              <label class="field">
+                <span class="field-label">Response after Stop (ms)</span>
+                <input type="number" name="draw.stopResponseMs" min="0" max="10000" step="100">
+                <span class="field-hint">After Stop, the reel keeps rolling gently for at least this long before it settles on the winner. 0 settles as soon as the draw is made.</span>
+              </label>
             </div>
             <div class="switches">
               <label class="switch">

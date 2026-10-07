@@ -473,10 +473,13 @@ pressed — slows to rest on a whole entry. Three things follow from that:
   later. `draw.minimumRollMs` is spent decelerating rather than holding the reel
   at full speed, so pressing Stop early gives a longer, gentler stop instead of
   a wait with no feedback.
-- **It comes to rest on the winner.** The draw is requested the instant Stop is
-  pressed, so the answer is usually in hand while the reel is still slowing and
-  it can land on the entry that actually won, rather than on a stranger who is
-  then replaced.
+- **It comes to rest on the winner, and only the winner.** The draw is
+  requested the instant Stop is pressed, and the reel eases down to a gentle
+  roll until the answer is in. Only then does it choose where to stop — a place
+  still out of sight below the window — and glide onto it, so the entry the
+  room watches come to rest is the one announced. Nothing is swapped in view,
+  and the reel never speeds up again. `draw.stopResponseMs` sets the least time
+  that gentle roll lasts, for a beat of suspense after Stop.
 - **Every entry gets the same time on screen.** Entries are dealt from a
   shuffled deck, so all of them appear once before any of them repeats.
   Sampling at random each frame would let some never appear at all, which looks
@@ -753,6 +756,7 @@ commit where there is one, and otherwise a hash of the served files themselves.
 | `draw.publicDrawEnabled` | Turn off to freeze the public board between rounds |
 | `draw.requireAuthForDraw` | Only a signed-in browser may draw |
 | `draw.minimumRollMs` | Shortest a roll may last; an early Stop is spent slowing down rather than waiting |
+| `draw.stopResponseMs` | Least time, 0–10000ms (default 0), the reel keeps rolling gently after Stop before it settles on the winner. A slower draw is waited for regardless; 0 settles as soon as the draw is made |
 | `animation.rollingSpeed` | Milliseconds per entry on the reel |
 | `animation.winnerAnnouncementDelay` | How long the announcement is held before the winner card, 0–30000ms (default 5000). Timed from the moment the reel stops; 0 skips the announcement entirely |
 | `animation.confettiStartDelay`, `confettiDuration`, `confettiCount` | Confetti timing and density. Two cannons fire from the bottom corners, a softer fall keeps coming from above, and emission stops early so the last pieces drift out of frame rather than being cut off |

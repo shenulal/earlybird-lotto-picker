@@ -196,6 +196,9 @@ CLAMPS = {
     "winnerAnnouncementDelay": (0, 30000),
     "confettiStartDelay": (0, 15000),
     "minimumRollMs": (0, 30000),
+    # How long the reel keeps rolling after Stop before it settles on the
+    # winner. Zero settles the moment the draw is made.
+    "stopResponseMs": (0, 10000),
     "logoMaxHeight": (24, 480),
     "overlayOpacity": (0, 100),
     # NEW: the board's own measurements. Zero everywhere means "leave it to the
@@ -697,6 +700,7 @@ def normalize_app_settings(raw: Any) -> Dict[str, Any]:
             "requireAuthForDraw": _as_bool(draw.get("requireAuthForDraw"), False),
             "allowResetFromBoard": _as_bool(draw.get("allowResetFromBoard"), False),
             "minimumRollMs": _clamp("minimumRollMs", draw.get("minimumRollMs"), 1200),
+            "stopResponseMs": _clamp("stopResponseMs", draw.get("stopResponseMs"), 0),
         },
         "branding": _normalize_branding(source.get("branding")),
         "social": _normalize_social(source.get("social")),
