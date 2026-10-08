@@ -1,22 +1,3 @@
 {
-  "tickets": [
-    {
-      "ticket": "TCKT-001",
-      "name": "Aisha Rahman",
-      "details": "Sunrise Trading LLC",
-      "contact": "+971 50 111 2233"
-    },
-    {
-      "ticket": "TCKT-002",
-      "name": "Daniel Fernandes",
-      "details": "Horizon Logistics",
-      "contact": "+971 50 222 3344"
-    },
-    {
-      "ticket": "TCKT-003",
-      "name": "Priya Menon",
-      "details": "Meridian Consulting",
-      "contact": "+971 50 333 4455"
-    }
-  ]
+  "tickets": []
 }
