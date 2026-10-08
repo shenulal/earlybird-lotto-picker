@@ -129,6 +129,7 @@
             <p class="prize-label"><span class="prize-rank">${index + 1}</span>${escapeHtml(prize.label)}</p>
             <h3 class="prize-name">${escapeHtml(prize.name)}</h3>
             ${prize.description ? `<p class="prize-description">${escapeHtml(prize.description)}</p>` : ''}
+            ${global.pickoraSponsors ? global.pickoraSponsors.badge(settings, prize, 'prizeScreen') : ''}
           </div>
         </li>`
       )
@@ -166,8 +167,11 @@
   const LIVE_SETTINGS_MS = 20000;
   let sound = null;
   let countdown = null;
+  let live = null;
+  let current = null;
 
   function applyLiveSettings(appSettings, serverTime) {
+    current = appSettings;
     if (!global.createPickoraSound || !global.createPickoraCountdown) return;
     if (!sound) {
       sound = global.createPickoraSound({ page });
@@ -177,6 +181,51 @@
     sound.update(appSettings.sound, appSettings.copy);
     sound.startAmbient();
     countdown.update(appSettings.countdown, serverTime);
+
+    // NEW: the sponsor strip, and the live channel — so this screen follows
+    // the main board to another screen, and the phone remote can bring the
+    // main board back here and away again.
+    if (global.pickoraSponsors) global.pickoraSponsors.renderStrip(appSettings, page);
+    if (!live && global.createPickoraLive) {
+      live = global.createPickoraLive({
+        page,
+        onEvent: handleLiveEvent,
+        onCommand: handleRemoteCommand,
+        onRevision: refreshLiveSettings,
+      });
+    }
+    if (live) {
+      live.update(appSettings);
+      live.publish({ state: 'idle', screen: page, prizeNumber: null });
+    }
+  }
+
+  function goTo(screen) {
+    if (screen && screen !== page) global.location.assign(global.pickoraScreenUrl(screen));
+  }
+
+  /** Something happened elsewhere: this screen follows the main board around. */
+  function handleLiveEvent(event) {
+    const sync = current && current.liveSync;
+    if (!sync || !sync.enabled || !sync.followNavigation || (live && live.isController())) return;
+    if (event.type === 'screen') goTo(event.data.screen);
+    // A spin starting means the main board is drawing: be there to see it.
+    if (event.type === 'roll' && sync.screens.board) goTo('board');
+  }
+
+  /** The remote, when this screen is the one in control. */
+  function handleRemoteCommand(command) {
+    if (command.action === 'screen') {
+      live.publish({ state: 'idle', screen: command.value, prizeNumber: null });
+      global.setTimeout(() => goTo(command.value), 200);
+    }
+    // Start and Stop belong to the draw board: go back to it, and the next
+    // press from the phone starts the spin there.
+    if (command.action === 'toggle' || command.action === 'start') {
+      live.publish({ state: 'idle', screen: 'board', prizeNumber: null });
+      global.setTimeout(() => goTo('board'), 200);
+    }
+    if (command.action === 'mute' && sound) sound.setMuted(command.value === 'toggle' ? !sound.isMuted() : Boolean(command.value));
   }
 
   async function refreshLiveSettings() {

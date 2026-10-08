@@ -2666,3 +2666,170 @@ input[type='datetime-local'] {
   text-transform: uppercase;
   color: var(--c-text-faint);
 }
+
+/* ==========================================================================
+   NEW: sponsors, draw style, live sync, the remote, and "Reset event"
+   ========================================================================== */
+
+.sponsor-editor {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.sponsor-row {
+  display: grid;
+  grid-template-columns: 88px repeat(3, minmax(0, 1fr));
+  gap: 10px 14px;
+  align-items: end;
+  padding: 12px;
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius-sm);
+  background: var(--c-surface-2);
+}
+
+.sponsor-logo-box {
+  grid-row: span 2;
+  display: grid;
+  place-items: center;
+  width: 88px;
+  height: 88px;
+  border: 1px dashed var(--c-line-strong);
+  border-radius: var(--radius-sm);
+  background: #0d1016;
+  overflow: hidden;
+}
+
+.sponsor-logo-box img {
+  max-width: 80px;
+  max-height: 80px;
+  object-fit: contain;
+}
+
+.sponsor-logo-empty {
+  font-size: 0.72rem;
+  color: var(--c-text-faint);
+}
+
+.sponsor-tagline-field {
+  grid-column: span 2;
+}
+
+.sponsor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.sponsor-actions .btn-small {
+  margin-top: 0;
+}
+
+.prize-sponsor {
+  min-width: 200px;
+}
+
+.wheel-preview {
+  display: grid;
+  place-items: center;
+  min-height: 460px;
+  padding: 16px;
+  border-radius: var(--radius-sm);
+  background: radial-gradient(70% 60% at 50% 40%, rgba(245, 181, 68, 0.12), transparent 72%), #0a0c14;
+  --accent: var(--c-amber);
+}
+
+/* The board's wheel styles, for the console preview. */
+.wheel-preview .wheel-wrap { position: relative; display: grid; justify-items: center; gap: 10px; }
+.wheel-preview .wheel-canvas { display: block; border-radius: 50%; }
+.wheel-preview .wheel-pointer { position: absolute; width: 0; height: 0; border-style: solid; }
+.wheel-preview .wheel-wrap[data-pointer='top'] .wheel-pointer { top: -6px; left: 50%; border-width: 26px 15px 0; border-color: var(--accent) transparent transparent; transform: translateX(-50%); }
+.wheel-preview .wheel-wrap[data-pointer='bottom'] .wheel-pointer { top: calc(var(--wheel-size) - 20px); left: 50%; border-width: 0 15px 26px; border-color: transparent transparent var(--accent); transform: translateX(-50%); }
+.wheel-preview .wheel-wrap[data-pointer='left'] .wheel-pointer { top: calc(var(--wheel-size) / 2 - 15px); left: calc(50% - var(--wheel-size) / 2 - 6px); border-width: 15px 0 15px 26px; border-color: transparent transparent transparent var(--accent); }
+.wheel-preview .wheel-wrap[data-pointer='right'] .wheel-pointer { top: calc(var(--wheel-size) / 2 - 15px); left: calc(50% + var(--wheel-size) / 2 - 20px); border-width: 15px 26px 15px 0; border-color: transparent var(--accent) transparent transparent; }
+.wheel-preview .wheel-result { margin: 0; min-height: 1.3em; font-size: 1.3rem; font-weight: 700; color: #fff3d6; }
+
+.address-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.address-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) auto;
+  gap: 8px 14px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius-sm);
+  background: var(--c-surface-2);
+}
+
+.address-row code {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--c-blue);
+  overflow-wrap: anywhere;
+}
+
+.address-row .btn-small,
+.reset-scope .btn-small {
+  margin-top: 0;
+}
+
+.remote-qr {
+  display: grid;
+  place-items: center;
+  margin: 12px 0;
+}
+
+.remote-qr svg {
+  width: min(260px, 100%);
+  height: auto;
+  border-radius: 10px;
+}
+
+.reset-scope {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 4px 18px;
+  margin-top: 10px;
+}
+
+.card-danger {
+  border-color: rgba(248, 113, 113, 0.45);
+  background: linear-gradient(180deg, var(--c-red-soft), transparent 60%), var(--c-surface);
+}
+
+.reset-summary {
+  margin: 0 0 12px;
+  color: var(--c-text-soft);
+}
+
+#panel-reset .card > .switch,
+#panel-reset .form-actions {
+  margin-top: 14px;
+}
+
+@media (max-width: 900px) {
+  .sponsor-row,
+  .address-row {
+    grid-template-columns: 1fr;
+  }
+
+  .sponsor-logo-box {
+    grid-row: auto;
+  }
+
+  .sponsor-tagline-field {
+    grid-column: auto;
+  }
+}
+
+/* A group of checkboxes followed by fields keeps the same rhythm as the rest. */
+.checkbox-row + .grid-2,
+.checkbox-row + .checkbox-row {
+  margin-top: 14px;
+}

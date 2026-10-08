@@ -61,23 +61,28 @@
 
         <p class="nav-group">Content</p>
         <button type="button" class="nav-item" data-panel="prizes">Prizes</button>
+        <button type="button" class="nav-item" data-panel="sponsors">Sponsors</button>
         <button type="button" class="nav-item" data-panel="welcome">Welcome</button>
         <button type="button" class="nav-item" data-panel="channels">Channels</button>
 
         <p class="nav-group">Look</p>
         <button type="button" class="nav-item" data-panel="branding">Branding</button>
         <button type="button" class="nav-item" data-panel="layout">Board layout</button>
+        <button type="button" class="nav-item" data-panel="wheel">Draw style</button>
         <button type="button" class="nav-item" data-panel="text">Text &amp; media</button>
         <button type="button" class="nav-item" data-panel="wording">Wording</button>
 
         <p class="nav-group">The draw</p>
         <button type="button" class="nav-item" data-panel="sound">Sound</button>
         <button type="button" class="nav-item" data-panel="countdown">Countdown</button>
+        <button type="button" class="nav-item" data-panel="live">Live sync</button>
+        <button type="button" class="nav-item" data-panel="remote">Remote</button>
         <button type="button" class="nav-item" data-panel="certificate">Certificate</button>
 
         <p class="nav-group">Setup</p>
         <button type="button" class="nav-item" data-panel="templates">Templates</button>
         <button type="button" class="nav-item" data-panel="settings">Settings</button>
+        <button type="button" class="nav-item" data-panel="reset">Reset event</button>
         <button type="button" class="nav-item" data-panel="account">Account</button>
       </nav>
 
@@ -1416,6 +1421,364 @@
           <button type="button" class="btn btn-primary" id="saveChannelsBtn">Save channels</button>
         </div>
       </section>
+      <!-- ---------------------------------------------------- sponsors -->
+      <section class="panel" id="panel-sponsors" aria-labelledby="sponsorsHeading" hidden>
+        <header class="panel-head">
+          <div>
+            <h1 id="sponsorsHeading">Sponsors</h1>
+            <p class="panel-lede">The companies behind the prizes. Give each its logo and link, put a sponsor behind any prize, and choose where they are credited — beside the prize, on the winner card, on the prize screen, on the certificate and in the export — plus a strip of every sponsor's logo on the screens you choose.</p>
+          </div>
+        </header>
+
+        <div class="card">
+          <h2 class="card-title">Sponsors on the screens</h2>
+          <div class="switches">
+            <label class="switch">
+              <input type="checkbox" id="sponsorsEnabled">
+              <span><strong>Show sponsors</strong><small>Off hides every credit and the strip, without losing the list.</small></span>
+            </label>
+          </div>
+          <div class="grid-2">
+            <label class="field">
+              <span class="field-label">Credit wording</span>
+              <input type="text" id="sponsorLabel" maxlength="60" placeholder="Sponsored by">
+            </label>
+            <label class="field">
+              <span class="field-label">Logo size beside a prize</span>
+              <select id="sponsorLogoSize">
+                <option value="small">Small</option>
+                <option value="medium">Medium</option>
+                <option value="large">Large</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2 class="card-title">Sponsor list</h2>
+            <div class="card-actions">
+              <span class="pill" id="sponsorCountPill">0 sponsors</span>
+              <button type="button" class="btn btn-ghost" id="addSponsorBtn">Add sponsor</button>
+            </div>
+          </div>
+          <div class="sponsor-editor" id="sponsorEditor"></div>
+        </div>
+
+        <div class="card">
+          <h2 class="card-title">Who sponsors which prize</h2>
+          <p class="field-hint">Prizes come from the Prizes section. Save new sponsors before assigning them.</p>
+          <div class="table-scroll">
+            <table class="table">
+              <thead><tr><th>Prize</th><th>Sponsor</th></tr></thead>
+              <tbody id="prizeSponsorBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 class="card-title">Where sponsors are credited</h2>
+          <div class="switches">
+            <label class="switch"><input type="checkbox" id="sponsorShowAnnouncement"><span><strong>When the prize is announced on the board</strong></span></label>
+            <label class="switch"><input type="checkbox" id="sponsorShowWinnerCard"><span><strong>On the winner card</strong></span></label>
+            <label class="switch"><input type="checkbox" id="sponsorShowPrizeScreen"><span><strong>On the prize screen</strong></span></label>
+            <label class="switch"><input type="checkbox" id="sponsorShowCertificate"><span><strong>On the draw certificate</strong></span></label>
+            <label class="switch"><input type="checkbox" id="sponsorShowExport"><span><strong>In the results export</strong><small>Adds a Sponsor column to the CSV.</small></span></label>
+            <label class="switch"><input type="checkbox" id="sponsorShowName"><span><strong>Show the sponsor's name beside its logo</strong><small>A sponsor without a logo always shows its name.</small></span></label>
+            <label class="switch"><input type="checkbox" id="sponsorShowTagline"><span><strong>Show the sponsor's tagline</strong></span></label>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 class="card-title">Sponsor strip</h2>
+          <div class="switches">
+            <label class="switch">
+              <input type="checkbox" id="stripEnabled">
+              <span><strong>Show a strip of sponsor logos</strong><small>Along an edge of the screens chosen below, turning one logo at a time when there are more than fit.</small></span>
+            </label>
+            <label class="switch"><input type="checkbox" id="stripShowNames"><span><strong>Show names under the logos</strong></span></label>
+          </div>
+          <div class="grid-2">
+            <label class="field">
+              <span class="field-label">Heading</span>
+              <input type="text" id="stripHeading" maxlength="60" placeholder="Our sponsors — or leave empty">
+            </label>
+            <label class="field">
+              <span class="field-label">Position</span>
+              <select id="stripPosition">
+                <option value="bottom">Bottom of the screen</option>
+                <option value="top">Top of the screen</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="field-label">Logo height (px)</span>
+              <input type="number" id="stripLogoHeight" min="24" max="160">
+            </label>
+            <label class="field">
+              <span class="field-label">Logos visible at once</span>
+              <input type="number" id="stripPerView" min="1" max="8">
+            </label>
+            <label class="field">
+              <span class="field-label">Turn every (ms)</span>
+              <input type="number" id="stripInterval" min="1500" max="30000" step="500">
+            </label>
+            <label class="field">
+              <span class="field-label">Only these tiers</span>
+              <input type="text" id="stripTiers" maxlength="400" placeholder="Empty shows every sponsor — or e.g. Title, Gold">
+              <span class="field-hint">Comma-separated, matching the Tier written on each sponsor.</span>
+            </label>
+          </div>
+          <fieldset class="field checkbox-row">
+            <legend class="field-label">Show it on</legend>
+            <label><input type="checkbox" id="stripOnBoard"> Draw board</label>
+            <label><input type="checkbox" id="stripOnWelcome"> Welcome screen</label>
+            <label><input type="checkbox" id="stripOnPrizes"> Prize screen</label>
+          </fieldset>
+        </div>
+
+        <div class="panel-foot">
+          <button type="button" class="btn btn-ghost" id="revertSponsorsBtn">Revert</button>
+          <button type="button" class="btn btn-primary" id="saveSponsorsBtn">Save sponsors</button>
+        </div>
+      </section>
+
+      <!-- -------------------------------------------------- draw style -->
+      <section class="panel" id="panel-wheel" aria-labelledby="wheelHeading" hidden>
+        <header class="panel-head">
+          <div>
+            <h1 id="wheelHeading">Draw style</h1>
+            <p class="panel-lede">How the draw is shown while it runs: the reel, or a spinning wheel. Either way the winner is picked by the server, at random; the wheel only shows it, and always comes to rest on the winner drawn.</p>
+          </div>
+        </header>
+
+        <div class="layout-grid">
+          <div class="layout-controls">
+            <div class="card">
+              <h2 class="card-title">Style</h2>
+              <fieldset class="field checkbox-row" role="radiogroup">
+                <label><input type="radio" name="wheelStyle" value="reel"> Reel — entries scroll past</label>
+                <label><input type="radio" name="wheelStyle" value="wheel"> Wheel — spin the wheel</label>
+              </fieldset>
+            </div>
+
+            <div class="card">
+              <h2 class="card-title">Wheel</h2>
+              <div class="grid-2">
+                <label class="field">
+                  <span class="field-label">Segments</span>
+                  <input type="number" id="wheelSegments" min="4" max="48">
+                  <span class="field-hint">With fewer entries than segments, entries repeat.</span>
+                </label>
+                <label class="field">
+                  <span class="field-label">Written on the segments</span>
+                  <select id="wheelLabelField"></select>
+                  <span class="field-hint">Only fields the board already shows, never sensitive ones.</span>
+                </label>
+                <label class="field">
+                  <span class="field-label">Speed <output class="field-value" id="wheelSpeedValue">1.2 turns/s</output></span>
+                  <input type="range" id="wheelSpeed" min="3" max="40" step="1">
+                </label>
+                <label class="field">
+                  <span class="field-label">Coming to rest takes (ms)</span>
+                  <input type="number" id="wheelSettle" min="1500" max="15000" step="250">
+                </label>
+                <label class="field">
+                  <span class="field-label">Pointer</span>
+                  <select id="wheelPointer">
+                    <option value="top">Top</option>
+                    <option value="right">Right</option>
+                    <option value="bottom">Bottom</option>
+                    <option value="left">Left</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span class="field-label">Size (px)</span>
+                  <input type="number" id="wheelSize" min="0" max="1400" step="10">
+                  <span class="field-hint">0 fits the wheel to the screen.</span>
+                </label>
+                <label class="field">
+                  <span class="field-label">Text size (px)</span>
+                  <input type="number" id="wheelFontSize" min="0" max="60">
+                  <span class="field-hint">0 sizes it to the wheel.</span>
+                </label>
+                <label class="field">
+                  <span class="field-label">Text in the centre</span>
+                  <input type="text" id="wheelCenterText" maxlength="24" placeholder="Used when there is no logo">
+                </label>
+                <label class="field">
+                  <span class="field-label">Segment colours</span>
+                  <input type="text" id="wheelPalette" spellcheck="false" placeholder="Empty uses the confetti colours">
+                  <span class="field-hint">Comma-separated hex colours, up to 12.</span>
+                </label>
+                <label class="field">
+                  <span class="field-label">Text colour</span>
+                  <input type="text" id="wheelTextColor" maxlength="9" spellcheck="false" placeholder="Empty picks dark or light per segment">
+                </label>
+                <label class="field">
+                  <span class="field-label">Rim and divider colour</span>
+                  <input type="text" id="wheelBorderColor" maxlength="9" spellcheck="false" placeholder="Empty uses white">
+                </label>
+              </div>
+              <div class="switches">
+                <label class="switch"><input type="checkbox" id="wheelShowLabels"><span><strong>Write entries on the segments</strong></span></label>
+                <label class="switch"><input type="checkbox" id="wheelCenterLogo"><span><strong>Event logo in the centre</strong></span></label>
+              </div>
+            </div>
+          </div>
+
+          <div class="layout-preview-column">
+            <div class="card layout-preview-card">
+              <div class="card-head">
+                <h2 class="card-title">Preview</h2>
+                <div class="card-actions">
+                  <button type="button" class="btn btn-ghost btn-small" id="wheelTestBtn">Test spin</button>
+                </div>
+              </div>
+              <div class="wheel-preview" id="wheelPreview"></div>
+              <p class="field-hint">The test spin lands on a sample entry; nothing is drawn.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-foot">
+          <button type="button" class="btn btn-ghost" id="revertWheelBtn">Revert</button>
+          <button type="button" class="btn btn-primary" id="saveWheelBtn">Save draw style</button>
+        </div>
+      </section>
+
+      <!-- --------------------------------------------------- live sync -->
+      <section class="panel" id="panel-live" aria-labelledby="liveHeading" hidden>
+        <header class="panel-head">
+          <div>
+            <h1 id="liveHeading">Live sync</h1>
+            <p class="panel-lede">Keep every screen in the room together. One draw board runs the draw; the others — an LED wall, a lobby screen, a livestream PC — spin and reveal the same winner at the same moment, and can follow it to the welcome and prize screens.</p>
+          </div>
+        </header>
+
+        <div class="card">
+          <h2 class="card-title">Sync</h2>
+          <div class="switches">
+            <label class="switch">
+              <input type="checkbox" id="liveEnabled">
+              <span><strong>Keep the screens in sync</strong><small>Every open screen checks in on the interval below.</small></span>
+            </label>
+            <label class="switch">
+              <input type="checkbox" id="liveClaimSignIn">
+              <span><strong>Only a board signed in to this console can run the draw</strong><small>Recommended. Sign in on the event computer's browser before opening the main board. Off lets any board take control — and anyone on the venue network could then demote the main one.</small></span>
+            </label>
+            <label class="switch"><input type="checkbox" id="liveMirror"><span><strong>Following boards spin and reveal with the main one</strong></span></label>
+            <label class="switch"><input type="checkbox" id="liveFollowNav"><span><strong>Following screens go where the main board goes</strong><small>Welcome, prize screen and back.</small></span></label>
+            <label class="switch"><input type="checkbox" id="liveFollowersDraw"><span><strong>Let following boards draw too</strong><small>Off is safer: only the main board shows Start and Stop.</small></span></label>
+            <label class="switch"><input type="checkbox" id="liveFollowerSound"><span><strong>Play sound on following screens</strong><small>Off avoids an echo when several screens share a room.</small></span></label>
+            <label class="switch"><input type="checkbox" id="liveFollowerConfetti"><span><strong>Celebrate on following screens</strong></span></label>
+            <label class="switch"><input type="checkbox" id="liveShowStatus"><span><strong>Mark following screens</strong><small>A small chip says the screen follows the main board.</small></span></label>
+          </div>
+          <div class="grid-2">
+            <label class="field">
+              <span class="field-label">Check every (ms)</span>
+              <input type="number" id="livePoll" min="500" max="10000" step="100">
+              <span class="field-hint">Lower is closer to instant and makes more requests. 1000–2000 suits most rooms.</span>
+            </label>
+            <label class="field">
+              <span class="field-label">Which board runs the draw</span>
+              <select id="liveMode">
+                <option value="auto">The first draw board opened</option>
+                <option value="main-only">Only the board opened as the main one</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="field-label">Hand over control after (seconds)</span>
+              <input type="number" id="liveLease" min="5" max="120">
+              <span class="field-hint">If the main board closes, another takes over once this has passed.</span>
+            </label>
+          </div>
+          <fieldset class="field checkbox-row">
+            <legend class="field-label">Screens that take part</legend>
+            <label><input type="checkbox" id="liveOnBoard"> Draw boards</label>
+            <label><input type="checkbox" id="liveOnWelcome"> Welcome screens</label>
+            <label><input type="checkbox" id="liveOnPrizes"> Prize screens</label>
+          </fieldset>
+        </div>
+
+        <div class="card">
+          <h2 class="card-title">Screen addresses</h2>
+          <div class="address-list" id="liveAddresses"></div>
+        </div>
+
+        <div class="panel-foot">
+          <button type="button" class="btn btn-ghost" id="revertLiveBtn">Revert</button>
+          <button type="button" class="btn btn-primary" id="saveLiveBtn">Save live sync</button>
+        </div>
+      </section>
+
+      <!-- ------------------------------------------------------ remote -->
+      <section class="panel" id="panel-remote" aria-labelledby="remoteHeading" hidden>
+        <header class="panel-head">
+          <div>
+            <h1 id="remoteHeading">Phone remote</h1>
+            <p class="panel-lede">Run the draw from a phone in your hand: Start and Stop, Not present, switch screens, mute. Pair a phone by scanning the code below. The phone sends commands; the main draw board carries them out, exactly as if its own buttons were pressed. Open that board in a browser signed in to this console, unless Live sync allows otherwise.</p>
+          </div>
+        </header>
+
+        <div class="layout-grid">
+          <div class="layout-controls">
+            <div class="card">
+              <h2 class="card-title">Remote</h2>
+              <div class="switches">
+                <label class="switch">
+                  <input type="checkbox" id="remoteEnabled">
+                  <span><strong>Allow the phone remote</strong><small>Off makes every pairing stop working at once.</small></span>
+                </label>
+                <label class="switch">
+                  <input type="checkbox" id="remoteRequireSignIn">
+                  <span><strong>Require an organiser sign-in on the phone</strong><small>The pairing link alone is not enough — the phone must be signed in to this console.</small></span>
+                </label>
+                <label class="switch"><input type="checkbox" id="remoteConfirm"><span><strong>Ask before "Not present" on the phone</strong></span></label>
+                <label class="switch"><input type="checkbox" id="remoteHaptics"><span><strong>Vibrate the phone on each press</strong></span></label>
+                <label class="switch"><input type="checkbox" id="remoteShowStatus"><span><strong>Show "Remote connected" on the main board</strong></span></label>
+              </div>
+              <fieldset class="field checkbox-row">
+                <legend class="field-label">The remote may</legend>
+                <label><input type="checkbox" id="remoteActDraw"> Start and stop the draw</label>
+                <label><input type="checkbox" id="remoteActAbsent"> Mark a winner not present</label>
+                <label><input type="checkbox" id="remoteActScreens"> Switch screens</label>
+                <label><input type="checkbox" id="remoteActSound"> Mute the sound</label>
+              </fieldset>
+              <div class="grid-2">
+                <label class="field">
+                  <span class="field-label">A pairing lasts (hours)</span>
+                  <input type="number" id="remoteExpiry" min="0" max="720">
+                  <span class="field-hint">0 never expires. Applies to the next pairing made.</span>
+                </label>
+                <label class="field">
+                  <span class="field-label">Board checks for commands every (ms)</span>
+                  <input type="number" id="remotePoll" min="400" max="5000" step="100">
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="layout-preview-column">
+            <div class="card layout-preview-card">
+              <h2 class="card-title">Pair a phone</h2>
+              <p class="field-hint" id="remotePairStatus">Not paired.</p>
+              <div class="remote-qr" id="remoteQr"></div>
+              <div class="inline-actions">
+                <button type="button" class="btn btn-primary btn-small" id="remotePairBtn">Make a new pairing</button>
+                <button type="button" class="btn btn-ghost btn-small" id="remoteCopyBtn" hidden>Copy link</button>
+                <button type="button" class="btn btn-danger btn-small" id="remoteRevokeBtn" hidden>Unpair</button>
+              </div>
+              <p class="field-hint">Anyone holding the link can run the draw until it expires or you unpair, so share it only with the person on stage. A new pairing replaces the old one.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-foot">
+          <button type="button" class="btn btn-ghost" id="revertRemoteBtn">Revert</button>
+          <button type="button" class="btn btn-primary" id="saveRemoteBtn">Save remote</button>
+        </div>
+      </section>
+
       <!-- ------------------------------------------------------- sound -->
       <section class="panel" id="panel-sound" aria-labelledby="soundHeading" hidden>
         <header class="panel-head">
@@ -2033,6 +2396,61 @@
         </div>
       </section>
 
+      <!-- ------------------------------------------------- reset event -->
+      <section class="panel" id="panel-reset" aria-labelledby="resetHeading" hidden>
+        <header class="panel-head">
+          <div>
+            <h1 id="resetHeading">Reset event</h1>
+            <p class="panel-lede">Get this Pickora ready for the next event in one step: clear the results, the entries and anything else you choose. Your sign-in is never touched. This cannot be undone, so download anything you need first.</p>
+          </div>
+        </header>
+
+        <div class="card">
+          <h2 class="card-title">1. Download what you need</h2>
+          <div class="inline-actions">
+            <a class="btn btn-ghost btn-small" href="/api/admin/export/winners.csv" download>Results (CSV)</a>
+            <a class="btn btn-ghost btn-small" href="/api/admin/export/tickets.csv" download>Entries (CSV)</a>
+            <a class="btn btn-ghost btn-small" href="/certificate" target="pickora-certificate">Certificate</a>
+            <a class="btn btn-ghost btn-small" href="/api/admin/templates/current/export?embed=1" download>Configuration with files</a>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2 class="card-title">2. Choose what to clear</h2>
+            <div class="card-actions">
+              <button type="button" class="btn btn-ghost btn-small" data-reset-preset="results">Results only</button>
+              <button type="button" class="btn btn-ghost btn-small" data-reset-preset="next">Next event, same look</button>
+              <button type="button" class="btn btn-ghost btn-small" data-reset-preset="factory">Everything but templates</button>
+            </div>
+          </div>
+          <div class="reset-scope" id="resetScope"></div>
+        </div>
+
+        <div class="card card-danger">
+          <h2 class="card-title">3. Confirm</h2>
+          <p class="reset-summary" id="resetSummary">Nothing chosen yet.</p>
+          <div class="grid-2">
+            <label class="field">
+              <span class="field-label">Type the event name: <strong id="resetEventName"></strong></span>
+              <input type="text" id="resetConfirmText" autocomplete="off" spellcheck="false">
+            </label>
+            <label class="field">
+              <span class="field-label">Your console password</span>
+              <input type="password" id="resetPassword" autocomplete="current-password">
+            </label>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="resetBackedUp">
+            <span><strong>I have downloaded everything I need</strong></span>
+          </label>
+          <p class="form-error" id="resetError" role="alert" hidden></p>
+          <div class="form-actions">
+            <button type="button" class="btn btn-danger" id="resetEventBtn" disabled>Reset event</button>
+          </div>
+        </div>
+      </section>
+
       <!-- ----------------------------------------------------- account -->
       <section class="panel" id="panel-account" aria-labelledby="accountHeading" hidden>
         <header class="panel-head">
@@ -2092,6 +2510,13 @@
   <script src="admin-countdown.js" defer></script>
   <script src="admin-certificate.js" defer></script>
   <script src="admin-templates.js" defer></script>
+  <!-- NEW: sponsors, the wheel, live sync, the remote, and "Reset event". -->
+  <script src="wheel.js" defer></script>
+  <script src="admin-sponsors.js" defer></script>
+  <script src="admin-wheel.js" defer></script>
+  <script src="admin-live.js" defer></script>
+  <script src="admin-remote.js" defer></script>
+  <script src="admin-reset.js" defer></script>
   <script src="admin.js" defer></script>
 </body>
 </html>

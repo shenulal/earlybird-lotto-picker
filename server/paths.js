@@ -37,6 +37,9 @@ const PROTECTED_FILES = Object.freeze([
   // NEW: saved templates can carry contact details in their certificate
   // settings and the organiser's own wording; they are console-only.
   'templates.json',
+  // NEW: the live feed and remote commands carry the controller's id.
+  'live.json',
+  'remote.json',
   'package.json',
   'package-lock.json',
   'requirements.txt',

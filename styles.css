@@ -2919,3 +2919,276 @@ body.has-countdown-banner-top .board-header {
     animation: none;
   }
 }
+
+/* ==========================================================================
+   NEW: sponsors, the wheel, and live sync
+   ========================================================================== */
+
+/* --- "Sponsored by" beside a prize --------------------------------------- */
+
+.sponsor-badge {
+  --sponsor-badge-logo: 40px;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: center;
+  justify-content: center;
+  margin: clamp(10px, 1.6vh, 18px) auto 0;
+  padding: 6px 14px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--surface-solid) 70%, transparent);
+  color: var(--ink-soft);
+  font-size: var(--text-eyebrow);
+  letter-spacing: 0.08em;
+}
+
+.sponsor-badge[data-size='small'] { --sponsor-badge-logo: 26px; }
+.sponsor-badge[data-size='large'] { --sponsor-badge-logo: 64px; }
+
+.sponsor-label {
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--ink-faint);
+}
+
+.sponsor-logo {
+  width: auto;
+  height: var(--sponsor-badge-logo);
+  max-width: calc(var(--sponsor-badge-logo) * 4);
+  object-fit: contain;
+}
+
+.sponsor-name {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.sponsor-tagline {
+  flex-basis: 100%;
+  text-align: center;
+  font-style: italic;
+  letter-spacing: 0.02em;
+}
+
+/* On the prize screen the badge sits with the prize's own words. */
+.sponsor-badge[data-place='prizeScreen'] {
+  margin-inline: 0;
+  justify-content: flex-start;
+}
+
+/* --- the strip of sponsor logos ------------------------------------------ */
+
+.sponsor-strip {
+  position: fixed;
+  inset-inline: 0;
+  z-index: 45;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 8px 22px;
+  background: color-mix(in oklab, var(--surface-solid) 92%, transparent);
+  border-block: 1px solid var(--hairline);
+  backdrop-filter: blur(8px);
+}
+
+.sponsor-strip[data-position='bottom'] { bottom: 0; }
+.sponsor-strip[data-position='top'] { top: 0; }
+
+.sponsor-strip-heading {
+  flex: 0 0 auto;
+  margin: 0;
+  font-size: var(--text-eyebrow);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
+.sponsor-strip-window {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.sponsor-strip-track {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  will-change: transform;
+}
+
+.sponsor-strip-item {
+  flex: 0 0 calc(100% / var(--sponsor-per-view, 4));
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  padding-inline: 10px;
+  color: var(--ink-soft);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.sponsor-strip-item img {
+  width: auto;
+  height: var(--sponsor-logo-height, 48px);
+  max-width: 100%;
+  object-fit: contain;
+}
+
+/* What lives on the strip's edge moves clear by the strip's measured height. */
+body.has-sponsor-strip-bottom {
+  padding-bottom: var(--sponsor-strip-height, 64px);
+}
+
+body.has-sponsor-strip-bottom .social-block[data-position^='bottom'] {
+  bottom: calc(18px + var(--sponsor-strip-height, 64px));
+}
+
+body.has-sponsor-strip-bottom .social-block[data-position='footer'] {
+  bottom: var(--sponsor-strip-height, 64px);
+}
+
+body.has-sponsor-strip-bottom[data-logo-position^='bottom'] .board-logo {
+  bottom: calc(48px + var(--sponsor-strip-height, 64px));
+}
+
+body.has-sponsor-strip-top .board-menu {
+  top: calc(var(--menu-top) + var(--sponsor-strip-height, 64px));
+}
+
+body.has-sponsor-strip-top[data-logo-position^='top'] .board-logo,
+body.has-sponsor-strip-top .board-header {
+  transform: translateY(var(--sponsor-strip-height, 64px));
+}
+
+/* --- the wheel ------------------------------------------------------------ */
+
+.stage[data-draw-style='wheel'] {
+  min-height: auto;
+}
+
+.wheel-wrap {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: clamp(10px, 1.6vh, 20px);
+  margin: 0 auto;
+}
+
+.wheel-canvas {
+  display: block;
+  border-radius: 50%;
+  filter: drop-shadow(0 18px 40px rgba(0, 0, 0, 0.45));
+}
+
+/* The pointer sits on the rim, on the side the organiser chose. */
+.wheel-pointer {
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5));
+  transition: transform var(--fast);
+}
+
+.wheel-wrap[data-pointer='top'] .wheel-pointer {
+  top: -6px;
+  left: 50%;
+  border-width: 30px 18px 0;
+  border-color: var(--accent) transparent transparent;
+  transform: translateX(-50%);
+}
+
+.wheel-wrap[data-pointer='bottom'] .wheel-pointer {
+  top: calc(var(--wheel-size) - 24px);
+  left: 50%;
+  border-width: 0 18px 30px;
+  border-color: transparent transparent var(--accent);
+  transform: translateX(-50%);
+}
+
+.wheel-wrap[data-pointer='left'] .wheel-pointer {
+  top: calc(var(--wheel-size) / 2 - 18px);
+  left: calc(50% - var(--wheel-size) / 2 - 6px);
+  border-width: 18px 0 18px 30px;
+  border-color: transparent transparent transparent var(--accent);
+}
+
+.wheel-wrap[data-pointer='right'] .wheel-pointer {
+  top: calc(var(--wheel-size) / 2 - 18px);
+  left: calc(50% + var(--wheel-size) / 2 - 24px);
+  border-width: 18px 30px 18px 0;
+  border-color: transparent var(--accent) transparent transparent;
+}
+
+.wheel-wrap.is-landed .wheel-pointer {
+  animation: wheel-pointer-bump 420ms var(--ease);
+}
+
+@keyframes wheel-pointer-bump {
+  40% {
+    filter: drop-shadow(0 0 14px var(--accent-glow));
+  }
+}
+
+.wheel-result {
+  min-height: 1.2em;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 1rem + 2.4vw, 3.4rem);
+  line-height: 1;
+  color: var(--accent-ink);
+  text-shadow: 0 0 40px var(--accent-glow);
+}
+
+/* --- live sync ------------------------------------------------------------ */
+
+/* A following screen that may not draw shows no draw controls. */
+body.is-follower .controls {
+  display: none;
+}
+
+.live-chip {
+  position: fixed;
+  bottom: 16px;
+  inset-inline-start: 18px;
+  z-index: 46;
+  margin: 0;
+  padding: 6px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--surface-solid) 85%, transparent);
+  color: var(--ink-soft);
+  font-size: var(--text-eyebrow);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.live-chip[hidden] {
+  display: none;
+}
+
+.live-chip::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-inline-end: 8px;
+  border-radius: 50%;
+  background: var(--positive);
+  box-shadow: 0 0 10px var(--positive);
+  vertical-align: 1px;
+}
+
+body.has-sponsor-strip-bottom .live-chip {
+  bottom: calc(16px + var(--sponsor-strip-height, 64px));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wheel-wrap.is-landed .wheel-pointer {
+    animation: none;
+  }
+}

@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#0b0d18">
+  <title>Remote — Pickora</title>
+  <link rel="icon" href="pickora-icon.png" type="image/png">
+  <link rel="stylesheet" href="fonts/fonts.css">
+  <style>
+    /* A remote held in one hand at the side of a stage: big targets, high
+       contrast, and the one button that matters most under the thumb. */
+    :root {
+      --bg: #0b0d18;
+      --surface: #151829;
+      --line: #262b45;
+      --ink: #f4f6fb;
+      --soft: #a3aac4;
+      --faint: #6e7592;
+      --go: #2fd38a;
+      --stop: #ff6b5b;
+      --accent: #ffd54f;
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: 'Lato', system-ui, sans-serif;
+    }
+
+    body {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      min-height: 100dvh;
+      padding: max(16px, env(safe-area-inset-top)) 16px max(18px, env(safe-area-inset-bottom));
+      gap: 16px;
+    }
+
+    header { display: grid; gap: 4px; }
+
+    .event {
+      margin: 0;
+      font-family: 'Bebas Neue', 'Lato', sans-serif;
+      font-size: 1.7rem;
+      letter-spacing: 0.04em;
+      line-height: 1;
+    }
+
+    .connection {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin: 0;
+      font-size: 0.82rem;
+      color: var(--soft);
+    }
+
+    .connection::before {
+      content: '';
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--faint);
+    }
+
+    .connection[data-state='on']::before { background: var(--go); box-shadow: 0 0 10px var(--go); }
+    .connection[data-state='off']::before { background: var(--stop); }
+
+    main { display: grid; gap: 14px; align-content: start; }
+
+    .card {
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--surface);
+    }
+
+    .card h2 {
+      margin: 0 0 6px;
+      font-size: 0.7rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--faint);
+    }
+
+    .card p { margin: 0; }
+    .big { font-size: 1.25rem; font-weight: 700; }
+    .soft { color: var(--soft); font-size: 0.9rem; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      text-align: center;
+    }
+
+    .stats b { display: block; font-size: 1.4rem; font-variant-numeric: tabular-nums; }
+    .stats span { font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--faint); }
+
+    .primary {
+      width: 100%;
+      min-height: 30vh;
+      border: 0;
+      border-radius: 24px;
+      background: var(--go);
+      color: #04140c;
+      font-family: 'Bebas Neue', 'Lato', sans-serif;
+      font-size: clamp(3rem, 18vw, 5rem);
+      letter-spacing: 0.06em;
+      cursor: pointer;
+      transition: transform 120ms, filter 120ms;
+    }
+
+    .primary[data-mode='stop'] { background: var(--stop); color: #200604; }
+    .primary:active { transform: scale(0.98); filter: brightness(0.95); }
+    .primary:disabled { opacity: 0.45; }
+
+    .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; }
+
+    .secondary {
+      min-height: 56px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--surface);
+      color: var(--ink);
+      font: 700 0.95rem/1.2 'Lato', sans-serif;
+      cursor: pointer;
+    }
+
+    .secondary[aria-pressed='true'] { border-color: var(--accent); color: var(--accent); }
+    .secondary.danger { color: var(--stop); border-color: color-mix(in oklab, var(--stop) 45%, var(--line)); }
+    .secondary:active { transform: scale(0.98); }
+    .secondary:disabled { opacity: 0.4; }
+
+    .message {
+      min-height: 1.4em;
+      margin: 0;
+      text-align: center;
+      font-size: 0.9rem;
+      color: var(--soft);
+    }
+
+    .message[data-tone='error'] { color: var(--stop); }
+
+    .notice {
+      margin: 20vh auto 0;
+      max-width: 340px;
+      text-align: center;
+      line-height: 1.5;
+      color: var(--soft);
+    }
+
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <header>
+    <p class="event" id="eventName">Pickora remote</p>
+    <p class="connection" id="connection" data-state="wait">Connecting…</p>
+  </header>
+
+  <main id="remote" hidden>
+    <section class="card" aria-live="polite">
+      <h2 id="statusHeading">Now</h2>
+      <p class="big" id="statusLine">—</p>
+      <p class="soft" id="statusDetail"></p>
+    </section>
+
+    <button type="button" class="primary" id="primaryBtn" data-mode="start">Start</button>
+
+    <div class="row" id="secondaryRow">
+      <button type="button" class="secondary danger" id="absentBtn" hidden>Not present</button>
+      <button type="button" class="secondary" id="muteBtn" aria-pressed="false" hidden>Sound</button>
+    </div>
+
+    <div class="row" id="screenRow" hidden>
+      <button type="button" class="secondary" data-screen="board">Draw board</button>
+      <button type="button" class="secondary" data-screen="welcome">Welcome</button>
+      <button type="button" class="secondary" data-screen="prizes">Prizes</button>
+    </div>
+
+    <section class="card stats">
+      <div><b id="statPrizes">—</b><span>Prizes</span></div>
+      <div><b id="statDrawn">—</b><span>Drawn</span></div>
+      <div><b id="statLeft">—</b><span>Left</span></div>
+    </section>
+  </main>
+
+  <p class="notice" id="notice" hidden></p>
+  <p class="message" id="message" role="status"></p>
+
+  <script src="remote.js" defer></script>
+</body>
+</html>

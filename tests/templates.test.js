@@ -38,7 +38,7 @@ test('saving keeps only the chosen sections', () => {
     normalizeAppSettings
   );
   assert.deepEqual(template.sections, ['look', 'wording']);
-  assert.deepEqual(Object.keys(template.settings).sort(), ['copy', 'text', 'ui']);
+  assert.deepEqual(Object.keys(template.settings).sort(), ['copy', 'text', 'ui', 'wheel']);
   assert.equal(template.settings.ui.primaryColor, '#123456');
 });
 

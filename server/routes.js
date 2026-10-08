@@ -13,6 +13,9 @@ const store = require('./store');
 const templates = require('./templates');
 const { countdownLocksDraw } = require('./features');
 const { registerFeatureRoutes, publicDraw } = require('./feature-routes');
+const { registerStageRoutes } = require('./stage-routes');
+const live = require('./live');
+const stage = require('./stage-features');
 const { StorageError } = store;
 const {
   normalizeAppSettings,
@@ -184,6 +187,8 @@ function createApiRouter() {
       ok: true,
       appSettings: {
         ...rest,
+        // NEW: the remote's pairing key is a secret; screens see the rest.
+        remote: stage.publicRemote(appSettings.remote),
         data: {
           identifier: data.identifier,
           fields: data.fields.filter((field) => publicKeys.includes(field.key)).map(({ key, label }) => ({ key, label })),
@@ -201,8 +206,10 @@ function createApiRouter() {
       const { appSettings } = loadSettingsFile();
       const { tickets } = draw.readTickets(appSettings);
       const state = draw.loadDrawState();
-      // The reel animates over live records, so only reel fields are sent.
-      const reelKeys = [...new Set(appSettings.display.reel.lines.map((line) => line.field))];
+      // The reel animates over live records, so only reel fields are sent —
+      // plus the wheel's label field, when the wheel is the draw style.
+      const wheelKey = appSettings.wheel.style === 'wheel' && appSettings.wheel.labelField ? [appSettings.wheel.labelField] : [];
+      const reelKeys = [...new Set([...appSettings.display.reel.lines.map((line) => line.field), ...wheelKey])];
 
       const excluded = appSettings.redraw.returnToPool ? [] : state.absent;
 
@@ -254,8 +261,13 @@ function createApiRouter() {
       const result = draw.drawWinner(appSettings);
       if (!result.ok) return res.status(409).json(result);
 
+      // NEW: every following screen reveals the same winner. The board that
+      // asked names itself, so it does not act on its own news twice.
+      const winner = publicWinner(result.winner, schema.publicFieldKeys(appSettings.display));
+      live.appendEvent('draw', { winner, stats: result.stats }, (req.body || {}).boardId || null);
+
       await store.flush();
-      return res.json({ ...result, winner: publicWinner(result.winner, schema.publicFieldKeys(appSettings.display)) });
+      return res.json({ ...result, winner });
     } catch (error) {
       return sendError(res, error);
     }
@@ -274,6 +286,7 @@ function createApiRouter() {
       }
 
       const result = draw.resetDraw(appSettings);
+      live.appendEvent('reset', { scope: ['results'] }, (req.body || {}).boardId || null);
       await store.flush();
       return res.json(result);
     } catch (error) {
@@ -383,7 +396,15 @@ function createApiRouter() {
     try {
       const settingsFile = loadSettingsFile();
       const incoming = (req.body && req.body.appSettings) || req.body || {};
-      const appSettings = normalizeAppSettings(mergeSettings(settingsFile.appSettings, incoming));
+      const merged = normalizeAppSettings(mergeSettings(settingsFile.appSettings, incoming));
+      // FIX: the remote's pairing is only ever changed by its own endpoints. A
+      // save from a console tab opened before a new pairing would otherwise
+      // bring the old key back to life and kill the new link.
+      const stored = settingsFile.appSettings.remote;
+      const appSettings = normalizeAppSettings({
+        ...merged,
+        remote: { ...merged.remote, key: stored.key, keyCreatedAt: stored.keyCreatedAt, keyExpiresAt: stored.keyExpiresAt },
+      });
       saveSettingsFile({ ...settingsFile, appSettings });
       await store.flush();
       res.json({ ok: true, appSettings });
@@ -524,6 +545,7 @@ function createApiRouter() {
       ).tickets;
 
       ticketStore.saveTickets(merged);
+      live.appendEvent('data', { ticketCount: merged.length });
 
       // A list pulled from a sheet remembers where from, so it can be pulled
       // again without pasting the link twice. A file upload clears it: the
@@ -573,6 +595,7 @@ function createApiRouter() {
 
     try {
       ticketStore.saveTickets([]);
+      live.appendEvent('data', { ticketCount: 0 });
       await store.flush();
       const { appSettings } = loadSettingsFile();
       return res.json({ ok: true, ticketCount: 0, stats: draw.statsFor(appSettings, [], state) });
@@ -806,6 +829,7 @@ function createApiRouter() {
     try {
       const { appSettings } = loadSettingsFile();
       const result = draw.undoLastWinner(appSettings);
+      if (result.ok) live.appendEvent('undo', { drawIndex: result.removed.drawIndex });
       await store.flush();
       res.status(result.ok ? 200 : 409).json(result);
     } catch (error) {
@@ -817,6 +841,7 @@ function createApiRouter() {
     try {
       const { appSettings } = loadSettingsFile();
       const result = draw.resetDraw(appSettings);
+      live.appendEvent('reset', { scope: ['results'] });
       await store.flush();
       res.json(result);
     } catch (error) {
@@ -833,17 +858,28 @@ function createApiRouter() {
         ? [...state.winners, ...state.absent].sort((a, b) => Number(a.drawIndex) - Number(b.drawIndex))
         : state.winners;
 
+      // NEW: the sponsor of each prize, when sponsors are on and the organiser
+      // wants them in the export.
+      const withSponsor = appSettings.sponsors.enabled && appSettings.sponsors.display.export;
+      const sponsorOf = (prizeNumber) => {
+        const prize = appSettings.prizes.items[prizeNumber - 1];
+        const sponsor = prize ? stage.sponsorForPrize(appSettings.sponsors, prize.id) : null;
+        return sponsor ? sponsor.name : '';
+      };
+
       const rows = entries.map((entry) => ({
         ...entry.record,
         prizeNumber: entry.prizeNumber,
         drawnAt: entry.drawnAt,
         status: entry.absentAt ? appSettings.copy.notPresentTag : 'Winner',
         absentAt: entry.absentAt || '',
+        sponsor: sponsorOf(entry.prizeNumber),
       }));
 
+      const columns = exportColumns(appSettings, withAbsent);
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', 'attachment; filename="winners.csv"');
-      res.send(ticketStore.toCsv(rows, exportColumns(appSettings, withAbsent)));
+      res.send(ticketStore.toCsv(rows, withSponsor ? [...columns, { key: 'sponsor', label: 'Sponsor' }] : columns));
     } catch (error) {
       sendError(res, error);
     }
@@ -851,6 +887,8 @@ function createApiRouter() {
 
   // NEW: redraw, sound tracks, the certificate and templates.
   registerFeatureRoutes(router, { requireAuth, currentSession, sendError, publicWinner });
+  // NEW: live sync, the phone remote, sponsor logos and "Reset event".
+  registerStageRoutes(router, { requireAuth, currentSession, sendError, publicWinner });
 
   router.use((_req, res) => res.status(404).json({ ok: false, error: 'Unknown endpoint.' }));
 

@@ -33,6 +33,9 @@ const DOCUMENTS = Object.freeze({
   draw: 'winners.json',
   // NEW: the organiser's saved event templates.
   templates: 'templates.json',
+  // NEW: the feed between screens, and the phone remote's commands.
+  live: 'live.json',
+  remote: 'remote.json',
 });
 
 const DOCUMENT_BY_FILE = Object.freeze(

@@ -41,8 +41,14 @@ The screen the audience sees.
   the draw until zero if the organiser wants
 - **Not present** on the winner card: strike off a winner who does not come
   forward and draw their prize again, when the organiser allows it
+- **Sponsors** credited beside the prizes they stand behind, and a strip of
+  sponsor logos along the screen
+- **Spin-the-wheel** as an alternative to the reel
+- **Live sync**: every screen in the room spins and reveals together, and a
+  **phone remote** runs the draw from the stage
 - Keyboard: `Space` / `Enter` start and stop, `W` winners panel, `G` guest
-  welcome, `N` new draw, `A` not present, `S` sound on/off, `F` fullscreen
+  welcome, `N` new draw, `A` not present, `S` sound on/off, `F` fullscreen.
+  With the phone remote, the same from a phone
 - Survives a refresh — the draw state lives on the server, not in the tab
 
 The board holds **no participant data beyond what it is configured to show**.
@@ -62,17 +68,22 @@ Sections are grouped in the sidebar as **Entries**, **Content**, **Look**, **The
 | **Fields** | Rename columns, mark sensitive ones, choose the identifier and what appears in the export |
 | **Display** | Choose exactly which fields appear while spinning, on the announcement, on the winner card and in the winners list, and how long the announcement is held before the card — with a rehearsal of the reveal |
 | **Prizes** | Build the prize list, each with its own photo carousel |
+| **Sponsors** | The sponsor list with logos, links and taglines; who sponsors which prize; where sponsors are credited; the logo strip |
 | **Welcome** | Greet a chief guest with a message and a carousel of photos |
 | **Channels** | Social links and their QR codes: style, position, size, display mode, with a live preview |
 | **Branding** | Upload the logo and backdrop, with size and resolution validated on the server |
 | **Board layout** | How big the reel and the buttons are, and how far the backdrop is darkened — judged against a live preview of the board |
+| **Draw style** | Reel or wheel, and every setting of the wheel, with a test spin |
 | **Text & media** | How the words are set on each screen — face, size, weight, colour, opacity, alignment, line height, letter spacing — and how a prize's photographs are shown on the board, with a live preview |
 | **Wording** | Every string on the draw board |
 | **Sound** | Every sound cue — source, volume, delay, fades, length, start point, looping — your own uploaded tracks, sound packs, previews |
 | **Countdown** | When the draw starts, the words, full screen or banner, units, which screens, and whether the draw waits for zero |
+| **Live sync** | Keep every screen together: which board runs the draw, what followers mirror, how often they check, screen addresses |
+| **Remote** | What the phone remote may do, and pairing a phone with a QR code |
 | **Certificate** | The printable draw certificate: wording, what it includes, columns, signatures, paper — with a live preview |
 | **Templates** | Save the configuration, apply a saved one in whole or in part, export and import as a file |
 | **Settings** | Prize count, draw behaviour, the "winner not present" redraw, colours, alignment, language, animation timings |
+| **Reset event** | Clear the results, entries and anything else chosen for the next event — after typing the event name and the password |
 | **Account** | Change the username and password |
 
 ---
@@ -355,11 +366,13 @@ only if you want to rotate sessions independently of the password.
 
 | File | Contents | Committed? |
 |---|---|---|
-| `tickets.json` | Entry list | Yes |
-| `appsettings.json` | Board settings + hashed credentials | Yes — see note below |
+| `tickets.json` | Entry list — empty as shipped | Yes |
+| `appsettings.json` | Board settings + hashed credentials — the built-in defaults as shipped, with no credentials | Yes — see note below |
 | `winners.json` | Draw state, written as winners are picked | No (gitignored) |
-| key-value store | The same three documents plus uploads, when hosted | n/a |
-| `appsettings.sample.json` | Reference configuration | Yes |
+| `templates.json` | Saved event templates | No (gitignored) |
+| `live.json`, `remote.json` | The feed between screens and the remote's commands | No (gitignored) |
+| key-value store | The same documents plus uploads, when hosted | n/a |
+| `appsettings.sample.json` | The built-in defaults — where a new Docker tenant starts | Yes |
 
 > **Note on `appsettings.json`:** it stays tracked so existing deployments keep
 > working, which means a password hash can land in git history. Use the
@@ -946,6 +959,90 @@ Templates are stored per deployment in `templates.json` (or the key-value store)
 never served to a browser. An uploaded file is not deleted while any template
 still uses it.
 
+## Sponsors
+
+Under **Sponsors**: add each sponsor — name, tier (free text, so "Title
+sponsor" or "Official car partner" reads as the contract says), website,
+tagline and logo — and choose which prize each one stands behind.
+
+Sponsors can be credited, each switchable:
+
+- when the prize is announced on the board, and on the winner card;
+- on the prize screen and on the draw certificate;
+- in the results export, as a Sponsor column.
+
+The credit wording ("Sponsored by"), the logo size, and whether the name and
+tagline show beside the logo are all configurable.
+
+A **sponsor strip** can run along the top or bottom of the board, welcome and
+prize screens: its own heading, logo height, how many logos are visible, how
+often it turns, names under the logos, and which tiers appear. Anything on that
+edge — the footer, the QR block — moves clear of it.
+
+## Spin-the-wheel
+
+**Draw style** chooses the reel or a wheel. The wheel's segment count,
+colours, text and rim colour, size, text size, speed, time to come to rest,
+pointer side, centre logo or text, and which field is written on the segments
+are all configurable, with a test spin in the console.
+
+The winner is still drawn by the server. While the wheel is still spinning
+fast, the winner's name is written on the segment directly opposite the
+pointer, the one furthest from anyone's eye; the wheel then slows at a
+constant rate so exactly that segment stops under the pointer. Only fields the
+board already shows, never sensitive ones, can go on the wheel, because every
+remaining entry's label is on screen.
+
+## Live sync between screens
+
+With **Live sync** on, one draw board runs the draw and the others follow:
+they spin when it spins, reveal the same winner at the same moment, and go to
+the welcome or prize screen when it does. Every screen checks in on the
+configured interval; the draw itself is still made once, on the server.
+
+- **Which board runs the draw:** the first one opened, or only one opened as
+  the main board at `/?role=main`. A main board takes over from one that was
+  merely first. If it closes, another takes over after the configured time.
+- **Following boards** hide Start and Stop unless allowed to draw, can play
+  sound and celebrate or stay quiet, and carry a small "follows the main board"
+  chip if wanted.
+- Settings changed in the console reach every open screen on its next check.
+
+The **Live sync** panel lists the address to open on each screen.
+
+## Phone remote
+
+Run the draw from a phone: Start and Stop, Not present, switch screens, mute.
+Under **Remote**, switch it on, choose what it may do, and **pair a phone** by
+scanning the QR code. The phone opens `/remote`, a page built for one hand.
+
+- The phone **sends commands**; the main draw board carries them out exactly
+  as if its own buttons were pressed. "Not present" is done by the server
+  straight away, and the board shows it.
+- A pairing is a secret link, valid for the configured number of hours (or
+  until unpaired). A new pairing replaces the old one, and "Reset event" always
+  unpairs. The key is never sent to a public page, never stored in a template,
+  and is taken out of the phone's address bar as soon as it is read.
+- Wrong keys count towards the same 15-minute lockout as wrong passwords.
+  Requiring an organiser sign-in on the phone is an option.
+- The board checks for commands on its own interval; "Remote connected" can
+  show on it.
+
+## Reset event
+
+**Reset event** gets the same Pickora ready for the next event. Download what
+you need first (results, entries, certificate, the configuration with its
+files), then choose what to clear — draw results, entries, prizes, welcome,
+sponsors, social channels, uploaded images, your sound tracks, all settings,
+saved templates — or use a preset: *Results only*, *Next event, same look*,
+*Everything but templates*.
+
+To confirm, type the event's name and your console password, and tick that you
+have downloaded what you need; a last dialog lists what will go. The server
+checks the name and the password again, and wrong passwords count towards the
+sign-in lockout. Your sign-in is never touched. Uploaded files are deleted
+only once nothing — the event or a saved template — still uses them.
+
 ## Getting new code to people
 
 Nobody should have to hard-refresh, clear a cache or clear their history to
@@ -1076,6 +1173,12 @@ commit where there is one, and otherwise a hash of the served files themselves.
 | `countdown.title`, `.subtitle`, `.completeMessage`, `.labels.*` | Its words |
 | `countdown.style`, `.position`, `.units`, `.screens.*` | `overlay` or `banner`, banner `top`/`bottom`, `auto`/`dhms`/`hms`/`ms`, which screens |
 | `countdown.lockDraw`, `.finalSeconds`, `.completeHoldSeconds` | Hold the draw until zero; the emphasised final stretch; how long the closing message stays (0 = until the first draw) |
+| `sponsors.enabled`, `.label`, `.items[]`, `.prizeSponsors` | Sponsors on or off, the credit wording, the list (id, name, tier, url, tagline, logo), and prize id → sponsor id |
+| `sponsors.display.*` | `announcement`, `winnerCard`, `prizeScreen`, `certificate`, `export`, `showName`, `showTagline`, `logoSize` |
+| `sponsors.strip.*` | `enabled`, `heading`, `position`, `screens.*`, `intervalMs`, `logoHeight`, `perView`, `showNames`, `tiers[]` |
+| `wheel.*` | `style` (`reel`/`wheel`), `segments`, `palette[]`, `textColor`, `borderColor`, `size`, `fontSize`, `speed` (tenths of a turn per second), `settleMs`, `pointer`, `showLabels`, `centerLogo`, `centerText`, `labelField` |
+| `liveSync.*` | `enabled`, `pollMs`, `controllerMode` (`auto`/`main-only`), `leaseSeconds`, `mirrorDraws`, `followNavigation`, `followersCanDraw`, `soundOnFollowers`, `celebrateOnFollowers`, `screens.*`, `showStatus` |
+| `remote.*` | `enabled`, `requireSignIn`, `actions.{draw,notPresent,screens,sound}`, `confirmNotPresent`, `haptics`, `pollMs`, `showStatusOnBoard`, `expiryHours`; the pairing `key` is managed by the console and never public |
 | `certificate.*` | `enabled`, `title`, `subtitle`, `referencePrefix`, `statement`, `methodText`, `venue`, `footerNote`, `show*` toggles, `maskSensitive`, `fields[]`, `signatories[]`, `paper`, `orientation`, `accentColor` |
 
 Every value is validated and clamped server-side, so a bad entry cannot break
@@ -1098,6 +1201,10 @@ Public:
 | `POST` | `/api/draw` | Draw one winner |
 | `POST` | `/api/draw/reset` | Clear the draw from the board (organiser, or when allowed) |
 | `POST` | `/api/draw/absent` | Strike off the winner on the board as not present (when allowed) |
+| `POST` | `/api/live/poll` | A screen checking in: events since its cursor, who is in control, remote commands for the controller |
+| `POST` | `/api/live/status` | The controlling board saying what it is doing |
+| `GET` | `/api/remote/state` | The phone remote's view (pairing key or sign-in) |
+| `POST` | `/api/remote/command` | A command from the phone remote (pairing key or sign-in) |
 
 Session:
 
@@ -1142,6 +1249,11 @@ Organiser (signed-in only):
 | `DELETE` | `/api/admin/templates/:id` |
 | `POST` | `/api/admin/templates/:id/apply` |
 | `GET` | `/api/admin/templates/:id/export` (`current` for the live configuration, `?embed=1` for files) |
+| `POST` | `/api/admin/remote/key` |
+| `DELETE` | `/api/admin/remote/key` |
+| `POST` | `/api/admin/sponsors/:id/logo` |
+| `DELETE` | `/api/admin/sponsors/:id/logo` |
+| `POST` | `/api/admin/reset-event` |
 
 ---
 
@@ -1187,6 +1299,10 @@ pickora/
 │   ├── admin-sound.js / admin-countdown.js
 │   └── admin-certificate.js / admin-templates.js
 ├── template-presets.json                 # the built-in templates
+├── sponsors.js / wheel.js / live-sync.js # sponsors, the wheel, the live channel
+├── remote.html / remote.js               # the phone remote
+│   └── admin-sponsors.js / admin-wheel.js / admin-live.js
+│       admin-remote.js / admin-reset.js   # their console panels
 ├── qr.js                                 # QR encoder, level H, no dependency
 ├── social.js                             # the channel block on public pages
 ├── welcome.html / prizes.html            # the two feature screens
@@ -1205,7 +1321,9 @@ pickora/
 │                                         # auth, schema, settings, tickets,
 │                                         # draw, images, routes — and for the
 │                                         # event features: coerce, features,
-│                                         # audio, templates, feature-routes
+│                                         # audio, templates, feature-routes,
+│                                         # stage-features, live, reset,
+│                                         # stage-routes
 ├── tests/                                # npm test — node:test, no packages
 ├── app.py                                # Flask entry point
 │   └── pyserver/                         # the same modules in Python

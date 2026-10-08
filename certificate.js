@@ -62,7 +62,12 @@
     const prize = settings.prizes.items[entry.prizeNumber - 1];
     const label = prize ? prize.label : `${settings.copy.prizeLabel} ${entry.prizeNumber}`;
     const name = certificate.showPrizes && prize ? `<small>${escapeHtml(prize.name)}</small>` : '';
-    return `<td class="rank">${escapeHtml(label)}${name}</td>`;
+    // NEW: the sponsor behind the prize, when the organiser wants it on record.
+    const sponsors = settings.sponsors;
+    const sponsorId = sponsors && sponsors.enabled && sponsors.display.certificate && prize ? sponsors.prizeSponsors[prize.id] : null;
+    const sponsor = sponsorId ? sponsors.items.find((item) => item.id === sponsorId) : null;
+    const credit = sponsor ? `<small>${escapeHtml(sponsors.label)} ${escapeHtml(sponsor.name)}</small>` : '';
+    return `<td class="rank">${escapeHtml(label)}${name}${credit}</td>`;
   }
 
   function fieldCells(entry, settings, certificate) {

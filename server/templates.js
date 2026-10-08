@@ -31,13 +31,15 @@ const SECTIONS = Object.freeze({
   // Uploaded artwork travels on its own, so a style can be applied without
   // replacing the logo and backdrop an organiser has already put in place.
   branding: ['branding'],
-  look: ['ui', 'text'],
+  look: ['ui', 'text', 'wheel'],
   wording: ['copy'],
   prizes: ['prizes'],
+  sponsors: ['sponsors'],
   welcome: ['welcome'],
   channels: ['social'],
   animation: ['animation'],
-  draw: ['draw', 'redraw'],
+  // The remote's pairing key never travels in a template (see pickSections).
+  draw: ['draw', 'redraw', 'liveSync', 'remote'],
   sound: ['sound'],
   countdown: ['countdown'],
   certificate: ['certificate'],
@@ -77,6 +79,11 @@ function pickSections(appSettings, sections) {
       if (key === 'data') {
         const { sourceUrl: _url, sourceSyncedAt: _syncedAt, ...data } = appSettings.data;
         return { ...accumulator, data };
+      }
+      // A pairing is this event's secret, not part of a style.
+      if (key === 'remote') {
+        const { key: _secret, keyCreatedAt: _created, keyExpiresAt: _expires, ...remote } = appSettings.remote;
+        return { ...accumulator, remote };
       }
       return { ...accumulator, [key]: appSettings[key] };
     }, picked);
@@ -299,6 +306,14 @@ function applyTemplate(template, appSettings, { sections, keepEventName = true }
         droppedTracks.push(...merged.dropped);
         return { ...accumulator, sound: merged.sound };
       }
+      // This event's own pairing stays: applying a style must not unpair a
+      // phone mid-event, nor hand it another event's key.
+      if (key === 'remote') {
+        return {
+          ...accumulator,
+          remote: { ...template.settings.remote, key: appSettings.remote.key, keyCreatedAt: appSettings.remote.keyCreatedAt, keyExpiresAt: appSettings.remote.keyExpiresAt },
+        };
+      }
       // When the draw starts, and whether the countdown is running, belong to
       // this event; a template brings the countdown's words and look.
       if (key === 'countdown') {
@@ -330,6 +345,7 @@ function assetRefs(settings) {
     ...(asObject(source.welcome).images || []).map((image) => image && image.src),
     ...((asObject(source.prizes).items || []).flatMap((item) => (item && item.images) || [])).map((image) => image && image.src),
     ...(asObject(source.sound).library || []).map((track) => track && track.src),
+    ...(asObject(source.sponsors).items || []).map((sponsor) => sponsor && sponsor.logo && sponsor.logo.src),
   ];
   return [...new Set(refs.filter((ref) => typeof ref === 'string' && ref.startsWith('assets/')))];
 }
@@ -387,6 +403,12 @@ async function withoutMissingAssets(appSettings, normalizeAppSettings) {
       items: appSettings.prizes.items.map((item) => ({ ...item, images: item.images.filter(keep) })),
     },
     sound: { ...appSettings.sound, library: appSettings.sound.library.filter(keep) },
+    sponsors: {
+      ...appSettings.sponsors,
+      items: appSettings.sponsors.items.map((sponsor) =>
+        missing.includes(sponsor.logo.src) ? { ...sponsor, logo: { src: '', width: null, height: null } } : sponsor
+      ),
+    },
   };
 
   return { appSettings: normalizeAppSettings(cleaned), missing };
@@ -423,7 +445,7 @@ async function exportTemplate(template, { embed = false } = {}) {
   };
 }
 
-const IMAGE_NAME = /^assets\/(logo|background|guest|prize)-[a-f0-9]{10}\.(png|jpg|gif|webp|svg)$/;
+const IMAGE_NAME = /^assets\/(logo|background|guest|prize|sponsor)-[a-f0-9]{10}\.(png|jpg|gif|webp|svg)$/;
 const IMAGE_EXTENSIONS = Object.freeze({ png: 'png', jpeg: 'jpg', gif: 'gif', webp: 'webp', svg: 'svg' });
 
 /**

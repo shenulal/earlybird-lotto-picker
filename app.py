@@ -94,6 +94,13 @@ def certificate_page():
     return send_page("certificate.html")
 
 
+# NEW: the phone remote. The page holds nothing; every call it makes needs the
+# pairing key or an organiser sign-in.
+@app.get("/remote")
+def remote_page():
+    return send_page("remote.html")
+
+
 @app.get("/<path:filename>")
 def serve_static(filename: str):
     # appsettings.json carries the hashed admin credentials and winners.json the

@@ -106,6 +106,9 @@ function createApp() {
   // NEW: the printable draw certificate. The page itself holds nothing; its
   // data comes from an endpoint only a signed-in organiser can call.
   app.get('/certificate', (req, res) => sendPage(req, res, 'certificate.html'));
+  // NEW: the phone remote. The page holds nothing; every call it makes needs
+  // the pairing key or an organiser sign-in.
+  app.get('/remote', (req, res) => sendPage(req, res, 'remote.html'));
 
   // CHANGED: pages go through the stamper rather than the static handler, so
   // the markup they serve always points at this build's assets.

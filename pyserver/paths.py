@@ -11,6 +11,9 @@ DRAW_STATE_PATH = ROOT_DIR / "winners.json"
 # NEW: saved event templates, and the starting points that ship with the app.
 TEMPLATES_PATH = ROOT_DIR / "templates.json"
 TEMPLATE_PRESETS_PATH = ROOT_DIR / "template-presets.json"
+# NEW: the feed between screens, and the phone remote's commands.
+LIVE_PATH = ROOT_DIR / "live.json"
+REMOTE_PATH = ROOT_DIR / "remote.json"
 
 # appsettings.json holds the hashed admin credentials, winners.json the contact
 # details of everyone drawn so far and tickets.json those of everyone entered;
@@ -26,6 +29,9 @@ PROTECTED_FILES = (
     # NEW: saved templates can carry contact details in their certificate
     # settings and the organiser's own wording; they are console-only.
     "templates.json",
+    # NEW: the live feed and remote commands carry the controller's id.
+    "live.json",
+    "remote.json",
     "package.json",
     "package-lock.json",
     "requirements.txt",

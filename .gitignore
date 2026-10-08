@@ -77,3 +77,5 @@ deploy/proxy.env
 
 # Saved event templates — runtime data, like the draw state
 templates.json
+live.json
+remote.json

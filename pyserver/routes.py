@@ -6,12 +6,14 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from flask import Blueprint, Response, jsonify, request, session
 
-from . import draw, images, schema, sheets, templates, tickets as ticket_store
+from . import draw, images, live, schema, sheets, templates, tickets as ticket_store
+from . import stage_features as stage
 from .build import BUILD
 from .auth import LoginThrottle, hash_password, verify_password
-from .coerce import js_now_iso, js_number
+from .coerce import js_now_iso, js_number, js_truthy
 from .feature_routes import public_draw, register_feature_routes
 from .features import countdown_locks_draw
+from .stage_routes import register_stage_routes
 from .settings import (
     MAX_PRIZE_IMAGES,
     MAX_WELCOME_IMAGES,
@@ -93,6 +95,13 @@ def body() -> Dict[str, Any]:
     return payload if isinstance(payload, dict) else {}
 
 
+def board_origin() -> Any:
+    """NEW: the board that sent this request, named in the live feed so it does
+    not act on its own news twice — ``body.boardId || null``."""
+    board_id = body().get("boardId")
+    return board_id if js_truthy(board_id) else None
+
+
 @api.errorhandler(StorageError)
 def handle_storage_error(error: StorageError):
     return jsonify({"ok": False, "error": str(error)}), 500
@@ -113,6 +122,8 @@ def get_settings():
     # organiser's document, not the board's, and stay off this response.
     exposed = {
         **{key: value for key, value in app_settings.items() if key not in ("data", "certificate")},
+        # NEW: the remote's pairing key is a secret; screens see the rest.
+        "remote": stage.public_remote(app_settings["remote"]),
         "data": {
             "identifier": data["identifier"],
             "fields": [
@@ -138,8 +149,11 @@ def get_pool():
     app_settings = load_settings_file()["appSettings"]
     source = draw.read_tickets(app_settings)
     state = draw.load_draw_state()
-    # The reel animates over live records, so only reel fields are sent.
-    reel_keys = list(dict.fromkeys(line["field"] for line in app_settings["display"]["reel"]["lines"]))
+    # The reel animates over live records, so only reel fields are sent — plus
+    # the wheel's label field, when the wheel is the draw style.
+    wheel = app_settings["wheel"]
+    wheel_key = [wheel["labelField"]] if wheel["style"] == "wheel" and wheel["labelField"] else []
+    reel_keys = list(dict.fromkeys([*(line["field"] for line in app_settings["display"]["reel"]["lines"]), *wheel_key]))
 
     excluded = [] if app_settings["redraw"]["returnToPool"] else state["absent"]
     pool = draw.remaining_pool(source["tickets"], state["winners"], app_settings["data"]["identifier"], excluded)
@@ -188,8 +202,11 @@ def post_draw():
     if not result["ok"]:
         return jsonify(result), 409
 
-    allowed = schema.public_field_keys(app_settings["display"])
-    return jsonify({**result, "winner": public_winner(result["winner"], allowed)})
+    # NEW: every following screen reveals the same winner. The board that
+    # asked names itself, so it does not act on its own news twice.
+    winner = public_winner(result["winner"], schema.public_field_keys(app_settings["display"]))
+    live.append_event("draw", {"winner": winner, "stats": result["stats"]}, board_origin())
+    return jsonify({**result, "winner": winner})
 
 
 @api.post("/draw/reset")
@@ -203,7 +220,9 @@ def post_board_reset():
     if not app_settings["draw"]["allowResetFromBoard"] and not current_username():
         return jsonify({"ok": False, "error": "Sign in as an organiser to start a new draw."}), 403
 
-    return jsonify(draw.reset_draw(app_settings))
+    result = draw.reset_draw(app_settings)
+    live.append_event("reset", {"scope": ["results"]}, board_origin())
+    return jsonify(result)
 
 
 # -------------------------------------------------------------------- auth
@@ -301,7 +320,22 @@ def put_settings():
     payload = body()
     settings_file = load_settings_file()
     incoming = payload.get("appSettings") or payload or {}
-    app_settings = normalize_app_settings(merge_settings(settings_file["appSettings"], incoming))
+    merged = normalize_app_settings(merge_settings(settings_file["appSettings"], incoming))
+    # NEW: the remote's pairing is only ever changed by its own endpoints. A
+    # save from a console tab opened before a new pairing would otherwise bring
+    # the old key back to life and kill the new link.
+    stored = settings_file["appSettings"]["remote"]
+    app_settings = normalize_app_settings(
+        {
+            **merged,
+            "remote": {
+                **merged["remote"],
+                "key": stored["key"],
+                "keyCreatedAt": stored["keyCreatedAt"],
+                "keyExpiresAt": stored["keyExpiresAt"],
+            },
+        }
+    )
     save_settings_file({**settings_file, "appSettings": app_settings})
     return jsonify({"ok": True, "appSettings": app_settings})
 
@@ -457,6 +491,7 @@ def post_tickets():
     existing = draw.read_tickets(app_settings)["tickets"] if mode == "append" else []
     merged, _merge_issues = ticket_store.normalize_records([*existing, *incoming], next_schema, policy)
     ticket_store.save_tickets(merged)
+    live.append_event("data", {"ticketCount": len(merged)})
 
     # A list pulled from a sheet remembers where from, so it can be pulled
     # again without pasting the link twice. A file upload clears it: the list
@@ -512,6 +547,7 @@ def clear_tickets():
         )
 
     ticket_store.save_tickets([])
+    live.append_event("data", {"ticketCount": 0})
     app_settings = load_settings_file()["appSettings"]
     return jsonify({"ok": True, "ticketCount": 0, "stats": draw.stats_for(app_settings, [], state)})
 
@@ -748,6 +784,8 @@ def delete_prize_image(prize_id: str):
 def post_undo():
     app_settings = load_settings_file()["appSettings"]
     result = draw.undo_last_winner(app_settings)
+    if result["ok"]:
+        live.append_event("undo", {"drawIndex": result["removed"].get("drawIndex")})
     return jsonify(result), (200 if result["ok"] else 409)
 
 
@@ -755,7 +793,9 @@ def post_undo():
 @require_auth
 def post_reset():
     app_settings = load_settings_file()["appSettings"]
-    return jsonify(draw.reset_draw(app_settings))
+    result = draw.reset_draw(app_settings)
+    live.append_event("reset", {"scope": ["results"]})
+    return jsonify(result)
 
 
 @api.get("/admin/export/winners.csv")
@@ -770,6 +810,19 @@ def export_winners():
         else state["winners"]
     )
 
+    # NEW: the sponsor of each prize, when sponsors are on and the organiser
+    # wants them in the export.
+    sponsors = app_settings["sponsors"]
+    with_sponsor = sponsors["enabled"] and sponsors["display"]["export"]
+    prize_items = app_settings["prizes"]["items"]
+
+    def sponsor_of(prize_number: Any) -> str:
+        position = js_number(prize_number) - 1
+        if not (position == position and position.is_integer() and 0 <= position < len(prize_items)):
+            return ""
+        sponsor = stage.sponsor_for_prize(sponsors, prize_items[int(position)]["id"])
+        return sponsor["name"] if sponsor else ""
+
     rows = [
         {
             **(entry.get("record") or {}),
@@ -777,10 +830,12 @@ def export_winners():
             "drawnAt": entry.get("drawnAt"),
             "status": app_settings["copy"]["notPresentTag"] if entry.get("absentAt") else "Winner",
             "absentAt": entry.get("absentAt") or "",
+            "sponsor": sponsor_of(entry.get("prizeNumber")),
         }
         for entry in entries
     ]
-    csv_text = ticket_store.to_csv(rows, export_columns(app_settings, with_absent))
+    columns = export_columns(app_settings, with_absent)
+    csv_text = ticket_store.to_csv(rows, [*columns, ("sponsor", "Sponsor")] if with_sponsor else columns)
     return Response(
         csv_text,
         mimetype="text/csv; charset=utf-8",
@@ -790,3 +845,5 @@ def export_winners():
 
 # NEW: redraw, sound tracks, the certificate and templates.
 register_feature_routes(api, require_auth, current_username, public_winner)
+# NEW: live sync, the phone remote, sponsor logos and "Reset event".
+register_stage_routes(api, require_auth, current_username, public_winner, throttle)

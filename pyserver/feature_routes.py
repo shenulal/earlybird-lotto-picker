@@ -14,8 +14,8 @@ from typing import Any, Callable, Dict, Sequence
 
 from flask import Blueprint, Response, jsonify, request
 
-from . import audio, draw, schema, templates
-from .coerce import js_now_iso, js_number
+from . import audio, draw, live, schema, templates
+from .coerce import js_now_iso, js_number, js_truthy
 from .features import MAX_TRACKS, TRACK_ID
 from .settings import load_settings_file, normalize_app_settings, save_settings_file
 from .templates import TemplateError
@@ -118,7 +118,8 @@ def register_feature_routes(
         # sign-in not required, anyone could reopen any prize.
         winners = draw.load_draw_state()["winners"]
         latest = winners[-1] if winners else None
-        asked = _payload().get("drawIndex")
+        payload = _payload()
+        asked = payload.get("drawIndex")
         if latest and asked is not None and js_number(asked) != js_number(latest.get("drawIndex")):
             return (
                 jsonify({"ok": False, "reason": "not-latest", "error": "The results have changed. Reload the board."}),
@@ -129,8 +130,14 @@ def register_feature_routes(
         if not result["ok"]:
             return jsonify(result), 409
 
-        allowed = schema.public_field_keys(app_settings["display"])
-        return jsonify({"ok": True, "absent": public_winner(result["absent"], allowed), "stats": result["stats"]})
+        absent = public_winner(result["absent"], schema.public_field_keys(app_settings["display"]))
+        board_id = payload.get("boardId")
+        live.append_event(
+            "absent",
+            {"absent": absent, "autoRedraw": redraw["autoRedraw"], "source": "board"},
+            board_id if js_truthy(board_id) else None,
+        )
+        return jsonify({"ok": True, "absent": absent, "stats": result["stats"]})
 
     # ------------------------------------------------------- redraw: admin
 
@@ -139,14 +146,27 @@ def register_feature_routes(
     def post_admin_absent():
         app_settings = load_settings_file()["appSettings"]
         result = draw.mark_absent(app_settings, _payload().get("drawIndex"))
-        return jsonify(result), (200 if result["ok"] else 409)
+        if not result["ok"]:
+            return jsonify(result), 409
+        live.append_event(
+            "absent",
+            {
+                "absent": public_winner(result["absent"], schema.public_field_keys(app_settings["display"])),
+                "autoRedraw": False,
+                "source": "console",
+            },
+        )
+        return jsonify(result)
 
     @api.post("/admin/draw/restore")
     @require_auth
     def post_admin_restore():
         app_settings = load_settings_file()["appSettings"]
         result = draw.restore_absent(app_settings, _payload().get("drawIndex"))
-        return jsonify(result), (200 if result["ok"] else 409)
+        if not result["ok"]:
+            return jsonify(result), 409
+        live.append_event("restore", {"drawIndex": result["restored"].get("drawIndex")})
+        return jsonify(result)
 
     # -------------------------------------------------------- sound tracks
 
@@ -270,6 +290,7 @@ def register_feature_routes(
                     "prizes": app_settings["prizes"],
                     "data": app_settings["data"],
                     "certificate": app_settings["certificate"],
+                    "sponsors": app_settings["sponsors"],
                     "copy": {
                         "prizeLabel": app_settings["copy"]["prizeLabel"],
                         "notPresentTag": app_settings["copy"]["notPresentTag"],

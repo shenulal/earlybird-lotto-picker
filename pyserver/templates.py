@@ -34,13 +34,15 @@ SECTIONS: Dict[str, Tuple[str, ...]] = {
     # Uploaded artwork travels on its own, so a style can be applied without
     # replacing the logo and backdrop an organiser has already put in place.
     "branding": ("branding",),
-    "look": ("ui", "text"),
+    "look": ("ui", "text", "wheel"),
     "wording": ("copy",),
     "prizes": ("prizes",),
+    "sponsors": ("sponsors",),
     "welcome": ("welcome",),
     "channels": ("social",),
     "animation": ("animation",),
-    "draw": ("draw", "redraw"),
+    # The remote's pairing key never travels in a template (see pick_sections).
+    "draw": ("draw", "redraw", "liveSync", "remote"),
     "sound": ("sound",),
     "countdown": ("countdown",),
     "certificate": ("certificate",),
@@ -81,6 +83,12 @@ def pick_sections(app_settings: Dict[str, Any], sections: Sequence[str]) -> Dict
                 # Where the entry list came from belongs to the event, not the style.
                 picked["data"] = {
                     k: v for k, v in app_settings["data"].items() if k not in ("sourceUrl", "sourceSyncedAt")
+                }
+                continue
+            if key == "remote":
+                # A pairing is this event's secret, not part of a style.
+                picked["remote"] = {
+                    k: v for k, v in app_settings["remote"].items() if k not in ("key", "keyCreatedAt", "keyExpiresAt")
                 }
                 continue
             picked[key] = app_settings[key]
@@ -322,6 +330,16 @@ def apply_template(
                 merged, dropped = _merge_sound(app_settings["sound"], carried["sound"])
                 dropped_tracks.extend(dropped)
                 layered["sound"] = merged
+            elif key == "remote":
+                # This event's own pairing stays: applying a style must not
+                # unpair a phone mid-event, nor hand it another event's key.
+                own = app_settings["remote"]
+                layered["remote"] = {
+                    **carried["remote"],
+                    "key": own["key"],
+                    "keyCreatedAt": own["keyCreatedAt"],
+                    "keyExpiresAt": own["keyExpiresAt"],
+                }
             elif key == "countdown":
                 # When the draw starts, and whether the countdown is running,
                 # belong to this event; a template brings its words and look.
@@ -358,6 +376,9 @@ def asset_refs(settings: Any) -> List[str]:
     for item in as_object(source.get("prizes")).get("items") or []:
         refs.extend(as_object(image).get("src") for image in as_object(item).get("images") or [])
     refs.extend(as_object(track).get("src") for track in as_object(source.get("sound")).get("library") or [])
+    refs.extend(
+        as_object(as_object(sponsor).get("logo")).get("src") for sponsor in as_object(source.get("sponsors")).get("items") or []
+    )
 
     unique: List[str] = []
     for ref in refs:
@@ -418,6 +439,15 @@ def without_missing_assets(app_settings: Dict[str, Any]) -> Dict[str, Any]:
             ],
         },
         "sound": {**app_settings["sound"], "library": [t for t in app_settings["sound"]["library"] if keep(t)]},
+        "sponsors": {
+            **app_settings["sponsors"],
+            "items": [
+                {**sponsor, "logo": {"src": "", "width": None, "height": None}}
+                if sponsor["logo"]["src"] in missing
+                else sponsor
+                for sponsor in app_settings["sponsors"]["items"]
+            ],
+        },
     }
     return {"appSettings": normalize_app_settings(cleaned), "missing": missing}
 
@@ -449,7 +479,7 @@ def export_template(template: Dict[str, Any], embed: bool = False) -> Dict[str, 
     }
 
 
-IMAGE_NAME = re.compile(r"^assets/(logo|background|guest|prize)-[a-f0-9]{10}\.(png|jpg|gif|webp|svg)$")
+IMAGE_NAME = re.compile(r"^assets/(logo|background|guest|prize|sponsor)-[a-f0-9]{10}\.(png|jpg|gif|webp|svg)$")
 IMAGE_EXTENSIONS = {"png": "png", "jpeg": "jpg", "gif": "gif", "webp": "webp", "svg": "svg"}
 
 

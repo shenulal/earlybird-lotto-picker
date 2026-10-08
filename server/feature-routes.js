@@ -16,6 +16,7 @@ const audio = require('./audio');
 const schema = require('./schema');
 const store = require('./store');
 const templates = require('./templates');
+const live = require('./live');
 const { StorageError } = store;
 const { normalizeAppSettings, loadSettingsFile, saveSettingsFile } = require('./settings');
 
@@ -94,10 +95,12 @@ function registerFeatureRoutes(router, { requireAuth, currentSession, sendError,
 
       const result = draw.markAbsent(appSettings, latest ? latest.drawIndex : undefined);
       if (!result.ok) return res.status(409).json(result);
-      await store.flush();
 
       const allowedKeys = schema.publicFieldKeys(appSettings.display);
-      return res.json({ ok: true, absent: publicWinner(result.absent, allowedKeys), stats: result.stats });
+      const absent = publicWinner(result.absent, allowedKeys);
+      live.appendEvent('absent', { absent, autoRedraw: redraw.autoRedraw, source: 'board' }, (req.body || {}).boardId || null);
+      await store.flush();
+      return res.json({ ok: true, absent, stats: result.stats });
     } catch (error) {
       return sendError(res, error);
     }
@@ -110,6 +113,11 @@ function registerFeatureRoutes(router, { requireAuth, currentSession, sendError,
       const { appSettings } = loadSettingsFile();
       const result = draw.markAbsent(appSettings, (req.body || {}).drawIndex);
       if (!result.ok) return res.status(409).json(result);
+      live.appendEvent('absent', {
+        absent: publicWinner(result.absent, schema.publicFieldKeys(appSettings.display)),
+        autoRedraw: false,
+        source: 'console',
+      });
       await store.flush();
       return res.json(result);
     } catch (error) {
@@ -122,6 +130,7 @@ function registerFeatureRoutes(router, { requireAuth, currentSession, sendError,
       const { appSettings } = loadSettingsFile();
       const result = draw.restoreAbsent(appSettings, (req.body || {}).drawIndex);
       if (!result.ok) return res.status(409).json(result);
+      live.appendEvent('restore', { drawIndex: result.restored.drawIndex });
       await store.flush();
       return res.json(result);
     } catch (error) {
@@ -248,6 +257,7 @@ function registerFeatureRoutes(router, { requireAuth, currentSession, sendError,
           prizes: appSettings.prizes,
           data: appSettings.data,
           certificate: appSettings.certificate,
+          sponsors: appSettings.sponsors,
           copy: { prizeLabel: appSettings.copy.prizeLabel, notPresentTag: appSettings.copy.notPresentTag },
         },
         stats: draw.statsFor(appSettings, tickets, state),

@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
-from . import features, schema, tickets as ticket_store
+from . import features, live, schema, stage_features as stage, tickets as ticket_store
 from .auth import hash_password
 from .coerce import as_boolean, as_choice, as_color, as_text, clamp_number
 from .paths import SETTINGS_PATH, SETTINGS_SAMPLE_PATH
@@ -190,6 +190,9 @@ DEFAULT_COPY = {
     "notPresentTag": "Not present",
     "soundToggle": "Sound",
     "countdownLocked": "The draw opens when the countdown ends.",
+    # NEW: the phone remote and live sync.
+    "remoteConnected": "Remote connected",
+    "followerNotice": "This screen follows the main board",
     "footer": "Pickora · by Shenu",
     "loading": "Preparing the draw…",
 }
@@ -643,6 +646,20 @@ def _normalize_data(raw: Any, legacy_display: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _normalize_wheel(raw: Any, data: Dict[str, Any], display: Dict[str, Any]) -> Dict[str, Any]:
+    """NEW: the wheel, with its label field checked against the entry list.
+
+    Only a field the board already shows, and never a sensitive one: the wheel
+    puts every remaining entry's label on screen, not just the winner's.
+    Anything else falls back to the reel's own field.
+    """
+    wheel = stage.normalize_wheel(raw)
+    public_keys = schema.public_field_keys(display)
+    field = next((candidate for candidate in data["fields"] if candidate["key"] == wheel["labelField"]), None)
+    allowed = field is not None and not field.get("sensitive") and field["key"] in public_keys
+    return wheel if allowed else {**wheel, "labelField": ""}
+
+
 def normalize_app_settings(raw: Any) -> Dict[str, Any]:
     source = raw if isinstance(raw, dict) else {}
     animation = source.get("animation") or {}
@@ -697,6 +714,11 @@ def normalize_app_settings(raw: Any) -> Dict[str, Any]:
         "redraw": features.normalize_redraw(source.get("redraw")),
         "countdown": features.normalize_countdown(source.get("countdown")),
         "certificate": features.normalize_certificate(source.get("certificate"), data),
+        # NEW: sponsors, the phone remote, live sync and the wheel.
+        "sponsors": stage.normalize_sponsors(source.get("sponsors")),
+        "remote": stage.normalize_remote(source.get("remote")),
+        "liveSync": stage.normalize_live_sync(source.get("liveSync")),
+        "wheel": _normalize_wheel(source.get("wheel"), data, display),
         "ui": {
             # NEW: sizes for the two things the room looks at. Zero is "as the
             # stylesheet has it", which keeps every existing board as it is.
@@ -744,6 +766,8 @@ def save_settings_file(settings_file: Dict[str, Any]) -> None:
         SETTINGS_PATH,
         {"appSettings": settings_file["appSettings"], "adminAuth": settings_file.get("adminAuth")},
     )
+    # NEW: every open screen notices the change on its next check-in.
+    live.bump_revision()
 
 
 _environment_credential_cache: Dict[str, Any] = {}

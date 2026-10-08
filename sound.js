@@ -457,6 +457,7 @@
       resumeAmbient,
       mountButton,
       setMuted,
+      isMuted: () => muted,
       isOn,
     };
   }

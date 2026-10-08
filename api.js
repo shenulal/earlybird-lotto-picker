@@ -42,10 +42,12 @@
     getSettings: () => request('/api/settings'),
     getPool: () => request('/api/pool'),
     getState: () => request('/api/state'),
-    drawWinner: () => request('/api/draw', { method: 'POST', body: {} }),
-    resetFromBoard: () => request('/api/draw/reset', { method: 'POST', body: {} }),
+    // CHANGED: the board names itself, so the live feed does not echo its own
+    // draws back to it.
+    drawWinner: (boardId) => request('/api/draw', { method: 'POST', body: { boardId } }),
+    resetFromBoard: (boardId) => request('/api/draw/reset', { method: 'POST', body: { boardId } }),
     // NEW: the board's "Not present" control.
-    markAbsent: (drawIndex) => request('/api/draw/absent', { method: 'POST', body: { drawIndex } }),
+    markAbsent: (drawIndex, boardId) => request('/api/draw/absent', { method: 'POST', body: { drawIndex, boardId } }),
 
     getSession: () => request('/api/auth/session'),
     login: (username, password) => request('/api/auth/login', { method: 'POST', body: { username, password } }),
@@ -82,5 +84,12 @@
     applyTemplate: (id, payload) => request(`/api/admin/templates/${encodeURIComponent(id)}/apply`, { method: 'POST', body: payload }),
     importTemplate: (payload) => request('/api/admin/templates/import', { method: 'POST', body: payload }),
     templateExportUrl: (id, embed) => `/api/admin/templates/${encodeURIComponent(id)}/export${embed ? '?embed=1' : ''}`,
+
+    // NEW: the phone remote's pairing, sponsor logos, and "Reset event".
+    createRemoteKey: () => request('/api/admin/remote/key', { method: 'POST', body: {} }),
+    revokeRemoteKey: () => request('/api/admin/remote/key', { method: 'DELETE' }),
+    uploadSponsorLogo: (id, payload) => request(`/api/admin/sponsors/${encodeURIComponent(id)}/logo`, { method: 'POST', body: payload }),
+    removeSponsorLogo: (id) => request(`/api/admin/sponsors/${encodeURIComponent(id)}/logo`, { method: 'DELETE' }),
+    resetEvent: (payload) => request('/api/admin/reset-event', { method: 'POST', body: payload }),
   };
 })(window);

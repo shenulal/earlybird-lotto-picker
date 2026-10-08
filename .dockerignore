@@ -39,6 +39,8 @@ appsettings.json
 tickets.json
 winners.json
 templates.json
+live.json
+remote.json
 assets/
 .pickora-write-probe
 *.tmp-*

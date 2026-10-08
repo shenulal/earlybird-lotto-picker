@@ -94,6 +94,9 @@
     notPresentTag: '"Not present" tag in lists',
     soundToggle: 'Speaker button label',
     countdownLocked: 'Start pressed during the countdown',
+    // NEW: live sync and the phone remote.
+    followerNotice: 'Chip on a following screen',
+    remoteConnected: 'Chip on the board the remote controls',
   };
 
   function escapeHtml(value) {

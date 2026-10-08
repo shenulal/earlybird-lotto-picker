@@ -31,6 +31,10 @@
   // NEW: how often an open board picks up the organiser's sound, countdown
   // and redraw settings without a reload.
   const LIVE_SETTINGS_MS = 20000;
+  // NEW: how long a following board keeps spinning after the main board has
+  // visibly stopped (its draw failed, it reloaded, control moved on) before
+  // giving up on the spin and showing the results as they stand.
+  const MIRROR_GRACE_MS = 4000;
 
   const prefersReducedMotion = global.matchMedia('(prefers-reduced-motion: reduce)');
 
@@ -62,6 +66,7 @@
     notice: document.getElementById('notice'),
     confettiCanvas: document.getElementById('confettiCanvas'),
     menu: document.querySelector('.board-menu'),
+    controls: document.querySelector('.controls'),
   };
 
   const state = {
@@ -87,6 +92,11 @@
   // NEW: the sound engine and the countdown, created once.
   let sound = null;
   let countdown = null;
+  // NEW: the live channel to the other screens and the phone remote, and the
+  // chip that says which part this screen plays.
+  let live = null;
+  let liveChip = null;
+  let mirrorTimer = null;
 
   // NEW: every timer belonging to the reveal currently on the stage. A second
   // draw, a reset, or anything else that takes the stage cancels them, so a
@@ -276,20 +286,236 @@
       sound = global.createPickoraSound({ page: 'board' });
       sound.mountButton(elements.menu);
     }
-    sound.update(settings.sound, settings.copy);
-    sound.startAmbient();
 
     if (!countdown) {
       countdown = global.createPickoraCountdown({ page: 'board', sound, onChange: () => setStatus(state.status) });
     }
     countdown.update(settings.countdown, serverTime);
+
+    if (!live && global.createPickoraLive) {
+      live = global.createPickoraLive({
+        page: 'board',
+        onEvent: handleLiveEvent,
+        onCommand: handleRemoteCommand,
+        onRevision: refreshLiveSettings,
+        onResync: () => refreshState().catch(() => {}),
+        onRoleChange: () => applyRole(),
+        onStatus: watchMirroredRoll,
+      });
+    }
+    if (live) live.update(settings);
+    applyRole();
+
+    if (global.pickoraSponsors) global.pickoraSponsors.renderStrip(settings, 'board');
+  }
+
+  /* ----------------------------------------------- NEW: live sync and remote */
+
+  /**
+   * Whether this board only follows another: live sync on, and another board
+   * actually holding control. With nobody in control — say, no board is
+   * signed in to take it — every board stays an ordinary board.
+   */
+  function isFollower() {
+    const sync = state.settings && state.settings.liveSync;
+    return Boolean(
+      live && sync && sync.enabled && sync.screens.board && live.hasCheckedIn() && !live.isController() && live.controllerActive()
+    );
+  }
+
+  /**
+   * FIX: a following board spinning only because the main board did must not
+   * spin for ever if no winner ever follows — the main board's draw failed,
+   * it was reloaded, or control moved to another board.
+   */
+  function watchMirroredRoll(status, controllerActive) {
+    const mirroring = state.mirroring && state.status === STATUS.ROLLING;
+    const mainStillDrawing = controllerActive && status && (status.state === 'rolling' || status.state === 'revealing');
+    if (!mirroring || mainStillDrawing) {
+      global.clearTimeout(mirrorTimer);
+      mirrorTimer = null;
+      return;
+    }
+    if (mirrorTimer) return;
+    mirrorTimer = global.setTimeout(() => {
+      mirrorTimer = null;
+      if (!state.mirroring || state.status !== STATUS.ROLLING) return;
+      state.mirroring = false;
+      sound.stop('spin');
+      sound.resumeAmbient();
+      setStatus(STATUS.IDLE);
+      refreshState().catch(() => {});
+    }, MIRROR_GRACE_MS);
+  }
+
+  /** A follower that may not draw shows no draw controls at all. */
+  function controlsLocked() {
+    return isFollower() && !state.settings.liveSync.followersCanDraw;
+  }
+
+  /**
+   * Fits the board to the part it plays: controls hidden on a follower that
+   * may not draw, sound silenced on followers unless the organiser wants the
+   * room to hear every screen, and a chip saying which screen this is.
+   */
+  function applyRole() {
+    const { settings } = state;
+    if (!settings || !sound) return;
+    const follower = isFollower();
+
+    document.body.classList.toggle('is-follower', controlsLocked());
+    const quiet = follower && !settings.liveSync.soundOnFollowers;
+    sound.update(quiet ? { ...settings.sound, enabled: false } : settings.sound, settings.copy);
+    sound.startAmbient();
+
+    const remote = settings.remote;
+    const text = follower && settings.liveSync.showStatus
+      ? settings.copy.followerNotice
+      : live && live.isController() && remote.enabled && remote.paired && remote.showStatusOnBoard
+        ? settings.copy.remoteConnected
+        : '';
+    if (!liveChip) {
+      liveChip = document.createElement('p');
+      liveChip.className = 'live-chip';
+      liveChip.setAttribute('role', 'status');
+      document.body.appendChild(liveChip);
+    }
+    liveChip.textContent = text;
+    liveChip.hidden = !text;
+    liveChip.dataset.kind = follower ? 'follower' : 'remote';
+  }
+
+  /** Tells the followers what this board is doing, when it is in control. */
+  function publishStatus() {
+    if (!live) return;
+    live.publish({ state: state.status, screen: 'board', prizeNumber: state.stats ? state.stats.nextPrizeNumber : null });
+  }
+
+  /** Something happened on another screen, the console or the remote. */
+  function handleLiveEvent(event) {
+    const sync = state.settings.liveSync;
+    const busy = state.status === STATUS.ROLLING || state.status === STATUS.REVEALING;
+    const mirroring = isFollower() && sync.mirrorDraws;
+
+    switch (event.type) {
+      case 'roll':
+        if (mirroring) mirrorRoll();
+        break;
+      case 'draw':
+        if (mirroring) mirrorReveal(event.data.winner);
+        else if (!busy) refreshState().catch(() => {});
+        break;
+      case 'absent':
+        if (!busy) afterNotPresent(Boolean(event.data.autoRedraw) && !isFollower());
+        break;
+      case 'reset': {
+        if (confetti) confetti.stop();
+        // "Reset event" can change the artwork and the settings wholesale; a
+        // board that has only its results cleared just reloads them.
+        const scope = (event.data && event.data.scope) || ['results'];
+        if (scope.some((name) => name !== 'results')) global.location.reload();
+        else if (!busy) refreshState().catch(() => {});
+        break;
+      }
+      case 'undo':
+      case 'restore':
+      case 'data':
+        if (!busy) refreshState().catch(() => {});
+        break;
+      case 'screen':
+        if (isFollower() && sync.followNavigation && event.data.screen && event.data.screen !== 'board') {
+          global.location.assign(global.pickoraScreenUrl(event.data.screen));
+        }
+        break;
+      default:
+        break;
+    }
+  }
+
+  /** The phone remote asked this board — the controller — to act. */
+  function handleRemoteCommand(command) {
+    switch (command.action) {
+      case 'toggle':
+        if (state.status === STATUS.ROLLING) stopSlot();
+        else startSlot();
+        break;
+      case 'start':
+        startSlot();
+        break;
+      case 'stop':
+        stopSlot();
+        break;
+      case 'screen':
+        if (command.value && command.value !== 'board') {
+          // Followers are told first, then this board goes too; it stays in
+          // control from the other screen and comes back the same way.
+          if (live) live.publish({ state: state.status, screen: command.value, prizeNumber: null });
+          global.setTimeout(() => global.location.assign(global.pickoraScreenUrl(command.value)), 200);
+        }
+        break;
+      case 'mute':
+        sound.setMuted(command.value === 'toggle' ? !sound.isMuted() : Boolean(command.value));
+        break;
+      default:
+        break;
+    }
+  }
+
+  /** A follower starts spinning because the main board did. */
+  function mirrorRoll() {
+    if (state.status === STATUS.ROLLING || state.pool.length === 0) return;
+    if (confetti) confetti.stop();
+    if (countdown) countdown.dismiss(true);
+    state.stopRequested = false;
+    state.mirroring = true;
+    state.rollStartedAt = Date.now();
+    setStatus(STATUS.ROLLING);
+    startReel();
+    sound.pauseAmbient();
+    sound.play('spin');
+  }
+
+  /**
+   * A follower reveals the winner the main board drew: landing its own reel
+   * or wheel on them if it is spinning, or going straight to the reveal if it
+   * joined too late to see the spin.
+   */
+  async function mirrorReveal(winner) {
+    if (!winner) return;
+    try {
+      if (state.status === STATUS.ROLLING && reel) {
+        state.stopRequested = true;
+        const settling = reel.settle(0);
+        reel.land(winner.record);
+        await settling;
+      }
+      setStatus(STATUS.REVEALING);
+      await revealWinner(winner, { celebrate: state.settings.liveSync.celebrateOnFollowers });
+    } finally {
+      state.stopRequested = false;
+      state.mirroring = false;
+      await refreshState().catch(() => {});
+    }
   }
 
   async function refreshLiveSettings() {
     try {
       const response = await api.getSettings();
       const next = response.appSettings;
-      state.settings = { ...state.settings, sound: next.sound, countdown: next.countdown, redraw: next.redraw, copy: next.copy };
+      state.settings = {
+        ...state.settings,
+        sound: next.sound,
+        countdown: next.countdown,
+        redraw: next.redraw,
+        copy: next.copy,
+        // NEW: these change what the next draw looks like, never the one on
+        // the stage, so they are safe to take mid-event.
+        sponsors: next.sponsors,
+        liveSync: next.liveSync,
+        remote: next.remote,
+        wheel: next.wheel,
+        prizes: next.prizes,
+      };
       state.authenticated = Boolean(response.session && response.session.authenticated);
       applyLiveSettings(state.settings, response.serverTime);
     } catch (_error) {
@@ -341,6 +567,8 @@
   function setStatus(status) {
     state.status = status;
     elements.stage.dataset.status = status;
+
+    publishStatus();
 
     const isRolling = status === STATUS.ROLLING;
     const isHeld = Boolean(countdown && countdown.isLocked() && !state.authenticated);
@@ -403,6 +631,7 @@
           <span class="prize-call-text">
             <span class="prize-call-name">${escapeHtml(prize.name)}</span>
             ${prize.description ? `<span class="prize-call-note">${escapeHtml(prize.description)}</span>` : ''}
+            ${sponsorBadge(prize, 'announcement')}
           </span>
         </div>
         <p class="prize-call-prompt">${escapeHtml(copy('drawPrompt'))}</p>
@@ -420,10 +649,15 @@
     }
   }
 
+  /** NEW: the "Sponsored by" line for a prize, where the organiser shows it. */
+  function sponsorBadge(prize, place) {
+    return global.pickoraSponsors && prize ? global.pickoraSponsors.badge(state.settings, prize, place) : '';
+  }
+
   /** NEW: whether the board offers "Not present", and whether it is usable. */
   function absentControl() {
     const redraw = state.settings.redraw;
-    if (!redraw || !redraw.enabled || !redraw.showOnBoard) return null;
+    if (!redraw || !redraw.enabled || !redraw.showOnBoard || controlsLocked()) return null;
     return { locked: redraw.requireSignIn && !state.authenticated };
   }
 
@@ -443,6 +677,7 @@
         <p class="winner-eyebrow">${escapeHtml(eyebrow)} &middot; ${escapeHtml(rank)}</p>
         ${renderSlot('card', winner.record)}
         ${prize ? `<p class="winner-prize">${escapeHtml(prize.name)}</p>` : ''}
+        ${sponsorBadge(prizeAt(winner.prizeNumber), 'winnerCard')}
         ${absentButton}
       </div>`);
   }
@@ -478,6 +713,8 @@
 
   function startSlot() {
     if (state.status !== STATUS.IDLE && state.status !== STATUS.ANNOUNCING) return;
+    // NEW: a follower that may not draw leaves the draw to the main board.
+    if (controlsLocked()) return;
 
     // NEW: the countdown can hold the draw until it reaches zero.
     if (countdown && countdown.isLocked() && !state.authenticated) {
@@ -516,22 +753,50 @@
     sound.play('spin');
   }
 
-  /** Hands the reel a fresh shuffle of whoever is still in the draw. */
+  /**
+   * NEW: the field written on the wheel's segments — the organiser's choice,
+   * or the first field the reel shows.
+   */
+  function wheelLabel(record) {
+    const { wheel, display } = state.settings;
+    const keys = [wheel.labelField, ...display.reel.lines.map((line) => line.field)].filter(Boolean);
+    const key = keys.find((candidate) => record && record[candidate] !== undefined && record[candidate] !== '');
+    return key ? String(record[key]) : '';
+  }
+
+  /** Hands the reel — or the wheel — a fresh shuffle of whoever is still in the draw. */
   function startReel() {
     state.deal = createDeck(state.pool);
 
     setStage('');
-    reel = global.createPickoraReel(elements.reel, {
-      renderItem: (record) => renderSlot('reel', record, 'slot-rolling'),
-      deal: () => state.deal(),
-      reducedMotion: prefersReducedMotion.matches,
-      // NEW: the landing cue sounds the instant the reel comes to rest.
-      onLanded: () => {
-        sound.stop('spin');
-        sound.play('land');
-      },
-    });
-    reel.start(state.settings.animation.rollingSpeed);
+    const landed = () => {
+      // NEW: the landing cue sounds the instant it comes to rest.
+      sound.stop('spin');
+      sound.play('land');
+    };
+    const { wheel, animation, branding } = state.settings;
+    const useWheel = wheel.style === 'wheel' && global.createPickoraWheel;
+    elements.stage.dataset.drawStyle = useWheel ? 'wheel' : 'reel';
+
+    reel = useWheel
+      ? global.createPickoraWheel(elements.reel, {
+          renderLabel: wheelLabel,
+          deal: () => state.deal(),
+          reducedMotion: prefersReducedMotion.matches,
+          onLanded: landed,
+          options: {
+            ...wheel,
+            palette: wheel.palette.length ? wheel.palette : animation.confettiPalette,
+            logoSrc: branding.logo.src || '',
+          },
+        })
+      : global.createPickoraReel(elements.reel, {
+          renderItem: (record) => renderSlot('reel', record, 'slot-rolling'),
+          deal: () => state.deal(),
+          reducedMotion: prefersReducedMotion.matches,
+          onLanded: landed,
+        });
+    reel.start(animation.rollingSpeed);
   }
 
   /**
@@ -545,6 +810,7 @@
    */
   async function stopSlot() {
     if (state.status !== STATUS.ROLLING || state.stopRequested || !reel) return;
+    if (controlsLocked()) return;
 
     state.stopRequested = true;
     elements.stopBtn.disabled = true;
@@ -552,7 +818,7 @@
     const elapsed = Date.now() - state.rollStartedAt;
     const settling = reel.settle(state.settings.draw.minimumRollMs - elapsed);
 
-    const drawing = api.drawWinner();
+    const drawing = api.drawWinner(live ? live.boardId : undefined);
     // The reel rolls on gently until both the draw is in and the organiser's
     // response time has passed, then settles on the winner. Failure is handled
     // by the await below; this branch only feeds the reel.
@@ -592,7 +858,7 @@
    * appears on the beat. At zero there is no announcement at all, not an
    * announcement shown for no time, which would read as a flicker.
    */
-  function revealWinner(winner) {
+  function revealWinner(winner, { celebrate = true } = {}) {
     const { animation } = state.settings;
     const revealAnimation = REVEAL_ANIMATIONS[(winner.prizeNumber - 1) % REVEAL_ANIMATIONS.length];
     const delay = Math.max(0, Number(animation.winnerAnnouncementDelay) || 0);
@@ -601,8 +867,9 @@
       renderWinnerCard(winner, revealAnimation);
       // NEW: the reveal cue, and the music back once it has finished.
       sound.play('reveal').then((handle) => sound.resumeAmbient(handle));
-      // CHANGED: the reveal fires whichever celebration the organiser chose.
-      afterReveal(() => {
+      // CHANGED: the reveal fires whichever celebration the organiser chose —
+      // on a following screen only if the organiser wants every screen to.
+      if (celebrate) afterReveal(() => {
         confetti.start({
           count: animation.confettiCount,
           duration: animation.confettiDuration,
@@ -698,21 +965,30 @@
 
     button.disabled = true;
     try {
-      await api.markAbsent(Number(button.dataset.drawIndex));
-      confetti.stop();
-      sound.stop('reveal', 200);
-      sound.pauseAmbient();
-      const sting = await sound.play('absent');
-      renderMessage(copy('notPresentNotice'));
-      await refreshStateQuietly();
-      await new Promise((resolve) => setTimeout(resolve, redraw.noticeMs));
-      sound.resumeAmbient(sting);
-      renderIdle();
-      if (redraw.autoRedraw) startSlot();
+      await api.markAbsent(Number(button.dataset.drawIndex), live ? live.boardId : undefined);
+      await afterNotPresent(redraw.autoRedraw);
     } catch (error) {
       showNotice(error.message, 'error');
       button.disabled = false;
     }
+  }
+
+  /**
+   * What the board does once a winner has been struck off — by its own
+   * button, the phone remote, or the console: the sting, the notice, the
+   * prize back on the stage, and a fresh spin if the organiser asked for one.
+   */
+  async function afterNotPresent(autoRedraw) {
+    if (confetti) confetti.stop();
+    sound.stop('reveal', 200);
+    sound.pauseAmbient();
+    const sting = await sound.play('absent');
+    renderMessage(copy('notPresentNotice'));
+    await refreshStateQuietly();
+    await new Promise((resolve) => setTimeout(resolve, state.settings.redraw.noticeMs));
+    sound.resumeAmbient(sting);
+    renderIdle();
+    if (autoRedraw) startSlot();
   }
 
   /** Fetches the latest results without re-rendering the stage. */
@@ -747,7 +1023,7 @@
     elements.newDrawBtn.disabled = true;
     try {
       confetti.stop();
-      await api.resetFromBoard();
+      await api.resetFromBoard(live ? live.boardId : undefined);
       await refreshState();
       renderIdle();
       showNotice('A new draw has started.', 'info');
@@ -777,6 +1053,7 @@
 
       if (event.code === 'Space' || event.key === 'Enter') {
         event.preventDefault();
+        if (controlsLocked()) return;
         if (state.status === STATUS.ROLLING) stopSlot();
         else startSlot();
         return;

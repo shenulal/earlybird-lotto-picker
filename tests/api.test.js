@@ -205,7 +205,7 @@ test('templates save, apply, export, import and delete', async () => {
   assert.equal(imported.payload.template.name, 'Imported style');
 
   const current = await call('GET', '/api/admin/templates/current/export');
-  assert.equal(current.payload.template.sections.length, 13);
+  assert.equal(current.payload.template.sections.length, 14);
 
   const listed = await call('GET', '/api/admin/templates');
   assert.ok(listed.payload.templates.some((template) => template.id === id));
@@ -218,4 +218,124 @@ test('templates save, apply, export, import and delete', async () => {
 test('the templates document is never served as a file', async () => {
   assert.equal((await fetch(`${base}/templates.json`)).status, 404);
   assert.equal((await fetch(`${base}/tests/api.test.js`)).status, 404);
+});
+
+/* ---------------------------------------------- sponsors, remote, live, reset */
+
+test('public settings never carry the remote pairing key', async () => {
+  const paired = await call('POST', '/api/admin/remote/key', {});
+  assert.ok(paired.payload.appSettings.remote.key);
+  const { payload } = await call('GET', '/api/settings', undefined, { signedIn: false });
+  assert.equal(payload.appSettings.remote.key, undefined);
+  assert.equal(payload.appSettings.remote.paired, true);
+});
+
+test('the phone remote needs a valid key and the organiser\'s permission', async () => {
+  const paired = await call('POST', '/api/admin/remote/key', {});
+  const { key } = paired.payload.appSettings.remote;
+
+  const wrong = await call('POST', '/api/remote/command', { key: 'x'.repeat(32), action: 'toggle' }, { signedIn: false });
+  assert.equal(wrong.status, 401);
+
+  const ok = await call('POST', '/api/remote/command', { key, action: 'screen', value: 'prizes' }, { signedIn: false });
+  assert.equal(ok.status, 200);
+  assert.equal(ok.payload.delivered, false);
+
+  await save({ remote: { actions: { screens: false } } });
+  const refused = await call('POST', '/api/remote/command', { key, action: 'screen', value: 'board' }, { signedIn: false });
+  assert.equal(refused.status, 403);
+
+  const state = await fetch(`${base}/api/remote/state`, { headers: { 'X-Pickora-Remote-Key': key } });
+  assert.equal(state.status, 200);
+  assert.ok((await state.json()).stats);
+
+  // A save from a console that still holds the old settings cannot change the pairing.
+  await save({ remote: { key: 'A'.repeat(32) } });
+  const stillPaired = await fetch(`${base}/api/remote/state`, { headers: { 'X-Pickora-Remote-Key': key } });
+  assert.equal(stillPaired.status, 200);
+
+  await call('DELETE', '/api/admin/remote/key', {});
+  const revoked = await fetch(`${base}/api/remote/state`, { headers: { 'X-Pickora-Remote-Key': key } });
+  assert.equal(revoked.status, 401);
+  await save({ remote: { enabled: false, actions: { screens: true } } });
+});
+
+test('a draw reaches a following screen through the live feed', async () => {
+  await save({ liveSync: { enabled: true }, redraw: { enabled: false } });
+  await call('POST', '/api/admin/draw/reset', {});
+  const anonymous = await call('POST', '/api/live/poll', { boardId: 'board-api-anonymous-1', page: 'board' }, { signedIn: false });
+  assert.equal(anonymous.payload.controller.isYou, false);
+  const controller = await call('POST', '/api/live/poll', { boardId: 'board-api-controller-1', page: 'board' });
+  assert.equal(controller.payload.controller.isYou, true);
+  const follower = await call('POST', '/api/live/poll', { boardId: 'board-api-follower-01', page: 'board' }, { signedIn: false });
+
+  await call('POST', '/api/draw', { boardId: 'board-api-controller-1' }, { signedIn: false });
+  const next = await call('POST', '/api/live/poll', { boardId: 'board-api-follower-01', page: 'board', after: follower.payload.seq }, { signedIn: false });
+  const drawn = next.payload.events.find((event) => event.type === 'draw');
+  assert.ok(drawn);
+  // Which board drew is never revealed — only whether it was the one asking.
+  assert.equal(drawn.origin, undefined);
+  assert.equal(drawn.mine, false);
+  assert.ok(drawn.data.winner.record);
+  await save({ liveSync: { enabled: false } });
+});
+
+test('a sponsor logo uploads, shows in the export, and goes with its sponsor', async () => {
+  await save({ sponsors: { enabled: true, items: [{ id: 'sponsor-acme', name: 'Acme Motors' }] }, prizes: { items: [{ id: 'prize-1', name: 'Car' }] } });
+  await save({ sponsors: { prizeSponsors: { 'prize-1': 'sponsor-acme' } } });
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAFklEQVR4nGP4z8DAwMDAxMDAwMDAAAANHQEDasKb6QAAAABJRU5ErkJggg==', 'base64');
+  const uploaded = await call('POST', '/api/admin/sponsors/sponsor-acme/logo', { content: `data:image/png;base64,${png.toString('base64')}`, name: 'acme.png' });
+  assert.equal(uploaded.status, 200);
+  assert.match(uploaded.payload.asset.src, /^assets\/sponsor-[a-f0-9]{10}\.png$/);
+
+  await call('POST', '/api/admin/draw/reset', {});
+  await call('POST', '/api/draw', {});
+  const csv = await call('GET', '/api/admin/export/winners.csv');
+  assert.match(csv.payload, /Sponsor/);
+  assert.match(csv.payload, /Acme Motors/);
+
+  const removed = await call('DELETE', '/api/admin/sponsors/sponsor-acme/logo');
+  assert.equal(removed.payload.appSettings.sponsors.items[0].logo.src, '');
+  assert.equal((await fetch(`${base}/${uploaded.payload.asset.src}`)).status, 404);
+});
+
+test('reset event demands the event name and the password', async () => {
+  const { payload } = await call('GET', '/api/settings', undefined, { signedIn: false });
+  const name = payload.appSettings.eventName;
+
+  const noName = await call('POST', '/api/admin/reset-event', { scope: { results: true }, confirmText: 'nope', password: 'correct-horse-battery' });
+  assert.equal(noName.status, 400);
+  assert.equal(noName.payload.reason, 'confirm-text');
+
+  const badPassword = await call('POST', '/api/admin/reset-event', { scope: { results: true }, confirmText: name, password: 'wrong' });
+  assert.equal(badPassword.status, 401);
+
+  const anonymous = await call('POST', '/api/admin/reset-event', { scope: { results: true }, confirmText: name, password: 'correct-horse-battery' }, { signedIn: false });
+  assert.equal(anonymous.status, 401);
+
+  const done = await call('POST', '/api/admin/reset-event', { scope: { results: true }, confirmText: name, password: 'correct-horse-battery' });
+  assert.equal(done.status, 200);
+  assert.deepEqual(done.payload.cleared, ['results']);
+  const state = await call('GET', '/api/state', undefined, { signedIn: false });
+  assert.equal(state.payload.winners.length, 0);
+});
+
+test('the remote strikes off only the winner it is showing', async () => {
+  await save({ remote: { enabled: true, actions: { notPresent: true } }, redraw: { enabled: true } });
+  const paired = await call('POST', '/api/admin/remote/key', {});
+  const { key } = paired.payload.appSettings.remote;
+  await call('POST', '/api/admin/draw/reset', {});
+  const first = await call('POST', '/api/draw', {});
+  const second = await call('POST', '/api/draw', {});
+
+  const stale = await call('POST', '/api/remote/command', { key, action: 'notPresent', value: first.payload.winner.drawIndex }, { signedIn: false });
+  assert.equal(stale.status, 409);
+  const right = await call('POST', '/api/remote/command', { key, action: 'notPresent', value: second.payload.winner.drawIndex }, { signedIn: false });
+  assert.equal(right.status, 200);
+  // The same tap again finds the winner gone, and changes nothing.
+  const again = await call('POST', '/api/remote/command', { key, action: 'notPresent', value: second.payload.winner.drawIndex }, { signedIn: false });
+  assert.equal(again.status, 409);
+  const state = await call('GET', '/api/state', undefined, { signedIn: false });
+  assert.equal(state.payload.winners.length, 1);
+  await save({ remote: { enabled: false }, redraw: { enabled: false } });
 });

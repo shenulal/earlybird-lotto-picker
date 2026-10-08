@@ -51,6 +51,17 @@ const HASHED = [
   'admin-templates.js',
   'certificate.html',
   'certificate.js',
+  // NEW: live sync, the wheel, sponsors, the phone remote and their panels.
+  'live-sync.js',
+  'wheel.js',
+  'sponsors.js',
+  'remote.html',
+  'remote.js',
+  'admin-sponsors.js',
+  'admin-remote.js',
+  'admin-live.js',
+  'admin-wheel.js',
+  'admin-reset.js',
 ];
 
 function hashFiles() {

@@ -6,6 +6,8 @@ const crypto = require('node:crypto');
 const { hashPassword } = require('./auth');
 const { clampNumber, asBoolean, asChoice, asText, asColor } = require('./coerce');
 const features = require('./features');
+const stage = require('./stage-features');
+const live = require('./live');
 const schema = require('./schema');
 const ticketStore = require('./tickets');
 
@@ -196,6 +198,9 @@ const DEFAULT_COPY = Object.freeze({
   notPresentTag: 'Not present',
   soundToggle: 'Sound',
   countdownLocked: 'The draw opens when the countdown ends.',
+  // NEW: the phone remote and live sync.
+  remoteConnected: 'Remote connected',
+  followerNotice: 'This screen follows the main board',
   footer: 'Pickora · by Shenu',
   loading: 'Preparing the draw…',
 });
@@ -655,6 +660,20 @@ function normalizeAppSettings(input) {
     redraw: features.normalizeRedraw(source.redraw),
     countdown: features.normalizeCountdown(source.countdown),
     certificate: features.normalizeCertificate(source.certificate, data),
+    // NEW: sponsors, the phone remote, live sync and the wheel.
+    sponsors: stage.normalizeSponsors(source.sponsors),
+    remote: stage.normalizeRemote(source.remote),
+    liveSync: stage.normalizeLiveSync(source.liveSync),
+    wheel: (() => {
+      const wheel = stage.normalizeWheel(source.wheel);
+      // Only a field the board already shows, and never a sensitive one: the
+      // wheel puts every remaining entry's label on screen, not just the
+      // winner's. Anything else falls back to the reel's own field.
+      const publicKeys = schema.publicFieldKeys(display);
+      const field = data.fields.find((candidate) => candidate.key === wheel.labelField);
+      const allowed = field && !field.sensitive && publicKeys.includes(field.key);
+      return allowed ? wheel : { ...wheel, labelField: '' };
+    })(),
 
     ui: {
       // NEW: sizes for the two things the room looks at. Zero is "as the
@@ -702,6 +721,8 @@ function loadSettingsFile() {
 
 function saveSettingsFile(settingsFile) {
   writeJson(PATHS.settings, { appSettings: settingsFile.appSettings, adminAuth: settingsFile.adminAuth });
+  // NEW: every open screen notices the change on its next check-in.
+  live.bumpRevision();
 }
 
 let environmentCredentialCache = null;
