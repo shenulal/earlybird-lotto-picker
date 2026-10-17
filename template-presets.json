@@ -192,6 +192,8 @@
           "prizeLabel": "الجائزة",
           "lastWinnerEyebrow": "الفائز السابق",
           "completeTitle": "تم توزيع جميع الجوائز",
+          "noEntriesTitle": "يجري إعداد السحب",
+          "noEntriesDetail": "ستظهر المشاركات هنا فور إضافتها",
           "startButton": "ابدأ",
           "stopButton": "توقف",
           "winnersHeading": "الفائزون",

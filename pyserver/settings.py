@@ -168,6 +168,9 @@ DEFAULT_COPY = {
     "prizeLabel": "Prize",
     "lastWinnerEyebrow": "Last winner",
     "completeTitle": "All prizes awarded",
+    # NEW: shown before any entries have been added.
+    "noEntriesTitle": "The draw is being set up",
+    "noEntriesDetail": "Entries will appear here once they are added",
     "startButton": "Start",
     "stopButton": "Stop",
     "winnersHeading": "Winners",

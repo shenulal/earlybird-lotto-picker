@@ -78,6 +78,9 @@
     prizesBack: 'Back-to-board link',
     lastWinnerEyebrow: 'Previous winner label',
     completeTitle: 'All prizes awarded',
+    // NEW: the board before any entries are added.
+    noEntriesTitle: 'No entries yet — heading',
+    noEntriesDetail: 'No entries yet — sub-heading',
     startButton: 'Start button',
     stopButton: 'Stop button',
     winnersHeading: 'Winners panel heading',

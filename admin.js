@@ -9,7 +9,8 @@
   'use strict';
 
   const api = global.lotteryApi;
-  // NEW: tells draw boards open in this browser that the settings changed.
+  // NEW: tells draw boards open in this browser that the settings or the
+  // entries changed.
   const settingsChannel = global.BroadcastChannel ? new global.BroadcastChannel('pickora-settings') : null;
 
   const elements = {
@@ -563,6 +564,7 @@
             (dropped > 0 ? ` ${dropped} row(s) were skipped — see Data health.` : '')
         );
 
+        if (settingsChannel) settingsChannel.postMessage('entries');
         state.pendingUpload = null;
         elements.fileInput.value = '';
         elements.sheetUrl.value = '';
@@ -591,6 +593,7 @@
     await withBusyButton(elements.clearEntriesBtn, async () => {
       try {
         await api.clearTickets(force);
+        if (settingsChannel) settingsChannel.postMessage('entries');
         toast('All entries deleted.');
         await loadOverview();
       } catch (error) {

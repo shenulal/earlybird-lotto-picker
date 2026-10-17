@@ -113,3 +113,10 @@ test('the sponsor column heading falls back and the organiser credit is trimmed 
 test('the reference prefix keeps only safe characters', () => {
   assert.equal(features.normalizeCertificate({ referencePrefix: 'GALA/26<x>' }, TICKET_DATA).referencePrefix, 'GALA26x');
 });
+
+test('the board has its own wording for before any entries are added', () => {
+  const { DEFAULT_COPY } = require('../server/settings');
+  assert.equal(DEFAULT_COPY.noEntriesTitle, 'The draw is being set up');
+  assert.equal(DEFAULT_COPY.noEntriesDetail, 'Entries will appear here once they are added');
+  assert.notEqual(DEFAULT_COPY.noEntriesTitle, DEFAULT_COPY.completeTitle);
+});

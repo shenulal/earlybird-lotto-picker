@@ -111,6 +111,10 @@
     if (rolling) {
       elements.statusLine.textContent = 'Spinning…';
       elements.statusDetail.textContent = snapshot.nextPrize ? snapshot.nextPrize.name : '';
+    } else if (stats.totalTickets === 0 && stats.winnersCount === 0) {
+      // FIX: no entries is not a finished draw.
+      elements.statusLine.textContent = 'No entries yet';
+      elements.statusDetail.textContent = 'Add the participants in the organiser console';
     } else if (stats.isComplete) {
       elements.statusLine.textContent = 'All prizes awarded';
       elements.statusDetail.textContent = '';

@@ -21,6 +21,8 @@
     ROLLING: 'rolling',
     REVEALING: 'revealing',
     COMPLETE: 'complete',
+    // NEW: no entries have been added yet, so there is nothing to draw from.
+    WAITING: 'waiting',
   };
   const REVEAL_ANIMATIONS = ['reveal-rise', 'reveal-flip', 'reveal-zoom', 'reveal-swing', 'reveal-drop'];
 
@@ -509,7 +511,7 @@
     }
   }
 
-  async function refreshLiveSettings() {
+  async function refreshLiveSettings(event) {
     try {
       const response = await api.getSettings();
       const next = response.appSettings;
@@ -534,9 +536,15 @@
       // stage kept showing the old one until the next draw. The idle stage is
       // redrawn now; the pool is fetched again too, since the wheel may write
       // a field on its segments that the reel never needed.
-      if (wheelChanged && showingIdleStage()) {
+      // NEW: likewise a board still waiting for entries, or told by the
+      // console that the entries changed, takes up the new list.
+      const wasWaiting = awaitingEntries();
+      const entriesChanged = Boolean(event && event.data === 'entries');
+      if ((wheelChanged || entriesChanged || wasWaiting) && (wasWaiting || showingIdleStage())) {
         await refreshStateQuietly();
-        if (showingIdleStage()) renderIdle();
+        // A board that was waiting is still at rest, though it now has entries.
+        const resting = wasWaiting || awaitingEntries() || showingIdleStage();
+        if (resting && (wheelChanged || entriesChanged || wasWaiting !== awaitingEntries())) renderIdle();
       }
     } catch (_error) {
       /* the next poll tries again; nothing on stage depends on this */
@@ -601,7 +609,8 @@
 
     const isRolling = status === STATUS.ROLLING;
     const isHeld = Boolean(countdown && countdown.isLocked() && !state.authenticated);
-    elements.startBtn.disabled = isRolling || status === STATUS.REVEALING || status === STATUS.COMPLETE || isHeld;
+    elements.startBtn.disabled =
+      isRolling || status === STATUS.REVEALING || status === STATUS.COMPLETE || status === STATUS.WAITING || isHeld;
     elements.stopBtn.disabled = !isRolling || state.stopRequested;
   }
 
@@ -711,7 +720,23 @@
       </div>`);
   }
 
+  /**
+   * NEW: whether the board has no entries to draw from and no draw behind it
+   * — a list not yet added, or a sheet not yet connected.
+   */
+  function awaitingEntries() {
+    return Boolean(state.stats && state.stats.totalTickets === 0 && state.stats.winnersCount === 0);
+  }
+
   function renderIdle() {
+    // FIX: with no entries at all, none were left to draw, which counted as
+    // complete — so a board with no list yet said every prize was awarded.
+    if (awaitingEntries()) {
+      setStatus(STATUS.WAITING);
+      renderMessage(copy('noEntriesTitle'), copy('noEntriesDetail'));
+      return;
+    }
+
     if (state.stats && state.stats.isComplete) {
       setStatus(STATUS.COMPLETE);
       renderMessage(copy('completeTitle'), `${state.stats.winnersCount}`);
