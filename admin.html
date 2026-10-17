@@ -1567,7 +1567,7 @@
               </fieldset>
             </div>
 
-            <div class="card">
+            <div class="card" id="wheelSettingsCard">
               <h2 class="card-title">Wheel</h2>
               <div class="grid-2">
                 <label class="field">
@@ -1641,7 +1641,11 @@
                 </div>
               </div>
               <div class="wheel-preview" id="wheelPreview"></div>
-              <p class="field-hint">The test spin lands on a sample entry; nothing is drawn.</p>
+              <p class="field-hint" id="wheelPreviewHint">The test spin lands on a sample entry; nothing is drawn.</p>
+              <div class="reel-note" id="wheelReelNote" hidden>
+                <p><strong>The reel</strong> — entries scroll past and stop on the winner, as the board has always done.</p>
+                <p class="field-hint">How big it is and which lines each entry shows are set under <strong>Display</strong>.</p>
+              </div>
             </div>
           </div>
         </div>

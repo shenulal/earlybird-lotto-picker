@@ -9,6 +9,8 @@
   'use strict';
 
   const api = global.lotteryApi;
+  // NEW: tells draw boards open in this browser that the settings changed.
+  const settingsChannel = global.BroadcastChannel ? new global.BroadcastChannel('pickora-settings') : null;
 
   const elements = {
     gate: document.getElementById('gate'),
@@ -818,6 +820,7 @@
       if (featurePanels) featurePanels.render();
       fillSettingsForm(result.appSettings);
       elements.brandEvent.textContent = result.appSettings.eventName;
+      if (settingsChannel) settingsChannel.postMessage('saved');
       if (!options.quiet) toast(message);
     } catch (error) {
       toast(error.message, 'error');

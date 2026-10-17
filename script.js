@@ -31,6 +31,9 @@
   // NEW: how often an open board picks up the organiser's sound, countdown
   // and redraw settings without a reload.
   const LIVE_SETTINGS_MS = 20000;
+  // NEW: the console in this browser announces each save here, so a board
+  // open beside it changes at once rather than at the next poll.
+  const SETTINGS_CHANNEL = 'pickora-settings';
   // NEW: how long a following board keeps spinning after the main board has
   // visibly stopped (its draw failed, it reloaded, control moved on) before
   // giving up on the spin and showing the results as they stand.
@@ -510,6 +513,7 @@
     try {
       const response = await api.getSettings();
       const next = response.appSettings;
+      const wheelChanged = JSON.stringify(state.settings.wheel) !== JSON.stringify(next.wheel);
       state.settings = {
         ...state.settings,
         sound: next.sound,
@@ -526,9 +530,26 @@
       };
       state.authenticated = Boolean(response.session && response.session.authenticated);
       applyLiveSettings(state.settings, response.serverTime);
+      // FIX: a new draw style, or a new look for the wheel, was taken but the
+      // stage kept showing the old one until the next draw. The idle stage is
+      // redrawn now; the pool is fetched again too, since the wheel may write
+      // a field on its segments that the reel never needed.
+      if (wheelChanged && showingIdleStage()) {
+        await refreshStateQuietly();
+        if (showingIdleStage()) renderIdle();
+      }
     } catch (_error) {
       /* the next poll tries again; nothing on stage depends on this */
     }
+  }
+
+  /**
+   * Whether the stage shows the board at rest — the idle wheel or the ready
+   * message — rather than a draw, a prize or a winner, which a settings
+   * change must never interrupt.
+   */
+  function showingIdleStage() {
+    return state.status === STATUS.IDLE && state.winners.length === 0 && !upcomingPrize();
   }
 
   function setWinnersPanel(isOpen) {
@@ -1191,6 +1212,7 @@
       await refreshState();
       bindControls();
       setInterval(refreshLiveSettings, LIVE_SETTINGS_MS);
+      if (global.BroadcastChannel) new global.BroadcastChannel(SETTINGS_CHANNEL).addEventListener('message', refreshLiveSettings);
 
       if (state.stats.totalTickets === 0) {
         showNotice('No participants have been uploaded yet. Open the organiser console to add them.', 'warn');

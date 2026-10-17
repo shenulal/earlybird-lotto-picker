@@ -30,6 +30,9 @@
       showLabels: $('wheelShowLabels'),
       centerLogo: $('wheelCenterLogo'),
       preview: $('wheelPreview'),
+      previewHint: $('wheelPreviewHint'),
+      reelNote: $('wheelReelNote'),
+      settingsCard: $('wheelSettingsCard'),
       test: $('wheelTestBtn'),
       save: $('saveWheelBtn'),
       revert: $('revertWheelBtn'),
@@ -110,9 +113,29 @@
       };
     }
 
+    /**
+     * FIX: choosing the reel left the wheel's settings and its preview on
+     * show, so the choice looked as if it had done nothing. The wheel's
+     * settings now show only with the wheel chosen, and the preview follows.
+     */
+    function applyStyle(style) {
+      const isWheel = style === 'wheel';
+      elements.settingsCard.hidden = !isWheel;
+      elements.preview.hidden = !isWheel;
+      elements.previewHint.hidden = !isWheel;
+      elements.test.hidden = !isWheel;
+      elements.reelNote.hidden = isWheel;
+      if (!isWheel && wheel) {
+        wheel.destroy();
+        wheel = null;
+      }
+      return isWheel;
+    }
+
     function renderPreview() {
-      if (testing || !global.createPickoraWheel) return;
+      if (testing) return;
       const draft = collect();
+      if (!applyStyle(draft.style) || !global.createPickoraWheel) return;
       elements.speedValue.textContent = `${(draft.speed / 10).toFixed(1)} turns/s`;
       if (wheel) wheel.destroy();
       const entries = sampleEntries(draft.labelField || (context.getSettings().display.reel.lines[0] || {}).field);
@@ -144,6 +167,8 @@
       await settling;
       testing = false;
       elements.test.disabled = false;
+      // The reel may have been chosen while the wheel was still turning.
+      if (collect().style !== 'wheel') renderPreview();
     }
 
     function bind() {
@@ -152,7 +177,7 @@
       elements.test.addEventListener('click', testSpin);
       elements.save.addEventListener('click', () =>
         busy(elements.save, 'Saving…', () =>
-          context.save({ ...context.getSettings(), wheel: collect() }, 'Draw style saved. Reload the draw board to use it.').catch(() => {})
+          context.save({ ...context.getSettings(), wheel: collect() }, 'Draw style saved. Open draw boards switch to it while they wait for the next draw.').catch(() => {})
         )
       );
       elements.revert.addEventListener('click', () => context.reload());
