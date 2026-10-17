@@ -15,7 +15,7 @@
   <!-- ------------------------------------------------------------ sign in -->
   <main class="gate" id="gate" hidden>
     <section class="gate-card">
-      <p class="gate-eyebrow">Pickora <span class="gate-byline">by Shenu</span></p>
+      <p class="gate-eyebrow">Pickora <a class="gate-byline maker-link" href="https://www.shenulal.com" target="_blank" rel="noopener">by Shenu</a></p>
       <h1 class="gate-title">Organiser console</h1>
       <p class="gate-lede">Sign in to upload participants, change the draw settings and manage results.</p>
 
@@ -33,6 +33,9 @@
       </form>
 
       <a class="gate-back" href="/">← Back to the draw board</a>
+      <a class="maker-badge" href="https://www.shenulal.com" target="_blank" rel="noopener">
+        <span>Made by Shenu</span><strong>www.shenulal.com ↗</strong>
+      </a>
     </section>
   </main>
 
@@ -96,6 +99,9 @@
         <a class="link" href="/" target="pickora-board">Draw board ↗</a>
         <a class="link" href="/welcome" target="pickora-welcome" data-screen="welcome">Welcome screen ↗</a>
         <a class="link" href="/prizes" target="pickora-prizes" data-screen="prizes">Prize screen ↗</a>
+        <a class="maker-badge maker-badge-compact" href="https://www.shenulal.com" target="_blank" rel="noopener">
+          <span>Made by Shenu</span><strong>shenulal.com ↗</strong>
+        </a>
         <p class="signed-in">Signed in as <strong id="currentUser">admin</strong></p>
         <button type="button" class="btn btn-ghost btn-block" id="logoutBtn">Sign out</button>
       </div>
@@ -1482,11 +1488,11 @@
             <label class="switch"><input type="checkbox" id="sponsorShowAnnouncement"><span><strong>When the prize is announced on the board</strong></span></label>
             <label class="switch"><input type="checkbox" id="sponsorShowWinnerCard"><span><strong>On the winner card</strong></span></label>
             <label class="switch"><input type="checkbox" id="sponsorShowPrizeScreen"><span><strong>On the prize screen</strong></span></label>
-            <label class="switch"><input type="checkbox" id="sponsorShowCertificate"><span><strong>On the draw certificate</strong></span></label>
             <label class="switch"><input type="checkbox" id="sponsorShowExport"><span><strong>In the results export</strong><small>Adds a Sponsor column to the CSV.</small></span></label>
             <label class="switch"><input type="checkbox" id="sponsorShowName"><span><strong>Show the sponsor's name beside its logo</strong><small>A sponsor without a logo always shows its name.</small></span></label>
             <label class="switch"><input type="checkbox" id="sponsorShowTagline"><span><strong>Show the sponsor's tagline</strong></span></label>
           </div>
+          <p class="field-hint">The draw certificate has its own column for prize sponsors, under Certificate → Prize sponsors.</p>
         </div>
 
         <div class="card">
@@ -2175,6 +2181,10 @@
                 <input type="checkbox" name="ui.showStats">
                 <span><strong>Show the prize counters on the board</strong></span>
               </label>
+              <label class="switch">
+                <input type="checkbox" name="ui.showMakerCredit">
+                <span><strong>Show the "Made by Shenu · shenulal.com" credit on the screens</strong><small>A small link in the footer of the board, welcome and prize screens.</small></span>
+              </label>
             </div>
           </div>
 
@@ -2256,6 +2266,36 @@
               <fieldset class="field checkbox-row" id="certFields">
                 <legend class="field-label">Columns printed for each winner</legend>
               </fieldset>
+            </div>
+
+            <div class="card" id="certSponsorCard">
+              <h2 class="card-title">Prize sponsors</h2>
+              <div class="switches">
+                <label class="switch">
+                  <input type="checkbox" id="certShowSponsors">
+                  <span><strong>Show who sponsored each prize</strong><small>A column beside the prize. Which sponsor stands behind which prize is set under Sponsors.</small></span>
+                </label>
+                <label class="switch">
+                  <input type="checkbox" id="certCreditOrganizer">
+                  <span><strong>Credit the organiser for prizes with no sponsor</strong><small>Off leaves those prizes blank in the column.</small></span>
+                </label>
+                <label class="switch">
+                  <input type="checkbox" id="certSponsorLogos">
+                  <span><strong>Sponsor logos</strong><small>Above the name, for sponsors that have one.</small></span>
+                </label>
+              </div>
+              <div class="grid-2">
+                <label class="field">
+                  <span class="field-label">Column heading</span>
+                  <input type="text" id="certSponsorLabel" maxlength="60" placeholder="Sponsored by">
+                </label>
+                <label class="field">
+                  <span class="field-label">Organiser credited as</span>
+                  <input type="text" id="certOrganizerCredit" maxlength="120">
+                  <span class="field-hint">Empty uses the organisation name.</span>
+                </label>
+              </div>
+              <p class="field-hint" id="certSponsorSummary" aria-live="polite"></p>
             </div>
 
             <div class="card">

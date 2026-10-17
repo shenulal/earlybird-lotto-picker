@@ -34,7 +34,6 @@
       announcement: 'sponsorShowAnnouncement',
       winnerCard: 'sponsorShowWinnerCard',
       prizeScreen: 'sponsorShowPrizeScreen',
-      certificate: 'sponsorShowCertificate',
       export: 'sponsorShowExport',
       showName: 'sponsorShowName',
       showTagline: 'sponsorShowTagline',

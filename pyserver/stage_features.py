@@ -130,7 +130,6 @@ def normalize_sponsors(raw: Any) -> Dict[str, Any]:
             "announcement": as_boolean(display.get("announcement"), True),
             "winnerCard": as_boolean(display.get("winnerCard"), True),
             "prizeScreen": as_boolean(display.get("prizeScreen"), True),
-            "certificate": as_boolean(display.get("certificate"), True),
             "export": as_boolean(display.get("export"), True),
             "showTagline": as_boolean(display.get("showTagline"), True),
             "showName": as_boolean(display.get("showName"), True),

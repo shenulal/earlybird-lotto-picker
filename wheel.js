@@ -52,7 +52,7 @@
       <div class="wheel-wrap" data-pointer="${settings.pointer || 'top'}">
         <canvas class="wheel-canvas" aria-hidden="true"></canvas>
         <span class="wheel-pointer" aria-hidden="true"></span>
-        <p class="wheel-result" aria-live="polite"></p>
+        <div class="wheel-result" aria-live="polite"></div>
       </div>`;
 
     const wrap = mount.querySelector('.wheel-wrap');
@@ -77,6 +77,8 @@
     let winnerIndex = -1;
     let logo = null;
     let size = 0;
+    // The most room the board allows; it can tighten it after measuring.
+    let room = Number(settings.maxSize) > 0 ? Number(settings.maxSize) : 0;
 
     if (settings.centerLogo && settings.logoSrc) {
       const image = new Image();
@@ -89,9 +91,15 @@
 
     /* ------------------------------------------------------------ geometry */
 
+    /**
+     * The wheel's size: the organiser's, when set, but never more than the
+     * room the board says is left (`maxSize`) — so the buttons beneath it stay
+     * on the screen — nor wider than the stage.
+     */
     function measure() {
-      const available = Math.min(mount.clientWidth || 600, global.innerHeight * 0.62);
-      size = Math.round(settings.size > 0 ? Math.min(settings.size, available) : clamp(available, 240, 900));
+      const limit = room > 0 ? room : global.innerHeight * 0.62;
+      const available = Math.min(mount.clientWidth || 600, limit);
+      size = Math.round(settings.size > 0 ? Math.min(settings.size, available) : clamp(available, 180, 900));
       const ratio = global.devicePixelRatio || 1;
       canvas.width = size * ratio;
       canvas.height = size * ratio;
@@ -152,8 +160,10 @@
           context.textAlign = 'right';
           context.textBaseline = 'middle';
           context.fillStyle = inkFor(color, settings.textColor);
-          const text = fitText(labels[index], radius * 0.62, fontSize);
-          context.fillText(text, radius - 18, 0);
+          // Labels end short of the rim, clear of the pointer that sits on it.
+          const outer = radius - Math.max(18, radius * 0.11);
+          const text = fitText(labels[index], outer - radius * 0.26, fontSize);
+          context.fillText(text, outer, 0);
           context.restore();
         }
       });
@@ -225,7 +235,7 @@
       wrap.classList.add('is-landed');
       wrap.style.setProperty('--wheel-speed', '0');
       draw();
-      result.textContent = landingEntry ? renderLabel(landingEntry) : '';
+      if (!result.innerHTML) result.textContent = landingEntry ? renderLabel(landingEntry) : '';
       onLanded();
       const { resolve } = stopping;
       stopping = null;
@@ -331,7 +341,35 @@
       draw();
     }
 
-    return { start, settle: settleTo, land, destroy, preview };
+    /** Re-fits the wheel to a new limit, keeping where it is in its turn. */
+    function resize(maxSize) {
+      room = Math.max(120, Math.round(maxSize));
+      measure();
+      draw();
+    }
+
+    /** The size the wheel is drawn at, in CSS pixels. */
+    function currentSize() {
+      return size;
+    }
+
+    /** The line beneath the wheel: text, or markup the caller has escaped. */
+    function caption(text, { html = false } = {}) {
+      if (html) result.innerHTML = text;
+      else result.textContent = text || '';
+    }
+
+    /**
+     * Where the wheel stands: its angle, which segment is under the pointer,
+     * and which one the winner was written on. For checking that a landing is
+     * exact; nothing on the board depends on it.
+     */
+    function inspect() {
+      const under = segments.length ? segmentAt(pointerAngle) : -1;
+      return { phase, angle, segments: segments.length, underPointer: under, label: labels[under] || '', winnerIndex };
+    }
+
+    return { start, settle: settleTo, land, destroy, preview, caption, inspect, resize, size: currentSize };
   }
 
   global.createPickoraWheel = createWheel;

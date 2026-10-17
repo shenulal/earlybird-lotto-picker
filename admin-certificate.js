@@ -29,6 +29,9 @@
       showMethod: 'certShowMethod',
       showFingerprint: 'certShowFingerprint',
       maskSensitive: 'certMask',
+      showSponsors: 'certShowSponsors',
+      creditOrganizer: 'certCreditOrganizer',
+      showSponsorLogos: 'certSponsorLogos',
     };
     const TEXTS = {
       title: 'certTitle',
@@ -40,6 +43,8 @@
       footerNote: 'certFooter',
       paper: 'certPaper',
       orientation: 'certOrientation',
+      sponsorLabel: 'certSponsorLabel',
+      organizerCredit: 'certOrganizerCredit',
     };
 
     const elements = {
@@ -53,6 +58,8 @@
       save: $('saveCertificateBtn'),
       revert: $('revertCertificateBtn'),
       panel: $('panel-certificate'),
+      sponsorCard: $('certSponsorCard'),
+      sponsorSummary: $('certSponsorSummary'),
     };
 
     let frameLoaded = false;
@@ -88,6 +95,40 @@
       elements.addSignatory.disabled = list.length >= MAX_SIGNATORIES;
     }
 
+    /**
+     * NEW: how the prizes will be credited, from the saved assignments, and
+     * the sponsor options set aside while the column is off.
+     */
+    function renderSponsorSummary() {
+      const settings = context.getSettings();
+      const showing = $('certShowSponsors').checked;
+      elements.sponsorCard.querySelectorAll('input:not(#certShowSponsors)').forEach((input) => {
+        input.disabled = !showing;
+      });
+      $('certOrganizerCredit').placeholder = settings.organizationName || settings.eventName || 'The organiser';
+
+      const prizes = settings.prizes.items;
+      const ids = new Set(settings.sponsors.items.map((sponsor) => sponsor.id));
+      const sponsored = prizes.filter((prize) => ids.has(settings.sponsors.prizeSponsors[prize.id])).length;
+      const rest = prizes.length - sponsored;
+      const organiser = $('certOrganizerCredit').value.trim() || $('certOrganizerCredit').placeholder;
+
+      if (!showing) {
+        elements.sponsorSummary.textContent = '';
+      } else if (prizes.length === 0) {
+        elements.sponsorSummary.textContent = 'No prizes yet — add them under Prizes.';
+      } else {
+        const lead = `${sponsored} of ${prizes.length} prize${prizes.length === 1 ? ' has' : 's have'} a sponsor.`;
+        const tail =
+          rest === 0
+            ? ''
+            : $('certCreditOrganizer').checked
+              ? ` The other ${rest} ${rest === 1 ? 'is' : 'are'} credited to ${organiser}.`
+              : ` The other ${rest} ${rest === 1 ? 'is' : 'are'} left blank.`;
+        elements.sponsorSummary.textContent = lead + tail;
+      }
+    }
+
     function render() {
       const certificate = context.getSettings().certificate;
       Object.entries(TOGGLES).forEach(([key, id]) => {
@@ -100,6 +141,7 @@
       if (/^#[0-9a-f]{6}$/i.test(certificate.accentColor)) elements.accent.value = certificate.accentColor;
       renderFields(certificate);
       renderSignatories(certificate.signatories);
+      renderSponsorSummary();
       elements.open.hidden = !certificate.enabled;
       sendDraft();
     }
@@ -163,8 +205,10 @@
             context.toast(`At most ${MAX_FIELDS} columns fit on the page.`, 'error');
           }
         }
+        if (event.target.closest('#certSponsorCard')) renderSponsorSummary();
         sendDraft();
       });
+      elements.sponsorCard.addEventListener('input', renderSponsorSummary);
 
       elements.accent.addEventListener('input', () => {
         elements.accentText.value = elements.accent.value;

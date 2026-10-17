@@ -89,6 +89,27 @@ test('certificate signatories drop empty rows and keep at most six', () => {
   assert.equal(certificate.signatories[0].name, 'Person 0');
 });
 
+test('the certificate credits prize sponsors by default only when sponsors are on', () => {
+  const quiet = features.normalizeCertificate({}, TICKET_DATA);
+  assert.equal(quiet.showSponsors, false);
+  assert.equal(quiet.sponsorLabel, 'Sponsored by');
+  assert.equal(quiet.creditOrganizer, true);
+  assert.equal(quiet.organizerCredit, '');
+  assert.equal(quiet.showSponsorLogos, true);
+
+  assert.equal(features.normalizeCertificate({}, TICKET_DATA, { enabled: true }).showSponsors, true);
+  // A settings file from when the switch lived with the sponsors keeps its choice.
+  assert.equal(features.normalizeCertificate({}, TICKET_DATA, { enabled: true, display: { certificate: false } }).showSponsors, false);
+  // Once chosen on the certificate, the sponsors no longer decide.
+  assert.equal(features.normalizeCertificate({ showSponsors: true }, TICKET_DATA, { enabled: false }).showSponsors, true);
+});
+
+test('the sponsor column heading falls back and the organiser credit is trimmed to length', () => {
+  const certificate = features.normalizeCertificate({ sponsorLabel: '   ', organizerCredit: 'x'.repeat(200) }, TICKET_DATA);
+  assert.equal(certificate.sponsorLabel, 'Sponsored by');
+  assert.equal(certificate.organizerCredit.length, 120);
+});
+
 test('the reference prefix keeps only safe characters', () => {
   assert.equal(features.normalizeCertificate({ referencePrefix: 'GALA/26<x>' }, TICKET_DATA).referencePrefix, 'GALA26x');
 });

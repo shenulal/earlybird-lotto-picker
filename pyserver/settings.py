@@ -713,7 +713,7 @@ def normalize_app_settings(raw: Any) -> Dict[str, Any]:
         "sound": features.normalize_sound(source.get("sound")),
         "redraw": features.normalize_redraw(source.get("redraw")),
         "countdown": features.normalize_countdown(source.get("countdown")),
-        "certificate": features.normalize_certificate(source.get("certificate"), data),
+        "certificate": features.normalize_certificate(source.get("certificate"), data, source.get("sponsors")),
         # NEW: sponsors, the phone remote, live sync and the wheel.
         "sponsors": stage.normalize_sponsors(source.get("sponsors")),
         "remote": stage.normalize_remote(source.get("remote")),
@@ -750,6 +750,9 @@ def normalize_app_settings(raw: Any) -> Dict[str, Any]:
             "showOrganizationName": _as_bool(ui.get("showOrganizationName"), True),
             "showWinnersPanel": _as_bool(ui.get("showWinnersPanel"), False),
             "showStats": _as_bool(ui.get("showStats"), False),
+            # NEW: the maker's credit — a small shenulal.com link — on the
+            # public screens. On unless the organiser turns it off.
+            "showMakerCredit": _as_bool(ui.get("showMakerCredit"), True),
             "boardAlignment": _as_choice(ui.get("boardAlignment"), BOARD_ALIGNMENTS, "center"),
         },
     }

@@ -659,7 +659,7 @@ function normalizeAppSettings(input) {
     sound: features.normalizeSound(source.sound),
     redraw: features.normalizeRedraw(source.redraw),
     countdown: features.normalizeCountdown(source.countdown),
-    certificate: features.normalizeCertificate(source.certificate, data),
+    certificate: features.normalizeCertificate(source.certificate, data, source.sponsors),
     // NEW: sponsors, the phone remote, live sync and the wheel.
     sponsors: stage.normalizeSponsors(source.sponsors),
     remote: stage.normalizeRemote(source.remote),
@@ -707,6 +707,9 @@ function normalizeAppSettings(input) {
       showOrganizationName: asBoolean(ui.showOrganizationName, true),
       showWinnersPanel: asBoolean(ui.showWinnersPanel, false),
       showStats: asBoolean(ui.showStats, false),
+      // NEW: the maker's credit — a small shenulal.com link — on the public
+      // screens. On unless the organiser turns it off.
+      showMakerCredit: asBoolean(ui.showMakerCredit, true),
       boardAlignment: asChoice(ui.boardAlignment, BOARD_ALIGNMENTS, 'center'),
     },
   };

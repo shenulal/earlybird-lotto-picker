@@ -99,7 +99,6 @@ function normalizeSponsors(input) {
       announcement: asBoolean(display.announcement, true),
       winnerCard: asBoolean(display.winnerCard, true),
       prizeScreen: asBoolean(display.prizeScreen, true),
-      certificate: asBoolean(display.certificate, true),
       export: asBoolean(display.export, true),
       showTagline: asBoolean(display.showTagline, true),
       showName: asBoolean(display.showName, true),

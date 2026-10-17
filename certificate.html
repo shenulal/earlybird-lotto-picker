@@ -193,7 +193,17 @@
       color: var(--ink-soft);
     }
 
+    /* The sponsor's logo sits above its name, no taller than a line pair. */
+    td.sponsor img {
+      display: block;
+      max-width: 24mm;
+      max-height: 8mm;
+      margin-bottom: 1mm;
+      object-fit: contain;
+    }
+
     .absent td { color: var(--ink-soft); }
+    .absent td.sponsor img { opacity: 0.6; }
 
     .empty {
       padding: 6mm 0;

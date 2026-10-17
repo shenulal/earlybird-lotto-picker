@@ -62,12 +62,29 @@
     const prize = settings.prizes.items[entry.prizeNumber - 1];
     const label = prize ? prize.label : `${settings.copy.prizeLabel} ${entry.prizeNumber}`;
     const name = certificate.showPrizes && prize ? `<small>${escapeHtml(prize.name)}</small>` : '';
-    // NEW: the sponsor behind the prize, when the organiser wants it on record.
+    return `<td class="rank">${escapeHtml(label)}${name}</td>`;
+  }
+
+  /**
+   * NEW: who stands behind a prize — the sponsor put behind it under Sponsors,
+   * or else the organiser, when the organiser is credited. The assignment is
+   * the record, so it is printed even while sponsors are off the screens.
+   */
+  function prizeSponsor(entry, settings, certificate) {
+    const prize = settings.prizes.items[entry.prizeNumber - 1];
     const sponsors = settings.sponsors;
-    const sponsorId = sponsors && sponsors.enabled && sponsors.display.certificate && prize ? sponsors.prizeSponsors[prize.id] : null;
+    const sponsorId = prize && sponsors ? sponsors.prizeSponsors[prize.id] : null;
     const sponsor = sponsorId ? sponsors.items.find((item) => item.id === sponsorId) : null;
-    const credit = sponsor ? `<small>${escapeHtml(sponsors.label)} ${escapeHtml(sponsor.name)}</small>` : '';
-    return `<td class="rank">${escapeHtml(label)}${name}${credit}</td>`;
+    if (sponsor) return { name: sponsor.name, logo: sponsor.logo.src };
+    if (!certificate.creditOrganizer) return null;
+    return { name: certificate.organizerCredit || settings.organizationName || settings.eventName, logo: '' };
+  }
+
+  function sponsorCell(entry, settings, certificate) {
+    const sponsor = prizeSponsor(entry, settings, certificate);
+    if (!sponsor) return '<td class="sponsor">—</td>';
+    const logo = certificate.showSponsorLogos && sponsor.logo ? `<img src="/${escapeHtml(sponsor.logo)}" alt="">` : '';
+    return `<td class="sponsor">${logo}${escapeHtml(sponsor.name)}</td>`;
   }
 
   function fieldCells(entry, settings, certificate) {
@@ -86,7 +103,8 @@
       const field = settings.data.fields.find((candidate) => candidate.key === key);
       return `<th>${escapeHtml(field ? field.label : key)}</th>`;
     });
-    const head = `<tr><th>${escapeHtml(settings.copy.prizeLabel)}</th>${labels.join('')}${
+    const sponsorHead = certificate.showSponsors ? `<th>${escapeHtml(certificate.sponsorLabel || 'Sponsored by')}</th>` : '';
+    const head = `<tr><th>${escapeHtml(settings.copy.prizeLabel)}</th>${sponsorHead}${labels.join('')}${
       certificate.showTimestamps ? '<th>Drawn</th>' : ''
     }${absent ? '<th>Marked not present</th>' : ''}</tr>`;
 
@@ -95,6 +113,7 @@
         (entry) => `
         <tr${absent ? ' class="absent"' : ''}>
           ${prizeCell(entry, settings, certificate)}
+          ${certificate.showSponsors ? sponsorCell(entry, settings, certificate) : ''}
           ${fieldCells(entry, settings, certificate)}
           ${certificate.showTimestamps ? `<td>${escapeHtml(formatDateTime(entry.drawnAt, settings.locale))}</td>` : ''}
           ${absent ? `<td>${escapeHtml(formatDateTime(entry.absentAt, settings.locale))}</td>` : ''}

@@ -665,6 +665,7 @@
     'ui.showOrganizationName',
     'ui.showWinnersPanel',
     'ui.showStats',
+    'ui.showMakerCredit', // NEW
     'draw.publicDrawEnabled',
     'draw.requireAuthForDraw',
     'draw.allowResetFromBoard',

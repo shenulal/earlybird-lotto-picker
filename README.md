@@ -919,6 +919,15 @@ how the winners were chosen, a footnote, signature lines with names and roles,
 which columns are printed for each winner, paper size and orientation, and an
 accent colour. Sensitive columns can be masked to their last four characters.
 
+**Prize sponsors** adds a column naming who stands behind each prize: the
+sponsor put behind it under **Sponsors** (with its logo, if wanted), or — for a
+prize nobody sponsors — the organiser, credited by the organisation name or
+wording of your own. Crediting the organiser can be switched off to leave
+those prizes blank. The column heading is configurable ("Sponsored by" by
+default). The column prints the assignments even while sponsors are hidden
+from the screens. A settings file saved before this option existed keeps
+crediting sponsors on the certificate if it already did.
+
 **Open certificate** shows it at `/certificate`; print it, or save it as PDF
 from the print dialog. Only a signed-in organiser can load it.
 
@@ -968,11 +977,12 @@ tagline and logo — and choose which prize each one stands behind.
 Sponsors can be credited, each switchable:
 
 - when the prize is announced on the board, and on the winner card;
-- on the prize screen and on the draw certificate;
+- on the prize screen;
 - in the results export, as a Sponsor column.
 
 The credit wording ("Sponsored by"), the logo size, and whether the name and
-tagline show beside the logo are all configurable.
+tagline show beside the logo are all configurable. The draw certificate has
+its own "Sponsored by" column, set under **Certificate** (see below).
 
 A **sponsor strip** can run along the top or bottom of the board, welcome and
 prize screens: its own heading, logo height, how many logos are visible, how
@@ -992,6 +1002,14 @@ pointer, the one furthest from anyone's eye; the wheel then slows at a
 constant rate so exactly that segment stops under the pointer. Only fields the
 board already shows, never sensitive ones, can go on the wheel, because every
 remaining entry's label is on screen.
+
+The wheel is on the board from the start, showing the entries still in the
+draw, and it stays there after it stops: the winner is announced on the line
+beneath it before the winner card opens. It is sized to the room left between
+the header and the buttons, so the Start and Stop buttons and the footer stay
+on screen at any window size, and the stage keeps one height from idle through
+the spin to the announcement. A **Size** of 0 lets the board choose; a fixed
+size is still reduced if it would push the buttons off the screen.
 
 ## Live sync between screens
 
@@ -1107,6 +1125,7 @@ commit where there is one, and otherwise a hash of the served files themselves.
 | `animation.confettiPalette` | Up to 12 hex colours for the confetti |
 | `animation.celebration` | Which celebration fires: `classic`, `streamers`, `stars`, `balloons`, `snow`, `money`, `mix` or `none` |
 | `ui.showEventName` | Show the event name on the board. Off gives the header back to the draw |
+| `ui.showMakerCredit` | Show the "Made by Shenu · shenulal.com" credit, linking to https://www.shenulal.com, beneath the footer of the public screens (default on). The console's sign-in page and sidebar always carry it |
 | `ui.showNewDrawButton` | Offer "New draw" on the board at all. **Off by default**: the button clears every winner drawn so far, and a projected board stands in a room full of people. Off removes the button and its N shortcut; an organiser still has **Reset draw** in the console |
 | `ui.reel.width` / `.height` / `.fontSize` | The draw reel's measurements in pixels. Zero means the board sizes that dimension to the screen, as it does unconfigured |
 | `ui.controls.minWidth` / `.height` / `.fontSize` / `.paddingX` | The buttons' measurements in pixels; zero is again "leave it to the board" |
@@ -1141,7 +1160,7 @@ commit where there is one, and otherwise a hash of the served files themselves.
 | `social.qr.position` | `bottom-left`, `bottom-right`, `bottom-center`, `top-right`, `sidebar` or `footer` |
 | `social.qr.size` | `small` 48px, `medium` 80px, `large` 128px, `xl` 180px |
 | `social.qr.display` | `icons`, `qr` or `both` |
-| `branding.logo` | Uploaded file, corner position, on-screen height |
+| `branding.logo` | Uploaded file, corner position, on-screen height. When `width` and `height` are not set, the board reads the proportions from the image itself, so a wide logo never overlaps the event name |
 | `branding.background` | Uploaded file, fit mode, darkening overlay |
 | `welcome.enabled`, `showOnLoad`, `placement` | Whether the guest welcome shows, when, and where |
 | `welcome.title`, `message` | Heading and message; line breaks are preserved |

@@ -322,7 +322,20 @@ def _normalize_certificate_fields(raw: Any, data: Dict[str, Any]) -> List[str]:
     return fallback[:2]
 
 
-def normalize_certificate(raw: Any, data: Dict[str, Any]) -> Dict[str, Any]:
+def _sponsors_credited(sponsors: Any) -> bool:
+    """Whether sponsors are switched on for the event.
+
+    The certificate credits the prize sponsors by default when they are — the
+    switch used to live with the sponsors, so a settings file from then still
+    prints what it printed.
+    """
+    source = as_object(sponsors)
+    return as_boolean(source.get("enabled"), False) and as_boolean(
+        as_object(source.get("display")).get("certificate"), True
+    )
+
+
+def normalize_certificate(raw: Any, data: Dict[str, Any], sponsors: Any = None) -> Dict[str, Any]:
     source = as_object(raw)
 
     return {
@@ -346,6 +359,13 @@ def normalize_certificate(raw: Any, data: Dict[str, Any]) -> Dict[str, Any]:
         # unless the organiser decides the document needs them whole.
         "maskSensitive": as_boolean(source.get("maskSensitive"), True),
         "fields": _normalize_certificate_fields(source.get("fields"), data),
+        # NEW: who stands behind each prize, as a column of its own. A prize
+        # with no sponsor is credited to the organiser unless that is off.
+        "showSponsors": as_boolean(source.get("showSponsors"), _sponsors_credited(sponsors)),
+        "sponsorLabel": as_text(source.get("sponsorLabel"), "Sponsored by", 60),
+        "creditOrganizer": as_boolean(source.get("creditOrganizer"), True),
+        "organizerCredit": as_optional_text(source.get("organizerCredit"), "", 120),
+        "showSponsorLogos": as_boolean(source.get("showSponsorLogos"), True),
         "signatories": _normalize_signatories(source.get("signatories")),
         "paper": as_choice(source.get("paper"), PAPER_SIZES, "A4"),
         "orientation": as_choice(source.get("orientation"), ORIENTATIONS, "portrait"),

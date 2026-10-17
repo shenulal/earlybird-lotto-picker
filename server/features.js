@@ -307,7 +307,17 @@ function normalizeCertificateFields(input, data) {
   return fallback.slice(0, 2);
 }
 
-function normalizeCertificate(input, data) {
+/**
+ * Whether sponsors are switched on for the event. The certificate credits the
+ * prize sponsors by default when they are — the switch used to live with the
+ * sponsors, so a settings file from then still prints what it printed.
+ */
+function sponsorsCredited(sponsors) {
+  const source = asObject(sponsors);
+  return asBoolean(source.enabled, false) && asBoolean(asObject(source.display).certificate, true);
+}
+
+function normalizeCertificate(input, data, sponsors) {
   const source = asObject(input);
 
   return {
@@ -331,6 +341,13 @@ function normalizeCertificate(input, data) {
     // unless the organiser decides the document needs them whole.
     maskSensitive: asBoolean(source.maskSensitive, true),
     fields: normalizeCertificateFields(source.fields, data),
+    // NEW: who stands behind each prize, as a column of its own. A prize with
+    // no sponsor is credited to the organiser unless that is switched off.
+    showSponsors: asBoolean(source.showSponsors, sponsorsCredited(sponsors)),
+    sponsorLabel: asText(source.sponsorLabel, 'Sponsored by', 60),
+    creditOrganizer: asBoolean(source.creditOrganizer, true),
+    organizerCredit: asOptionalText(source.organizerCredit, '', 120),
+    showSponsorLogos: asBoolean(source.showSponsorLogos, true),
     signatories: normalizeSignatories(source.signatories),
     paper: asChoice(source.paper, PAPER_SIZES, 'A4'),
     orientation: asChoice(source.orientation, ORIENTATIONS, 'portrait'),

@@ -35,7 +35,7 @@
 
     body {
       display: grid;
-      grid-template-rows: auto 1fr auto;
+      grid-template-rows: auto 1fr auto auto;
       min-height: 100dvh;
       padding: max(16px, env(safe-area-inset-top)) 16px max(18px, env(safe-area-inset-bottom));
       gap: 16px;
@@ -156,6 +156,18 @@
       color: var(--soft);
     }
 
+    .maker {
+      justify-self: center;
+      padding: 6px 14px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--soft);
+      font-size: 0.78rem;
+      text-decoration: none;
+    }
+
+    .maker strong { color: var(--accent); }
+
     [hidden] { display: none !important; }
   </style>
 </head>
@@ -194,6 +206,7 @@
 
   <p class="notice" id="notice" hidden></p>
   <p class="message" id="message" role="status"></p>
+  <a class="maker" href="https://www.shenulal.com" target="_blank" rel="noopener">Made by Shenu · <strong>shenulal.com</strong></a>
 
   <script src="remote.js" defer></script>
 </body>

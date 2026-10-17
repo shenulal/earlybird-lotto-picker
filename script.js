@@ -35,6 +35,14 @@
   // visibly stopped (its draw failed, it reloaded, control moved on) before
   // giving up on the spin and showing the results as they stand.
   const MIRROR_GRACE_MS = 4000;
+  // NEW: the wheel's own allowances — the line beneath it, the space around
+  // the stage, and the smallest it may shrink to on a short screen.
+  // Matches --wheel-caption-height in styles.css.
+  const WHEEL_CAPTION_PX = 104;
+  const WHEEL_MARGIN_PX = 40;
+  const WHEEL_MIN_PX = 200;
+  // How far above the bottom of the screen the buttons must end.
+  const WHEEL_EDGE_PX = 12;
 
   const prefersReducedMotion = global.matchMedia('(prefers-reduced-motion: reduce)');
 
@@ -706,6 +714,11 @@
       return;
     }
 
+    if (usesWheel() && state.pool.length > 0) {
+      renderIdleWheel();
+      return;
+    }
+    elements.stage.dataset.drawStyle = 'reel';
     renderMessage(copy('readyTitle'), copy('readyDetail'));
   }
 
@@ -764,6 +777,83 @@
     return key ? String(record[key]) : '';
   }
 
+  /** Whether the organiser chose the wheel, and this browser can draw one. */
+  function usesWheel() {
+    return state.settings.wheel.style === 'wheel' && Boolean(global.createPickoraWheel);
+  }
+
+  /**
+   * FIX: how large the wheel may be. Worked out from what is actually left
+   * of the screen — below the header, inside the stage's padding, above the
+   * line under the wheel, the buttons and the footer — so Start and Stop are
+   * never pushed off the bottom, and the stage does not jump when it spins.
+   */
+  function wheelRoom() {
+    const px = (value) => parseFloat(value) || 0;
+    const header = document.querySelector('.board-header');
+    const footer = document.querySelector('.board-footer');
+    const stageStyle = global.getComputedStyle(elements.stage);
+    const controlsStyle = global.getComputedStyle(elements.controls);
+    const controls = elements.controls.offsetHeight + px(controlsStyle.marginTop) + px(controlsStyle.marginBottom);
+    const reserved =
+      (header ? header.getBoundingClientRect().bottom : 0) +
+      px(stageStyle.paddingTop) + px(stageStyle.paddingBottom) +
+      controls + (footer ? footer.offsetHeight : 0) +
+      // The line beneath the wheel, and breathing room around the stage.
+      WHEEL_CAPTION_PX + WHEEL_MARGIN_PX;
+    return Math.max(WHEEL_MIN_PX, global.innerHeight - reserved);
+  }
+
+  /**
+   * FIX: the estimate in wheelRoom() cannot see every gap the board's own
+   * layout adds, so once the wheel is on the stage the buttons are measured,
+   * and the wheel shrinks by exactly as much as they overflow the screen.
+   */
+  function fitWheel(wheel) {
+    global.requestAnimationFrame(() => {
+      if (!wheel || reel !== wheel || !wheel.resize) return;
+      // The lowest thing on the board — the footer, with its credit, or the
+      // buttons, or the stage on a board without them — measured as laid out.
+      const footer = document.querySelector('.board-footer');
+      const candidates = [elements.stage, elements.controls, footer].filter((element) => element && element.offsetParent);
+      const bottom = Math.max(...candidates.map((element) => element.getBoundingClientRect().bottom));
+      const overflow = bottom + WHEEL_EDGE_PX - global.innerHeight;
+      if (overflow > 0) wheel.resize(Math.max(WHEEL_MIN_PX, wheel.size() - overflow));
+    });
+  }
+
+  function wheelOptions() {
+    const { wheel, animation, branding } = state.settings;
+    return {
+      ...wheel,
+      maxSize: wheelRoom(),
+      palette: wheel.palette.length ? wheel.palette : animation.confettiPalette,
+      logoSrc: branding.logo.src || '',
+    };
+  }
+
+  /**
+   * NEW: in wheel mode, the board at rest shows the wheel itself, with the
+   * prompt beneath it, rather than a line of text — so the stage is the same
+   * shape before, during and after the spin.
+   */
+  function renderIdleWheel() {
+    setStage('');
+    elements.stage.dataset.drawStyle = 'wheel';
+    const entries = state.pool.length ? state.pool : [];
+    reel = global.createPickoraWheel(elements.reel, {
+      renderLabel: wheelLabel,
+      deal: () => null,
+      reducedMotion: prefersReducedMotion.matches,
+      options: wheelOptions(),
+    });
+    reel.preview(entries);
+    reel.caption(copy('readyDetail') || copy('readyTitle'));
+    fitWheel(reel);
+    const wrap = elements.reel.querySelector('.wheel-wrap');
+    if (wrap) wrap.classList.add('is-idle');
+  }
+
   /** Hands the reel — or the wheel — a fresh shuffle of whoever is still in the draw. */
   function startReel() {
     state.deal = createDeck(state.pool);
@@ -774,8 +864,8 @@
       sound.stop('spin');
       sound.play('land');
     };
-    const { wheel, animation, branding } = state.settings;
-    const useWheel = wheel.style === 'wheel' && global.createPickoraWheel;
+    const { animation } = state.settings;
+    const useWheel = usesWheel();
     elements.stage.dataset.drawStyle = useWheel ? 'wheel' : 'reel';
 
     reel = useWheel
@@ -784,11 +874,7 @@
           deal: () => state.deal(),
           reducedMotion: prefersReducedMotion.matches,
           onLanded: landed,
-          options: {
-            ...wheel,
-            palette: wheel.palette.length ? wheel.palette : animation.confettiPalette,
-            logoSrc: branding.logo.src || '',
-          },
+          options: wheelOptions(),
         })
       : global.createPickoraReel(elements.reel, {
           renderItem: (record) => renderSlot('reel', record, 'slot-rolling'),
@@ -797,6 +883,7 @@
           onLanded: landed,
         });
     reel.start(animation.rollingSpeed);
+    if (useWheel) fitWheel(reel);
   }
 
   /**
@@ -881,6 +968,21 @@
     if (delay === 0) {
       showCard();
       return Promise.resolve();
+    }
+
+    /* NEW: a wheel that has come to rest is the announcement. It stays on the
+       stage, the winner's segment lit and the announcement beneath it, for
+       the configured time — the room watches the result arrive on the wheel
+       rather than see it swapped for text the moment it stops. */
+    const landedWheel = elements.reel.querySelector('.wheel-wrap.is-landed');
+    if (landedWheel && reel && reel.caption) {
+      reel.caption(renderSlot('call', winner.record), { html: true });
+      return new Promise((resolve) => {
+        afterReveal(() => {
+          showCard();
+          resolve();
+        }, delay);
+      });
     }
 
     setStage(`
@@ -1044,6 +1146,16 @@
     // rebuilt with every reveal, so it is handled by delegation.
     elements.reel.addEventListener('click', (event) => {
       if (event.target.closest('.winner-absent')) markNotPresent();
+    });
+
+    // NEW: an idle wheel is sized to the screen, so it is re-fitted when the
+    // screen changes — going full screen on the projector, say.
+    let resizeTimer = null;
+    global.addEventListener('resize', () => {
+      global.clearTimeout(resizeTimer);
+      resizeTimer = global.setTimeout(() => {
+        if (elements.reel.querySelector('.wheel-wrap.is-idle')) renderIdleWheel();
+      }, 200);
     });
 
     document.addEventListener('keydown', (event) => {

@@ -45,11 +45,10 @@
     /* A wide logo needs more room beside the event name than a square one, so
        the header reserves its rendered width — bounded by the same cap the
        image itself is bounded by. */
-    const aspect = branding.logo.width && branding.logo.height ? branding.logo.width / branding.logo.height : 1;
-    root.style.setProperty(
-      '--logo-reserve',
-      `min(calc(var(--logo-max-height) * ${aspect.toFixed(3)}), 38vw, 420px)`
-    );
+    const reserveFor = (aspect) =>
+      root.style.setProperty('--logo-reserve', `min(calc(var(--logo-max-height) * ${aspect.toFixed(3)}), 38vw, 420px)`);
+    const knownAspect = branding.logo.width && branding.logo.height ? branding.logo.width / branding.logo.height : 0;
+    reserveFor(knownAspect || 1);
 
     root.lang = settings.locale || 'en';
     root.dir = settings.direction;
@@ -66,6 +65,14 @@
         if (branding.logo.width && branding.logo.height) {
           logo.width = branding.logo.width;
           logo.height = branding.logo.height;
+        } else {
+          // No dimensions saved: read the image's own proportions once it has
+          // loaded, or a wide logo overlaps the event name beside it.
+          const measure = () => {
+            if (logo.naturalWidth && logo.naturalHeight) reserveFor(logo.naturalWidth / logo.naturalHeight);
+          };
+          if (logo.complete) measure();
+          else logo.addEventListener('load', measure, { once: true });
         }
       }
     }
@@ -112,6 +119,26 @@
       footer.textContent = settings.copy.footer;
       footer.hidden = !settings.copy.footer;
     }
+    renderMakerCredit(settings);
+  }
+
+  /** NEW: who made Pickora, linked — where the organiser leaves it switched on. */
+  const MAKER = Object.freeze({ url: 'https://www.shenulal.com', label: 'shenulal.com', name: 'Shenu' });
+
+  function renderMakerCredit(settings) {
+    const host = document.querySelector('.board-footer');
+    if (!host) return;
+    let credit = host.querySelector('.maker-credit');
+    if (!credit) {
+      credit = document.createElement('a');
+      credit.className = 'maker-credit';
+      credit.href = MAKER.url;
+      credit.target = '_blank';
+      credit.rel = 'noopener';
+      credit.innerHTML = `<span class="maker-credit-by">Made by ${MAKER.name}</span><strong>${MAKER.label}</strong>`;
+      host.appendChild(credit);
+    }
+    credit.hidden = settings.ui.showMakerCredit === false;
   }
 
   const SCREENS = [
